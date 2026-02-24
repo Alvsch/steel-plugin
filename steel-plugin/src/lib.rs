@@ -13,11 +13,12 @@ plugin_meta!(
 
 #[unsafe(no_mangle)]
 pub extern "C" fn on_load(ptr: u32, len: u32) {
-    let name = rmp_serde::from_slice::<&str>(unsafe {
-        slice::from_raw_parts(ptr as *const u8, len as usize)
-    })
-    .unwrap();
+    let name = unsafe { slice::from_raw_parts(ptr as *const u8, len as usize) };
+    let name = str::from_utf8(name).unwrap();
 
     fs::write("/data/latest.log", "hello").unwrap();
     print(&format!("Hello, {name}!"));
 }
+
+#[unsafe(no_mangle)]
+pub extern "C" fn on_unload() {}

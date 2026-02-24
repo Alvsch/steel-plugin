@@ -3,7 +3,7 @@ use quote::quote;
 use serde::Serialize;
 use syn::{
     LitInt, LitStr, Token,
-    parse::{Parse, ParseStream},
+    parse::{Parse, ParseBuffer, ParseStream},
     parse_macro_input,
 };
 
@@ -39,13 +39,13 @@ impl Parse for PluginMetaArgs {
                 "depends" => {
                     let content;
                     syn::bracketed!(content in input);
-                    let deps = content.parse_terminated(|p| p.parse::<LitStr>(), Token![,])?;
-                    depends = deps.iter().map(|s| s.value()).collect();
+                    let deps = content.parse_terminated(ParseBuffer::parse, Token![,])?;
+                    depends = deps.iter().map(LitStr::value).collect();
                 }
                 other => {
                     return Err(syn::Error::new(
                         ident.span(),
-                        format!("unknown key `{}`", other),
+                        format!("unknown key `{other}`"),
                     ));
                 }
             }
