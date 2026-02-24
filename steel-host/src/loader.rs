@@ -94,7 +94,7 @@ impl PluginLoader {
         }
         let (topology, invalid) = topological_sort::sort_plugins(plugins);
         if !invalid.is_empty() {
-            error!("invalid: {:#?}", invalid);
+            error!("plugins with invalid dependencies: {:#?}", invalid);
         }
 
         Ok(topology)
