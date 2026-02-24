@@ -10,10 +10,10 @@ plugin_meta!(
 );
 
 #[unsafe(no_mangle)]
-pub extern "C" fn on_load() {
+pub extern "C" fn on_enable() {
     fs::write("/latest.log", "hello").unwrap();
     info("Hello, World!");
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn on_unload() {}
+pub extern "C" fn on_disable() {}

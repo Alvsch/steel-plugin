@@ -6,7 +6,8 @@ authors.workspace = true
 
 [dependencies]
 steel-plugin-sdk.workspace = true
-self_cell.workspace = true
+indexmap.workspace = true
+thiserror.workspace = true
 
 tokio.workspace = true
 

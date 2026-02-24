@@ -6,3 +6,12 @@ run: build-plugin
 
 build: build-plugin
     cargo build --bin steel-host
+
+fmt:
+    cargo fmt
+
+clippy:
+    cargo clippy
+
+check:
+    cargo check

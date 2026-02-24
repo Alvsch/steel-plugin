@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use crate::PluginContainer;
+use crate::PluginMeta;
 
-pub fn sort_plugins(plugins: Vec<PluginContainer>) -> (Vec<PluginContainer>, Vec<PluginContainer>) {
+pub fn sort_plugins(plugins: Vec<PluginMeta>) -> (Vec<PluginMeta>, Vec<PluginMeta>) {
     let mut in_degree: Vec<usize> = vec![0; plugins.len()];
     let mut adj: Vec<Vec<usize>> = vec![vec![]; plugins.len()];
     let mut unresolved_indices: HashSet<usize> = HashSet::new();
@@ -11,12 +11,12 @@ pub fn sort_plugins(plugins: Vec<PluginContainer>) -> (Vec<PluginContainer>, Vec
         let name_to_idx: HashMap<&str, usize> = plugins
             .iter()
             .enumerate()
-            .map(|(i, p)| (p.borrow_dependent().name, i))
+            .map(|(i, p)| (&*p.name, i))
             .collect();
 
         for (i, plugin) in plugins.iter().enumerate() {
-            for &dep in &plugin.borrow_dependent().depends {
-                if let Some(&dep_idx) = name_to_idx.get(dep) {
+            for dep in &plugin.depends {
+                if let Some(&dep_idx) = name_to_idx.get(&**dep) {
                     in_degree[i] += 1;
                     adj[dep_idx].push(i);
                 } else {
@@ -39,18 +39,19 @@ pub fn sort_plugins(plugins: Vec<PluginContainer>) -> (Vec<PluginContainer>, Vec
         }
     }
 
-    let mut cyclic_indices: HashSet<usize> = (0..plugins.len()).filter(|&i| in_degree[i] > 0).collect();
+    let mut cyclic_indices: HashSet<usize> =
+        (0..plugins.len()).filter(|&i| in_degree[i] > 0).collect();
     // TODO: maybe change
     cyclic_indices.extend(unresolved_indices);
 
-    let mut slots: Vec<Option<PluginContainer>> = plugins.into_iter().map(Some).collect();
+    let mut slots: Vec<Option<PluginMeta>> = plugins.into_iter().map(Some).collect();
 
-    let invalid: Vec<PluginContainer> = cyclic_indices
+    let invalid: Vec<PluginMeta> = cyclic_indices
         .iter()
         .filter_map(|&i| slots[i].take())
         .collect();
 
-    let sorted: Vec<PluginContainer> = sorted_indices
+    let sorted: Vec<PluginMeta> = sorted_indices
         .iter()
         .filter_map(|&i| slots[i].take())
         .collect();
