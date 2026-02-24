@@ -1,8 +1,6 @@
-use std::{fs, slice};
+use std::fs;
 
-use steel_plugin_sdk::{init, plugin_meta, print};
-
-init!();
+use steel_plugin_sdk::{info, plugin_meta};
 
 plugin_meta!(
     name = "steel-plugin",
@@ -12,12 +10,9 @@ plugin_meta!(
 );
 
 #[unsafe(no_mangle)]
-pub extern "C" fn on_load(ptr: u32, len: u32) {
-    let name = unsafe { slice::from_raw_parts(ptr as *const u8, len as usize) };
-    let name = str::from_utf8(name).unwrap();
-
-    fs::write("/data/latest.log", "hello").unwrap();
-    print(&format!("Hello, {name}!"));
+pub extern "C" fn on_load() {
+    fs::write("/latest.log", "hello").unwrap();
+    info("Hello, World!");
 }
 
 #[unsafe(no_mangle)]

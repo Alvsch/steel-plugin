@@ -74,6 +74,20 @@ pub fn plugin_meta(input: TokenStream) -> TokenStream {
         #[unsafe(link_section = "plugin_meta")]
         #[used]
         pub static __PLUGIN_META_SECTION: [u8; #len] = [#(#bytes),*];
+
+        #[unsafe(no_mangle)]
+        pub extern "C" fn alloc(len: u32) -> u32 {
+            let layout = std::alloc::Layout::from_size_align(len as usize, 1).unwrap();
+            unsafe { std::alloc::alloc(layout) as u32 }
+        }
+
+        #[unsafe(no_mangle)]
+        pub extern "C" fn dealloc(ptr: u32, len: u32) {
+            let layout = std::alloc::Layout::from_size_align(len as usize, 1).unwrap();
+            unsafe {
+                std::alloc::dealloc(ptr as *mut u8, layout);
+            }
+        }
     }
     .into()
 }
