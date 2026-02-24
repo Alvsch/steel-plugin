@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use steel_host::{PluginHostData, PluginLoader};
-use tokio::fs::read;
 use tracing::info;
 use wasmtime::{Caller, Config, Linker, OptLevel};
 use wasmtime_wasi::p1::wasi_snapshot_preview1::add_to_linker;
@@ -11,7 +10,6 @@ async fn main() {
     tracing_subscriber::fmt().init();
 
     let mut config = Config::new();
-    config.async_support(true);
     config.cranelift_opt_level(OptLevel::Speed);
     config.wasm_multi_memory(false);
 
@@ -36,8 +34,11 @@ async fn main() {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     let loader = PluginLoader::new(engine, linker, path.join("plugins"));
 
-    let bytes = read(&path.join("target/wasm32-wasip1/debug/steel_plugin.wasm"))
-        .await
-        .unwrap();
-    loader.load_plugin(&bytes).await;
+    let plugins = loader
+        .discover_plugins(&path.join("target/wasm32-wasip1/debug/"))
+        .await;
+    
+    for plugin in plugins {
+        loader.load_plugin(plugin).await;
+    }
 }

@@ -5,6 +5,7 @@ use crate::PluginContainer;
 pub fn sort_plugins(plugins: Vec<PluginContainer>) -> (Vec<PluginContainer>, Vec<PluginContainer>) {
     let mut in_degree: Vec<usize> = vec![0; plugins.len()];
     let mut adj: Vec<Vec<usize>> = vec![vec![]; plugins.len()];
+    let mut unresolved_indices: HashSet<usize> = HashSet::new();
 
     {
         let name_to_idx: HashMap<&str, usize> = plugins
@@ -18,6 +19,8 @@ pub fn sort_plugins(plugins: Vec<PluginContainer>) -> (Vec<PluginContainer>, Vec
                 if let Some(&dep_idx) = name_to_idx.get(dep) {
                     in_degree[i] += 1;
                     adj[dep_idx].push(i);
+                } else {
+                    unresolved_indices.insert(i);
                 }
             }
         }
@@ -36,18 +39,21 @@ pub fn sort_plugins(plugins: Vec<PluginContainer>) -> (Vec<PluginContainer>, Vec
         }
     }
 
-    let cyclic_indices: HashSet<usize> = (0..plugins.len()).filter(|&i| in_degree[i] > 0).collect();
+    let mut cyclic_indices: HashSet<usize> = (0..plugins.len()).filter(|&i| in_degree[i] > 0).collect();
+    // TODO: maybe change
+    cyclic_indices.extend(unresolved_indices);
+
     let mut slots: Vec<Option<PluginContainer>> = plugins.into_iter().map(Some).collect();
 
-    let sorted: Vec<PluginContainer> = sorted_indices
-        .iter()
-        .map(|&i| slots[i].take().unwrap())
-        .collect();
-
-    let cyclic: Vec<PluginContainer> = cyclic_indices
+    let invalid: Vec<PluginContainer> = cyclic_indices
         .iter()
         .filter_map(|&i| slots[i].take())
         .collect();
 
-    (sorted, cyclic)
+    let sorted: Vec<PluginContainer> = sorted_indices
+        .iter()
+        .filter_map(|&i| slots[i].take())
+        .collect();
+
+    (sorted, invalid)
 }

@@ -6,8 +6,9 @@ authors.workspace = true
 
 [dependencies]
 steel-plugin-sdk.workspace = true
-tokio = { version = "1.49.0", features = ["macros", "rt", "rt-multi-thread", "fs"] }
-self_cell = "1.2.2"
+self_cell.workspace = true
+
+tokio.workspace = true
 
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
@@ -19,7 +20,7 @@ rmp-serde.workspace = true
 
 # Logging
 tracing.workspace = true
-tracing-subscriber = "=0.3.19"
+tracing-subscriber.workspace = true
 
 [lints]
 workspace = true

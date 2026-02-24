@@ -12,8 +12,8 @@ use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder, p1::WasiP1Ctx};
 
 use crate::{container::PluginContainer, exports::PluginExports};
 
-pub mod exports;
 mod container;
+pub mod exports;
 mod topological_sort;
 
 #[derive(Debug, Deserialize)]
@@ -68,9 +68,7 @@ impl PluginLoader {
             if file_type.is_file() {
                 if file_path
                     .extension()
-                    .unwrap()
-                    .to_str()
-                    .is_none_or(|ext| ext != "wasm")
+                    .is_none_or(|x| x.to_str().is_none_or(|ext| ext != "wasm"))
                 {
                     continue;
                 }
@@ -83,17 +81,19 @@ impl PluginLoader {
                 plugins.push(container);
             }
         }
-        let (topology, cyclic) = topological_sort::sort_plugins(plugins);
-        error!("cyclic: {:?}", cyclic);
+        let (topology, invalid) = topological_sort::sort_plugins(plugins);
+        if !invalid.is_empty() {
+            error!("invalid: {:#?}", invalid);
+        }
 
         topology
     }
 
-    pub async fn load_plugin(&self, bytes: &[u8]) {
-        // manifest
-        let meta = read_custom_section(bytes, "plugin_meta").unwrap().unwrap();
-        let meta: PluginMeta = rmp_serde::from_slice(meta).unwrap();
-        println!("{meta:#?}");
+    pub async fn load_plugin(&self, container: PluginContainer) {
+        let bytes = container.borrow_owner();
+        let meta = container.borrow_dependent();
+
+        println!("{:#?}", meta);
 
         // compile
         let precompiled = self.engine.precompile_module(bytes).unwrap();
