@@ -1,14 +1,23 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+use std::{fs, slice};
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+use steel_plugin_sdk::{init, plugin_meta, print};
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+init!();
+
+plugin_meta!(
+    name = "steel-plugin",
+    version = "0.1.0",
+    api_version = 1,
+    depends = [],
+);
+
+#[unsafe(no_mangle)]
+pub extern "C" fn on_load(ptr: u32, len: u32) {
+    let name = rmp_serde::from_slice::<&str>(unsafe {
+        slice::from_raw_parts(ptr as *const u8, len as usize)
+    })
+    .unwrap();
+
+    fs::write("/data/latest.log", "hello").unwrap();
+    print(&format!("Hello, {name}!"));
 }

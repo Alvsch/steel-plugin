@@ -10,3 +10,4 @@ CLAUDE.md
 steel-flint/.cache
 /players
 Cargo.lock
+/plugins
