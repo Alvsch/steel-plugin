@@ -23,7 +23,7 @@ impl PluginInstance {
 
     pub async fn enable(&mut self) -> Result<(), wasmtime::Error> {
         self.exports
-            .on_disable
+            .on_enable
             .call_async(&mut self.store, ())
             .await?;
         self.status = PluginStatus::Enabled;

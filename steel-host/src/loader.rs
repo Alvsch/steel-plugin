@@ -54,7 +54,7 @@ impl PluginLoader {
         }
     }
 
-    /// Discover plugins in the specificed directory and return their `PluginMeta` in topological order.
+    /// Discover plugins in the specified directory and return their `PluginMeta` in topological order.
     pub async fn discover_plugins(
         &self,
         plugin_dir: &Path,
@@ -78,7 +78,7 @@ impl PluginLoader {
                     .ok_or(PluginLoaderError::MissingPluginMeta)?;
                 let mut plugin_meta: PluginMeta = rmp_serde::from_slice(meta_section)
                     .map_err(PluginLoaderError::InvalidPluginMeta)?;
-                plugin_meta.file_path = file_path;
+                plugin_meta.file_path = file_path.canonicalize()?;
                 plugins.push(plugin_meta);
             }
         }
