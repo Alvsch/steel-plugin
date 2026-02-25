@@ -1,67 +1,10 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use serde::Serialize;
-use syn::{
-    LitInt, LitStr, Token,
-    parse::{Parse, ParseBuffer, ParseStream},
-    parse_macro_input,
-};
+use syn::{Error, ItemFn, Visibility, parse_macro_input, spanned::Spanned};
 
-#[derive(Debug, Serialize)]
-struct PluginMetaArgs {
-    name: String,
-    version: String,
-    api_version: u32,
-    depends: Vec<String>,
-}
+use crate::args::PluginMetaArgs;
 
-impl Parse for PluginMetaArgs {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut name = None;
-        let mut version = None;
-        let mut api_version = None;
-        let mut depends = vec![];
-
-        while !input.is_empty() {
-            let ident: syn::Ident = input.parse()?;
-            input.parse::<Token![=]>()?;
-
-            match ident.to_string().as_str() {
-                "name" => {
-                    name = Some(input.parse::<LitStr>()?.value());
-                }
-                "version" => {
-                    version = Some(input.parse::<LitStr>()?.value());
-                }
-                "api_version" => {
-                    api_version = Some(input.parse::<LitInt>()?.base10_parse::<u32>()?);
-                }
-                "depends" => {
-                    let content;
-                    syn::bracketed!(content in input);
-                    let deps = content.parse_terminated(ParseBuffer::parse, Token![,])?;
-                    depends = deps.iter().map(LitStr::value).collect();
-                }
-                other => {
-                    return Err(syn::Error::new(
-                        ident.span(),
-                        format!("unknown key `{other}`"),
-                    ));
-                }
-            }
-
-            // consume optional trailing comma
-            let _ = input.parse::<Token![,]>();
-        }
-
-        Ok(PluginMetaArgs {
-            name: name.ok_or_else(|| input.error("missing `name`"))?,
-            version: version.ok_or_else(|| input.error("missing `version`"))?,
-            api_version: api_version.ok_or_else(|| input.error("missing `api_version`"))?,
-            depends,
-        })
-    }
-}
+mod args;
 
 #[proc_macro]
 pub fn plugin_meta(input: TokenStream) -> TokenStream {
@@ -87,6 +30,78 @@ pub fn plugin_meta(input: TokenStream) -> TokenStream {
             unsafe {
                 std::alloc::dealloc(ptr as *mut u8, layout);
             }
+        }
+    }
+    .into()
+}
+
+fn validate(name: &str, item: &ItemFn) -> Result<(), Error> {
+    let ident = &item.sig.ident;
+    let inputs = &item.sig.inputs;
+    let output = &item.sig.output;
+    let asyncness = &item.sig.asyncness;
+    let vis = &item.vis;
+
+    if ident != name {
+        return Err(Error::new(
+            ident.span(),
+            format!("function must be named '{name}'"),
+        ));
+    }
+
+    if let Some(arg) = inputs.first() {
+        return Err(Error::new(arg.span(), "function must have no parameters"));
+    }
+
+    match output {
+        syn::ReturnType::Type(_, ty) => {
+            return Err(Error::new(ty.span(), "function must have no return type"));
+        }
+        syn::ReturnType::Default => (),
+    }
+
+    if let Some(asyncness) = asyncness.as_ref() {
+        return Err(Error::new(asyncness.span(), "function must not be async"));
+    }
+
+    if !matches!(vis, Visibility::Public(_)) {
+        return Err(Error::new(vis.span(), "function must be public"));
+    }
+
+    Ok(())
+}
+
+#[proc_macro_attribute]
+pub fn on_enable(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(input as ItemFn);
+    if let Err(err) = validate("on_enable", &item) {
+        return err.to_compile_error().into();
+    }
+
+    let block = &item.block;
+
+    quote! {
+        #[unsafe(no_mangle)]
+        pub extern "C" fn on_enable() {
+            #block
+        }
+    }
+    .into()
+}
+
+#[proc_macro_attribute]
+pub fn on_disable(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(input as ItemFn);
+    if let Err(err) = validate("on_disable", &item) {
+        return err.to_compile_error().into();
+    }
+
+    let block = &item.block;
+
+    quote! {
+        #[unsafe(no_mangle)]
+        pub extern "C" fn on_disable() {
+            #block
         }
     }
     .into()

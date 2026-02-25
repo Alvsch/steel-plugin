@@ -1,4 +1,4 @@
-pub use steel_plugin_macros::plugin_meta;
+pub use steel_plugin_macros::{on_disable, on_enable, plugin_meta};
 
 mod host {
     #[link(wasm_import_module = "host")]

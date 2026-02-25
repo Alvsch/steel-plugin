@@ -25,7 +25,7 @@ async fn main() {
                 let buf = &memory.data(&caller)[ptr as usize..ptr as usize + len as usize];
                 let message = str::from_utf8(buf).unwrap();
 
-                let plugin_name = caller.data().plugin_meta.name.as_str();
+                let plugin_name = caller.data().name.as_str();
                 info!("[{plugin_name}] {message}");
             },
         )

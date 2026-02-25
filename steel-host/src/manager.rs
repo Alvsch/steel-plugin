@@ -2,7 +2,7 @@ use indexmap::IndexMap;
 use thiserror::Error;
 use tracing::{debug, error, warn};
 
-use crate::LoadedPlugin;
+use crate::instance::PluginInstance;
 
 #[derive(Debug, Error)]
 pub enum PluginManagerError {
@@ -23,7 +23,7 @@ pub enum PluginManagerError {
 }
 
 pub struct PluginManager {
-    plugins: IndexMap<String, LoadedPlugin>,
+    plugins: IndexMap<String, PluginInstance>,
 }
 
 impl Default for PluginManager {
@@ -41,20 +41,20 @@ impl PluginManager {
     }
 
     #[must_use]
-    pub fn get(&self, name: &str) -> Option<&LoadedPlugin> {
+    pub fn get(&self, name: &str) -> Option<&PluginInstance> {
         self.plugins.get(name)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&str, &LoadedPlugin)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &PluginInstance)> {
         self.plugins.iter().map(|(k, v)| (k.as_str(), v))
     }
 
-    pub fn add(&mut self, plugin: LoadedPlugin) {
-        let name = plugin.store.data().plugin_meta.name.clone();
+    pub fn add(&mut self, plugin: PluginInstance) {
+        let name = plugin.meta.name.clone();
         self.plugins.insert(name, plugin);
     }
 
-    pub fn add_all(&mut self, plugins: impl IntoIterator<Item = LoadedPlugin>) {
+    pub fn add_all(&mut self, plugins: impl IntoIterator<Item = PluginInstance>) {
         for plugin in plugins {
             self.add(plugin);
         }
@@ -62,7 +62,7 @@ impl PluginManager {
 
     pub fn remove(&mut self, name: &str) {
         let plugin = self.plugins.get(name).unwrap();
-        if plugin.enabled {
+        if plugin.is_enabled() {
             warn!("cannot remove enabled plugin '{name}', disable it first");
             return;
         }
@@ -79,12 +79,15 @@ impl PluginManager {
             .get(name)
             .ok_or(PluginManagerError::PluginNotFound)?;
 
-        if plugin.enabled {
+        if plugin.is_enabled() {
             return Err(PluginManagerError::AlreadyEnabled);
         }
 
-        for dep in &plugin.metadata().depends {
-            let dep_missing = self.plugins.get(dep.as_str()).is_none_or(|x| !x.enabled);
+        for dep in &plugin.meta.depends {
+            let dep_missing = self
+                .plugins
+                .get(dep.as_str())
+                .is_none_or(|x| !x.is_enabled());
             if dep_missing {
                 return Err(PluginManagerError::MissingDependency {
                     dependency: dep.clone(),
@@ -95,13 +98,7 @@ impl PluginManager {
         debug!("Enabling {name}!");
 
         let plugin = self.plugins.get_mut(name).unwrap();
-        plugin
-            .exports
-            .on_enable
-            .call_async(&mut plugin.store, ())
-            .await?;
-        plugin.enabled = true;
-
+        plugin.enable().await?;
         Ok(())
     }
 
@@ -111,15 +108,15 @@ impl PluginManager {
             .get(name)
             .ok_or(PluginManagerError::PluginNotFound)?;
 
-        if !plugin.enabled {
+        if !plugin.is_enabled() {
             return Err(PluginManagerError::AlreadyDisabled);
         }
 
         let dependents: Box<[String]> = self
             .plugins
             .iter()
-            .filter(|(_, p)| {
-                p.enabled && p.store.data().plugin_meta.depends.iter().any(|d| d == name)
+            .filter(|(_, plugin)| {
+                plugin.is_enabled() && plugin.meta.depends.iter().any(|dep| dep == name)
             })
             .map(|(k, _)| k.clone())
             .collect();
@@ -131,13 +128,7 @@ impl PluginManager {
         debug!("Disabling {name}!");
 
         let plugin = self.plugins.get_mut(name).unwrap();
-        plugin.enabled = false;
-        plugin
-            .exports
-            .on_disable
-            .call_async(&mut plugin.store, ())
-            .await?;
-
+        plugin.disable().await?;
         Ok(())
     }
 

@@ -8,28 +8,18 @@ use thiserror::Error;
 use tokio::fs::{create_dir_all, read, read_dir};
 use tracing::error;
 use wasmparser::BinaryReaderError;
-use wasmtime::{Engine, Instance, Linker, Module, Store};
+use wasmtime::{Engine, Linker, Module, Store};
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder, p1::WasiP1Ctx};
 
-use crate::{PluginExports, PluginMeta, read_custom_section, topological_sort};
+use crate::{
+    PluginExports, PluginMeta,
+    instance::{PluginInstance, PluginStatus},
+    read_custom_section, topological_sort,
+};
 
 pub struct PluginHostData {
+    pub name: String,
     pub wasi: WasiP1Ctx,
-    pub plugin_meta: PluginMeta,
-}
-
-pub struct LoadedPlugin {
-    pub enabled: bool,
-    pub store: Store<PluginHostData>,
-    pub instance: Instance,
-    pub exports: PluginExports,
-}
-
-impl LoadedPlugin {
-    #[must_use]
-    pub fn metadata(&self) -> &PluginMeta {
-        &self.store.data().plugin_meta
-    }
 }
 
 #[derive(Debug, Error)]
@@ -103,7 +93,7 @@ impl PluginLoader {
     pub async fn load_plugin(
         &self,
         plugin_meta: PluginMeta,
-    ) -> Result<LoadedPlugin, PluginLoaderError> {
+    ) -> Result<PluginInstance, PluginLoaderError> {
         // read
         let bytes = read(&plugin_meta.file_path).await?;
 
@@ -119,18 +109,25 @@ impl PluginLoader {
             .preopened_dir(host_path, "/", DirPerms::all(), FilePerms::all())?
             .build_p1();
 
-        let mut store = Store::new(&self.engine, PluginHostData { wasi, plugin_meta });
+        let mut store = Store::try_new(
+            &self.engine,
+            PluginHostData {
+                name: plugin_meta.name.clone(),
+                wasi,
+            },
+        )?;
 
         // init
         let instance = self.linker.instantiate_async(&mut store, &module).await?;
         let exports = PluginExports::resolve(&instance, &mut store)
             .map_err(PluginLoaderError::PluginExportResolve)?;
 
-        Ok(LoadedPlugin {
-            enabled: false,
-            store,
-            instance,
+        Ok(PluginInstance {
+            meta: plugin_meta,
+            status: PluginStatus::Disabled,
             exports,
+            memory: instance.get_memory(&mut store, "memory").unwrap(),
+            store,
         })
     }
 }

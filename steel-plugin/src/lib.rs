@@ -1,6 +1,6 @@
 use std::fs;
 
-use steel_plugin_sdk::{info, plugin_meta};
+use steel_plugin_sdk::{info, on_disable, on_enable, plugin_meta};
 
 plugin_meta!(
     name = "steel-plugin",
@@ -9,11 +9,11 @@ plugin_meta!(
     depends = [],
 );
 
-#[unsafe(no_mangle)]
-pub extern "C" fn on_enable() {
+#[on_enable]
+pub fn on_enable() {
     fs::write("/latest.log", "hello").unwrap();
     info("Hello, World!");
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn on_disable() {}
+#[on_disable]
+pub fn on_disable() {}

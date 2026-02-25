@@ -4,10 +4,11 @@ use serde::Deserialize;
 use wasmparser::{Parser, Payload};
 
 pub use crate::exports::PluginExports;
-pub use crate::loader::{LoadedPlugin, PluginHostData, PluginLoader};
+pub use crate::loader::{PluginHostData, PluginLoader};
 pub use crate::manager::PluginManager;
 
 mod exports;
+mod instance;
 mod loader;
 mod manager;
 mod topological_sort;
