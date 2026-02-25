@@ -32,7 +32,7 @@ tokio = { version = "1.49.0", features = ["macros", "rt", "rt-multi-thread", "fs
 
 wasmtime = { version = "42.0.0", default-features = false }
 wasmtime-wasi = "42.0.0"
-wasmparser = "0.245.1"
+wasmparser = { version ="0.245.1", default-features = false }
 anyhow = "1.0.102"
 
 serde = { version = "1.0.228", features = ["derive"] }

@@ -4,12 +4,26 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 
+[features]
+debug-wasm = [
+    "wasmtime/demangle",
+    "wasmtime/addr2line",
+    "wasmtime/coredump",
+    "wasmtime/debug-builtins",
+]
+
 [dependencies]
 tokio.workspace = true
 
-wasmtime = { workspace = true, features = ["std", "async", "cranelift"] }
+wasmtime = { workspace = true, features = [
+    "cranelift",
+    "async",
+    "pooling-allocator",
+    "runtime",
+    "std",
+] }
 wasmtime-wasi.workspace = true
-wasmparser.workspace = true
+wasmparser = { workspace = true, features = ["std", "simd"] }
 
 indexmap.workspace = true
 thiserror.workspace = true
