@@ -9,12 +9,11 @@ use tokio::fs::{create_dir_all, read, read_dir};
 use tracing::error;
 use wasmparser::BinaryReaderError;
 use wasmtime::{Engine, Linker, Module, Store};
-use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder, p1::WasiP1Ctx};
+use wasmtime_wasi::{p1::WasiP1Ctx, DirPerms, FilePerms, WasiCtxBuilder};
 
 use crate::{
-    PluginExports, PluginMeta,
     instance::{PluginInstance, PluginStatus},
-    read_custom_section, topological_sort,
+    read_custom_section, topological_sort, PluginExports, PluginMeta,
 };
 
 pub struct PluginHostData {

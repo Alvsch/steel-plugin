@@ -29,7 +29,8 @@ steel-core = { git = "https://github.com/Steel-Foundation/SteelMC" }
 steel-utils = { git = "https://github.com/Steel-Foundation/SteelMC" }
 
 tokio = { version = "1.49.0", features = ["macros", "rt", "rt-multi-thread", "fs"] }
-wasmtime = "42.0.0"
+
+wasmtime = { version = "42.0.0", default-features = false }
 wasmtime-wasi = "42.0.0"
 wasmparser = "0.245.1"
 anyhow = "1.0.102"
@@ -41,7 +42,7 @@ indexmap = "2.13.0"
 thiserror = "2.0.18"
 
 # proc macro
-syn = { version = "2.0", features = ["full"] }
+syn = "2.0"
 quote = "1.0"
 
 # Logging

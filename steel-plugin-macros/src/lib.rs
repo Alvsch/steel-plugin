@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Error, ItemFn, Visibility, parse_macro_input, spanned::Spanned};
+use syn::{parse_macro_input, spanned::Spanned, Error, ItemFn, Visibility};
 
 use crate::args::PluginMetaArgs;
 
@@ -10,7 +10,7 @@ mod args;
 pub fn plugin_meta(input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(input as PluginMetaArgs);
 
-    let bytes: Vec<u8> = rmp_serde::to_vec_named(&args).unwrap();
+    let bytes: Vec<u8> = args.serialize();
     let len = bytes.len();
 
     quote! {

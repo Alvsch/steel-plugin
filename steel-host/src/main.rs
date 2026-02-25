@@ -48,8 +48,6 @@ async fn main() {
         .await
         .unwrap();
 
-    println!("{:?}", discovered_plugins);
-
     let mut loaded_plugins = Vec::new();
     for plugin_meta in discovered_plugins {
         let loaded_plugin = loader.load_plugin(plugin_meta).await.unwrap();

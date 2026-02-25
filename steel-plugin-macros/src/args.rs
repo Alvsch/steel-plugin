@@ -1,15 +1,39 @@
-use serde::Serialize;
+use rmp::encode::{write_array_len, write_map_len, write_str, write_u32};
 use syn::{
-    LitInt, LitStr, Token,
     parse::{Parse, ParseBuffer, ParseStream},
+    LitInt, LitStr, Token,
 };
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 pub struct PluginMetaArgs {
     pub name: String,
     pub version: String,
     pub api_version: u32,
     pub depends: Vec<String>,
+}
+
+impl PluginMetaArgs {
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        write_map_len(&mut buf, 4).unwrap();
+
+        write_str(&mut buf, "name").unwrap();
+        write_str(&mut buf, &self.name).unwrap();
+
+        write_str(&mut buf, "version").unwrap();
+        write_str(&mut buf, &self.version).unwrap();
+
+        write_str(&mut buf, "api_version").unwrap();
+        write_u32(&mut buf, self.api_version).unwrap();
+
+        write_str(&mut buf, "depends").unwrap();
+        write_array_len(&mut buf, self.depends.len() as u32).unwrap();
+        for dep in &self.depends {
+            write_str(&mut buf, dep).unwrap();
+        }
+
+        buf
+    }
 }
 
 impl Parse for PluginMetaArgs {

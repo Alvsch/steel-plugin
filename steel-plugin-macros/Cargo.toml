@@ -8,10 +8,9 @@ authors.workspace = true
 proc-macro = true
 
 [dependencies]
-syn.workspace = true
+syn = { workspace = true, features = ["full"] }
 quote.workspace = true
-serde.workspace = true
-rmp-serde.workspace = true
+rmp.workspace = true
 
 [lints]
 workspace = true
