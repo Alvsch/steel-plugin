@@ -1,7 +1,8 @@
 use std::collections::{BTreeMap, HashMap};
 
-use steel_plugin_sdk::event::{EventHandlerFlags, EventId};
+use steel_plugin_sdk::event::{EventHandlerFlags, EventId, EventResult};
 use tokio::sync::Mutex;
+use tracing::info;
 
 use crate::PluginManager;
 
@@ -9,7 +10,7 @@ use crate::PluginManager;
 struct EventHandler {
     plugin_name: String,
     // TODO: use these flags
-    _flags: EventHandlerFlags,
+    flags: EventHandlerFlags,
 }
 
 pub struct EventRegistry {
@@ -42,13 +43,7 @@ impl EventRegistry {
             .await
             .entry(event_id)
             .or_default()
-            .insert(
-                priority,
-                EventHandler {
-                    plugin_name,
-                    _flags: flags,
-                },
-            );
+            .insert(priority, EventHandler { plugin_name, flags });
     }
 
     pub async fn call_event(&self, manager: &mut PluginManager, event_id: EventId, event: Vec<u8>) {
@@ -56,20 +51,19 @@ impl EventRegistry {
         let Some(handlers) = lock.get(&event_id) else {
             return;
         };
+        let mut cancelled = false;
         for handler in handlers.values() {
+            if cancelled && !handler.flags.contains(EventHandlerFlags::RECEIVE_CANCELLED) {
+                continue;
+            }
+
             let instance = manager.get_mut(&handler.plugin_name).unwrap();
+            let result = instance.on_event(event_id, &event).await.unwrap();
+            if result.contains(EventResult::CANCELLED) {
+                cancelled = true;
+            }
 
-            let len = event.len() as u32;
-            let ptr = instance.write_to_memory(&event).await.unwrap();
-
-            instance
-                .exports
-                .on_event
-                .call_async(&mut instance.store, (event_id as u32, ptr, len))
-                .await
-                .unwrap();
-
-            instance.dealloc(ptr, len).await.unwrap();
+            info!("{result:?}");
         }
     }
 }
