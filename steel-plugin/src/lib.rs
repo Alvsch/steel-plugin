@@ -4,6 +4,7 @@ use steel_plugin_sdk::{
     event::{EventHandlerFlags, EventId, PlayerJoinEvent, PlayerLeaveEvent, result::EventResult},
     info, on_disable, on_enable, on_event, plugin_meta,
 };
+use uuid::Uuid;
 
 plugin_meta!(
     name = "steel-plugin",
@@ -16,8 +17,10 @@ plugin_meta!(
 pub fn on_event(event_id: EventId, event: &[u8]) -> EventResult {
     match EventId::from_repr(event_id as u16).unwrap() {
         EventId::PlayerJoinEvent => {
-            let event: PlayerJoinEvent = rmp_serde::from_slice(event).unwrap();
-            info(&format!("{:#?}", event));
+            let mut event: PlayerJoinEvent = rmp_serde::from_slice(event).unwrap();
+            event.player = Uuid::new_v4();
+            let event = rmp_serde::to_vec(&event).unwrap();
+            return EventResult::modified(event);
         }
         EventId::PlayerLeaveEvent => {
             let event: PlayerLeaveEvent = rmp_serde::from_slice(event).unwrap();

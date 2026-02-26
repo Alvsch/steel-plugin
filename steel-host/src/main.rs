@@ -79,13 +79,19 @@ async fn main() {
     manager.add_all(loaded_plugins);
     manager.enable_all().await;
 
-    let event = rmp_serde::to_vec(&PlayerJoinEvent {
+    let event = PlayerJoinEvent {
         player: Uuid::new_v4(),
-    })
-    .unwrap();
-    registry
-        .call_event(&mut manager, EventId::PlayerJoinEvent, event)
+    };
+    let buf = registry
+        .call_event(
+            &mut manager,
+            EventId::PlayerJoinEvent,
+            rmp_serde::to_vec(&event).unwrap(),
+        )
         .await;
+    let new_event: PlayerJoinEvent = rmp_serde::from_slice(&buf).unwrap();
+    info!("old: {event:#?}");
+    info!("new: {new_event:#?}");
 
     manager.disable_all().await;
     manager.clear();

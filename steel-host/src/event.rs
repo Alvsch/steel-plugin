@@ -2,7 +2,6 @@ use std::collections::{BTreeMap, HashMap};
 
 use steel_plugin_sdk::event::{EventHandlerFlags, EventId, result::EventResult};
 use tokio::sync::Mutex;
-use tracing::info;
 
 use crate::PluginManager;
 
@@ -46,10 +45,15 @@ impl EventRegistry {
             .insert(priority, EventHandler { plugin_name, flags });
     }
 
-    pub async fn call_event(&self, manager: &mut PluginManager, event_id: EventId, event: Vec<u8>) {
+    pub async fn call_event(
+        &self,
+        manager: &mut PluginManager,
+        event_id: EventId,
+        mut event: Vec<u8>,
+    ) -> Vec<u8> {
         let lock = self.registry.lock().await;
         let Some(handlers) = lock.get(&event_id) else {
-            return;
+            return event;
         };
         let mut cancelled = false;
         for handler in handlers.values() {
@@ -62,13 +66,23 @@ impl EventRegistry {
             let result = EventResult::unpack(result).modified;
 
             if let Some((ptr, len)) = result {
-                let data =
-                    &instance.memory.data(&mut instance.store)[ptr as usize..(ptr + len) as usize];
-                cancelled = data[0] != 0;
+                // TODO: index bounds?
+                let (cancelled_data, data) = instance.memory.data(&mut instance.store)
+                    [ptr as usize..(ptr + len) as usize]
+                    .split_at(1);
+
+                if !data.is_empty() {
+                    // TODO: validation?
+                    event = data.to_vec();
+                }
+
+                if cancelled_data[0] != 0 {
+                    cancelled = true;
+                }
+
                 instance.dealloc(ptr, len).await.unwrap();
             }
-
-            info!("{result:?}");
         }
+        event
     }
 }

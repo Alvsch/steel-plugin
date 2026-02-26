@@ -7,15 +7,19 @@ pub struct EventResult {
 
 impl EventResult {
     #[must_use]
-    pub const fn modified(ptr: u32, len: u32) -> Self {
+    pub fn modified(mut data: Vec<u8>) -> Self {
+        data.insert(0, 0); // cancelled false
+        let ptr = data.as_ptr() as u32;
+        let len = data.len() as u32;
+        forget(data);
         Self {
             modified: Some((ptr, len)),
         }
     }
 
     #[must_use]
-    pub fn cancelled(cancelled: bool) -> Self {
-        let boxed = Box::new([cancelled]);
+    pub fn cancelled() -> Self {
+        let boxed = Box::new([true]);
         let ptr = boxed.as_ptr() as u32;
         forget(boxed);
         Self {
