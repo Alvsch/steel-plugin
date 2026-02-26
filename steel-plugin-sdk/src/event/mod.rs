@@ -5,16 +5,12 @@ use uuid::Uuid;
 
 use crate::types::BlockPos;
 
+pub mod result;
+
 bitflags! {
     #[derive(Debug, Clone, Copy)]
     pub struct EventHandlerFlags: u8 {
         const RECEIVE_CANCELLED = 1;
-    }
-
-    #[derive(Debug, Clone, Copy)]
-    pub struct EventResult: u8 {
-        const MODIFIED = 1;
-        const CANCELLED = 1 << 1;
     }
 }
 

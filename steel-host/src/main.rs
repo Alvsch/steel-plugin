@@ -2,7 +2,7 @@ use std::{path::PathBuf, sync::Arc};
 use steel_host::{EventRegistry, PluginHostData, PluginLoader, PluginManager};
 use steel_plugin_sdk::{
     event::{EventId, PlayerJoinEvent},
-    unpack_handler,
+    utils::unpack_handler,
 };
 use tokio::fs::create_dir_all;
 use tracing::info;

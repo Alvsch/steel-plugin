@@ -205,14 +205,18 @@ pub fn on_event(_args: TokenStream, input: TokenStream) -> TokenStream {
 
     quote! {
         #[unsafe(no_mangle)]
-        pub extern "C" fn on_event(event_id: u32, ptr: u32, len: u32) -> u32 {
+        pub extern "C" fn on_event(ptr: u32, len: u32) -> u64 {
             fn on_event_impl(#name1: EventId, #name2: &[u8]) -> EventResult {
                 #(#stmts)*
             }
 
             let data = unsafe { std::slice::from_raw_parts(ptr as *const u8, len as usize) };
-            let result = on_event_impl(EventId::from_repr(event_id as u16).unwrap(), data);
-            result.bits() as u32
+            let event_id: [u8; 2] = data[0..2].try_into().unwrap();
+            let event_id = EventId::from_repr(u16::from_be_bytes(event_id)).unwrap();
+            let event = &data[2..];
+
+            let result = on_event_impl(event_id, event);
+            result.pack()
         }
 
     }

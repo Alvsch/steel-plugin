@@ -1,7 +1,7 @@
 use std::fs;
 
 use steel_plugin_sdk::{
-    event::{EventHandlerFlags, EventId, EventResult, PlayerJoinEvent, PlayerLeaveEvent},
+    event::{EventHandlerFlags, EventId, PlayerJoinEvent, PlayerLeaveEvent, result::EventResult},
     info, on_disable, on_enable, on_event, plugin_meta,
 };
 
@@ -25,7 +25,7 @@ pub fn on_event(event_id: EventId, event: &[u8]) -> EventResult {
         }
         _ => (),
     };
-    EventResult::empty()
+    EventResult::default()
 }
 
 #[on_enable]

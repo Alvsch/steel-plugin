@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use steel_plugin_sdk::event::{EventHandlerFlags, EventId, EventResult};
+use steel_plugin_sdk::event::{EventHandlerFlags, EventId, result::EventResult};
 use tokio::sync::Mutex;
 use tracing::info;
 
@@ -59,8 +59,13 @@ impl EventRegistry {
 
             let instance = manager.get_mut(&handler.plugin_name).unwrap();
             let result = instance.on_event(event_id, &event).await.unwrap();
-            if result.contains(EventResult::CANCELLED) {
-                cancelled = true;
+            let result = EventResult::unpack(result).modified;
+
+            if let Some((ptr, len)) = result {
+                let data =
+                    &instance.memory.data(&mut instance.store)[ptr as usize..(ptr + len) as usize];
+                cancelled = data[0] != 0;
+                instance.dealloc(ptr, len).await.unwrap();
             }
 
             info!("{result:?}");

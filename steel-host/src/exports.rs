@@ -3,14 +3,14 @@ use wasmtime::{Instance, Store, TypedFunc};
 use crate::PluginHostData;
 
 pub struct PluginExports {
-    /// (ptr, len)
+    /// (`ptr`, `len`)
     pub alloc: TypedFunc<u32, u32>,
-    /// (ptr, len)
+    /// (`ptr`, `len`)
     pub dealloc: TypedFunc<(u32, u32), ()>,
     pub on_enable: TypedFunc<(), ()>,
     pub on_disable: TypedFunc<(), ()>,
-    /// (event_id, ptr, len) -> (event_result)
-    pub on_event: TypedFunc<(u32, u32, u32), u32>,
+    /// (`ptr`, `len`) -> (`event_result`)
+    pub on_event: TypedFunc<(u32, u32), u64>,
 }
 
 impl PluginExports {
