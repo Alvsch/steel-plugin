@@ -2,7 +2,7 @@ use std::fs;
 
 use steel_plugin_sdk::{
     event::{EventHandlerFlags, EventId, EventResult, PlayerJoinEvent, PlayerLeaveEvent},
-    info, on_disable, on_enable, plugin_meta,
+    info, on_disable, on_enable, on_event, plugin_meta,
 };
 
 plugin_meta!(
@@ -12,10 +12,8 @@ plugin_meta!(
     depends = [],
 );
 
-#[unsafe(no_mangle)]
-pub extern "C" fn on_event(event_id: u32, ptr: u32, len: u32) -> u32 {
-    let event = unsafe { std::slice::from_raw_parts(ptr as *const u8, len as usize) };
-    let result = EventResult::empty();
+#[on_event]
+pub fn on_event(event_id: EventId, event: &[u8]) -> EventResult {
     match EventId::from_repr(event_id as u16).unwrap() {
         EventId::PlayerJoinEvent => {
             let event: PlayerJoinEvent = rmp_serde::from_slice(event).unwrap();
@@ -27,7 +25,7 @@ pub extern "C" fn on_event(event_id: u32, ptr: u32, len: u32) -> u32 {
         }
         _ => (),
     };
-    u32::from(result.bits())
+    EventResult::empty()
 }
 
 #[on_enable]

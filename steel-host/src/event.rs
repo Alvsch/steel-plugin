@@ -60,7 +60,7 @@ impl EventRegistry {
             let instance = manager.get_mut(&handler.plugin_name).unwrap();
 
             let len = event.len() as u32;
-            let ptr = instance.alloc_to(&event).await.unwrap();
+            let ptr = instance.write_to_memory(&event).await.unwrap();
 
             instance
                 .exports

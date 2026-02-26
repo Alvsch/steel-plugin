@@ -1,4 +1,4 @@
-pub use steel_plugin_macros::{on_disable, on_enable, plugin_meta};
+pub use steel_plugin_macros::{on_disable, on_enable, on_event, plugin_meta};
 
 use crate::event::{EventHandlerFlags, EventId};
 

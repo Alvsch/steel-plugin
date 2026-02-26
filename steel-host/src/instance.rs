@@ -21,7 +21,7 @@ impl PluginInstance {
         self.status == PluginStatus::Enabled
     }
 
-    pub async fn alloc_to(&mut self, buffer: &[u8]) -> Result<u32, wasmtime::Error> {
+    pub async fn write_to_memory(&mut self, buffer: &[u8]) -> Result<u32, wasmtime::Error> {
         let ptr = self
             .exports
             .alloc
