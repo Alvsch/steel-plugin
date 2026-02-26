@@ -3,10 +3,12 @@ use std::{fmt::Debug, path::PathBuf};
 use serde::Deserialize;
 use wasmparser::{Parser, Payload};
 
+pub use crate::event::EventRegistry;
 pub use crate::exports::PluginExports;
 pub use crate::loader::{PluginHostData, PluginLoader};
 pub use crate::manager::PluginManager;
 
+mod event;
 mod exports;
 mod instance;
 mod loader;

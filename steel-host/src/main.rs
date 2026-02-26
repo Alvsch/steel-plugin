@@ -1,8 +1,13 @@
-use std::path::PathBuf;
-use steel_host::{PluginHostData, PluginLoader, PluginManager};
+use std::{path::PathBuf, sync::Arc};
+use steel_host::{EventRegistry, PluginHostData, PluginLoader, PluginManager};
+use steel_plugin_sdk::{
+    event::{EventId, PlayerJoinEvent},
+    unpack_handler,
+};
 use tokio::fs::create_dir_all;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
+use uuid::Uuid;
 use wasmtime::{Caller, Config, Linker, OptLevel};
 use wasmtime_wasi::p1::wasi_snapshot_preview1::add_to_linker;
 
@@ -35,12 +40,29 @@ async fn main() {
             },
         )
         .unwrap();
+    linker
+        .func_wrap_async(
+            "host",
+            "register_handler",
+            |caller: Caller<PluginHostData>, (packed,): (u32,)| {
+                Box::new(async move {
+                    let (event_id, priority, flags) = unpack_handler(packed);
+                    let registry = &*caller.data().registry;
+                    let name = caller.data().name.clone();
+                    registry
+                        .register_handler(event_id, priority, flags, name)
+                        .await;
+                })
+            },
+        )
+        .unwrap();
 
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     let plugins_path = path.join("plugins");
     create_dir_all(&plugins_path).await.unwrap();
 
-    let loader = PluginLoader::new(engine, linker, plugins_path);
+    let registry = Arc::new(EventRegistry::new());
+    let loader = PluginLoader::new(engine, linker, plugins_path, registry.clone());
     let mut manager = PluginManager::new();
 
     let discovered_plugins = loader
@@ -56,6 +78,15 @@ async fn main() {
 
     manager.add_all(loaded_plugins);
     manager.enable_all().await;
+
+    let event = rmp_serde::to_vec(&PlayerJoinEvent {
+        player: Uuid::new_v4(),
+    })
+    .unwrap();
+    registry
+        .call_event(&mut manager, EventId::PlayerJoinEvent, event)
+        .await;
+
     manager.disable_all().await;
     manager.clear();
 }

@@ -1,7 +1,7 @@
 use rmp::encode::{write_array_len, write_map_len, write_str, write_u32};
 use syn::{
-    parse::{Parse, ParseBuffer, ParseStream},
     LitInt, LitStr, Token,
+    parse::{Parse, ParseBuffer, ParseStream},
 };
 
 #[derive(Debug)]

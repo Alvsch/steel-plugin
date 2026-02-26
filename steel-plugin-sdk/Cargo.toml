@@ -6,6 +6,10 @@ authors.workspace = true
 
 [dependencies]
 steel-plugin-macros.workspace = true
+serde.workspace = true
+bitflags.workspace = true
+uuid.workspace = true
+strum.workspace = true
 
 [lints]
 workspace = true

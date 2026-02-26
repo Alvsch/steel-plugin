@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, spanned::Spanned, Error, ItemFn, Visibility};
+use syn::{Error, ItemFn, Visibility, parse_macro_input, spanned::Spanned};
 
 use crate::args::PluginMetaArgs;
 

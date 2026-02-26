@@ -21,6 +21,23 @@ impl PluginInstance {
         self.status == PluginStatus::Enabled
     }
 
+    pub async fn alloc_to(&mut self, buffer: &[u8]) -> Result<u32, wasmtime::Error> {
+        let ptr = self
+            .exports
+            .alloc
+            .call_async(&mut self.store, buffer.len() as u32)
+            .await?;
+        self.memory.write(&mut self.store, ptr as usize, buffer)?;
+        Ok(ptr)
+    }
+
+    pub async fn dealloc(&mut self, ptr: u32, len: u32) -> Result<(), wasmtime::Error> {
+        self.exports
+            .dealloc
+            .call_async(&mut self.store, (ptr, len))
+            .await
+    }
+
     pub async fn enable(&mut self) -> Result<(), wasmtime::Error> {
         self.exports
             .on_enable

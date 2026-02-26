@@ -45,6 +45,11 @@ impl PluginManager {
         self.plugins.get(name)
     }
 
+    #[must_use]
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut PluginInstance> {
+        self.plugins.get_mut(name)
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (&str, &PluginInstance)> {
         self.plugins.iter().map(|(k, v)| (k.as_str(), v))
     }
@@ -132,6 +137,7 @@ impl PluginManager {
         Ok(())
     }
 
+    // Enables all plugins in order
     pub async fn enable_all(&mut self) {
         let names: Vec<String> = self.plugins.keys().cloned().collect();
         for name in names {
@@ -142,8 +148,9 @@ impl PluginManager {
         }
     }
 
+    /// Disables all plugins in reverse order
     pub async fn disable_all(&mut self) {
-        let names: Vec<String> = self.plugins.keys().cloned().collect();
+        let names: Vec<String> = self.plugins.keys().cloned().rev().collect();
         for name in names {
             if let Err(err) = self.disable(&name).await {
                 error!("{err}");

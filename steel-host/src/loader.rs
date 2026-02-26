@@ -1,6 +1,7 @@
 use std::{
     io,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use rmp_serde::decode;
@@ -9,16 +10,18 @@ use tokio::fs::{create_dir_all, read, read_dir};
 use tracing::error;
 use wasmparser::BinaryReaderError;
 use wasmtime::{Engine, Linker, Module, Store};
-use wasmtime_wasi::{p1::WasiP1Ctx, DirPerms, FilePerms, WasiCtxBuilder};
+use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder, p1::WasiP1Ctx};
 
 use crate::{
+    EventRegistry, PluginExports, PluginMeta,
     instance::{PluginInstance, PluginStatus},
-    read_custom_section, topological_sort, PluginExports, PluginMeta,
+    read_custom_section, topological_sort,
 };
 
 pub struct PluginHostData {
     pub name: String,
     pub wasi: WasiP1Ctx,
+    pub registry: Arc<EventRegistry>,
 }
 
 #[derive(Debug, Error)]
@@ -41,15 +44,22 @@ pub struct PluginLoader {
     engine: Engine,
     linker: Linker<PluginHostData>,
     data_dir: PathBuf,
+    registry: Arc<EventRegistry>,
 }
 
 impl PluginLoader {
     #[must_use]
-    pub const fn new(engine: Engine, linker: Linker<PluginHostData>, data_dir: PathBuf) -> Self {
+    pub const fn new(
+        engine: Engine,
+        linker: Linker<PluginHostData>,
+        data_dir: PathBuf,
+        registry: Arc<EventRegistry>,
+    ) -> Self {
         Self {
             engine,
             linker,
             data_dir,
+            registry,
         }
     }
 
@@ -113,6 +123,7 @@ impl PluginLoader {
             PluginHostData {
                 name: plugin_meta.name.clone(),
                 wasi,
+                registry: self.registry.clone(),
             },
         )?;
 
