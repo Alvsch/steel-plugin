@@ -177,7 +177,7 @@ pub fn on_event(_args: TokenStream, input: TokenStream) -> TokenStream {
     if let Err(err) = validate(
         &FnRules {
             name: "on_event",
-            params: Some(&["EventId", "& [u8]"]),
+            params: Some(&["& [u8]"]),
             ret: Some("EventResult"),
             ..Default::default()
         },
@@ -194,28 +194,17 @@ pub fn on_event(_args: TokenStream, input: TokenStream) -> TokenStream {
         quote! { _arg0 }
     };
 
-    let name2 = if let Some(FnArg::Typed(pat_ty)) = inputs.next() {
-        let pat = &pat_ty.pat;
-        quote! { #pat }
-    } else {
-        quote! { _arg0 }
-    };
-
     let stmts = &item.block.stmts;
 
     quote! {
         #[unsafe(no_mangle)]
         pub extern "C" fn on_event(ptr: u32, len: u32) -> u64 {
-            fn on_event_impl(#name1: EventId, #name2: &[u8]) -> EventResult {
+            fn on_event_impl(#name1: &[u8]) -> EventResult {
                 #(#stmts)*
             }
 
-            let data = unsafe { std::slice::from_raw_parts(ptr as *const u8, len as usize) };
-            let event_id: [u8; 2] = data[0..2].try_into().unwrap();
-            let event_id = EventId::from_repr(u16::from_be_bytes(event_id)).unwrap();
-            let event = &data[2..];
-
-            let result = on_event_impl(event_id, event);
+            let event = unsafe { std::slice::from_raw_parts(ptr as *const u8, len as usize) };
+            let result = on_event_impl(event);
             result.pack()
         }
 

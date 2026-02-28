@@ -1,7 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 use steel_host::{EventRegistry, PluginHostData, PluginLoader, PluginManager};
 use steel_plugin_sdk::{
-    event::{EventId, PlayerJoinEvent},
+    event::{PlayerJoinEvent, PluginEvent},
     utils::unpack_handler,
 };
 use tokio::fs::create_dir_all;
@@ -79,18 +79,12 @@ async fn main() {
     manager.add_all(loaded_plugins);
     manager.enable_all().await;
 
-    let event = PlayerJoinEvent {
+    let event = PluginEvent::PlayerJoinEvent(PlayerJoinEvent {
         player: Uuid::new_v4(),
-    };
-    let buf = registry
-        .call_event(
-            &mut manager,
-            EventId::PlayerJoinEvent,
-            rmp_serde::to_vec(&event).unwrap(),
-        )
-        .await;
-    let new_event: PlayerJoinEvent = rmp_serde::from_slice(&buf).unwrap();
+    });
+
     info!("old: {event:#?}");
+    let new_event = registry.call_event(&mut manager, event).await;
     info!("new: {new_event:#?}");
 
     manager.disable_all().await;

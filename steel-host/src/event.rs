@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use steel_plugin_sdk::event::{EventHandlerFlags, EventId, result::EventResult};
+use steel_plugin_sdk::event::{EventHandlerFlags, EventId, PluginEvent, result::EventResult};
 use tokio::sync::Mutex;
 
 use crate::PluginManager;
@@ -48,11 +48,10 @@ impl EventRegistry {
     pub async fn call_event(
         &self,
         manager: &mut PluginManager,
-        event_id: EventId,
-        mut event: Vec<u8>,
-    ) -> Vec<u8> {
+        mut event: PluginEvent,
+    ) -> PluginEvent {
         let lock = self.registry.lock().await;
-        let Some(handlers) = lock.get(&event_id) else {
+        let Some(handlers) = lock.get(&event.event_id()) else {
             return event;
         };
         let mut cancelled = false;
@@ -62,7 +61,7 @@ impl EventRegistry {
             }
 
             let instance = manager.get_mut(&handler.plugin_name).unwrap();
-            let result = instance.on_event(event_id, &event).await.unwrap();
+            let result = instance.on_event(&event).await.unwrap();
             let result = EventResult::unpack(result).modified;
 
             if let Some((ptr, len)) = result {
@@ -72,8 +71,7 @@ impl EventRegistry {
                     .split_at(1);
 
                 if !data.is_empty() {
-                    // TODO: validation?
-                    event = data.to_vec();
+                    event = rmp_serde::from_slice(&data).unwrap();
                 }
 
                 if cancelled_data[0] != 0 {

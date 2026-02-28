@@ -14,8 +14,30 @@ bitflags! {
     }
 }
 
+#[non_exhaustive]
+#[derive(Debug, Serialize, Deserialize)]
+pub enum PluginEvent {
+    PlayerJoinEvent(PlayerJoinEvent),
+    PlayerLeaveEvent(PlayerLeaveEvent),
+    PlayerChatEvent(PlayerChatEvent),
+    BlockBreakEvent(BlockBreakEvent),
+    BlockPlaceEvent(BlockPlaceEvent),
+}
+
+impl PluginEvent {
+    pub fn event_id(&self) -> EventId {
+        match self {
+            PluginEvent::PlayerJoinEvent(_) => EventId::PlayerJoinEvent,
+            PluginEvent::PlayerLeaveEvent(_) => EventId::PlayerLeaveEvent,
+            PluginEvent::PlayerChatEvent(_) => EventId::PlayerChatEvent,
+            PluginEvent::BlockBreakEvent(_) => EventId::BlockBreakEvent,
+            PluginEvent::BlockPlaceEvent(_) => EventId::BlockPlaceEvent,
+        }
+    }
+}
+
 #[repr(u16)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, FromRepr)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, FromRepr)]
 pub enum EventId {
     PlayerJoinEvent,
     PlayerLeaveEvent,

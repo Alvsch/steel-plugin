@@ -1,6 +1,8 @@
 use std::mem::forget;
 
-#[derive(Debug, Default)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct EventResult {
     pub modified: Option<(u32, u32)>,
 }

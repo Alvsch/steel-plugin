@@ -1,7 +1,7 @@
 use std::fs;
 
 use steel_plugin_sdk::{
-    event::{EventHandlerFlags, EventId, PlayerJoinEvent, PlayerLeaveEvent, result::EventResult},
+    event::{EventHandlerFlags, EventId, PluginEvent, result::EventResult},
     info, on_disable, on_enable, on_event, plugin_meta,
 };
 use uuid::Uuid;
@@ -14,20 +14,19 @@ plugin_meta!(
 );
 
 #[on_event]
-pub fn on_event(event_id: EventId, event: &[u8]) -> EventResult {
-    match EventId::from_repr(event_id as u16).unwrap() {
-        EventId::PlayerJoinEvent => {
-            let mut event: PlayerJoinEvent = rmp_serde::from_slice(event).unwrap();
+pub fn on_event(event: &[u8]) -> EventResult {
+    let event: PluginEvent = rmp_serde::from_slice(event).unwrap();
+    match event {
+        PluginEvent::PlayerJoinEvent(mut event) => {
+            info(&format!("{} joined the game!", event.player));
             event.player = Uuid::new_v4();
-            let event = rmp_serde::to_vec(&event).unwrap();
-            return EventResult::modified(event);
-        }
-        EventId::PlayerLeaveEvent => {
-            let event: PlayerLeaveEvent = rmp_serde::from_slice(event).unwrap();
-            info(&format!("{:#?}", event));
+
+            let data = rmp_serde::to_vec(&PluginEvent::PlayerJoinEvent(event)).unwrap();
+            return EventResult::modified(data);
         }
         _ => (),
-    };
+    }
+
     EventResult::default()
 }
 
