@@ -1,4 +1,4 @@
-use steel_plugin_sdk::event::PluginEvent;
+use steel_plugin_sdk::event::Event;
 use wasmtime::{Memory, Store};
 
 use crate::{PluginExports, PluginHostData, PluginMeta};
@@ -39,7 +39,7 @@ impl PluginInstance {
             .await
     }
 
-    pub async fn on_event(&mut self, event: &PluginEvent) -> Result<u64, wasmtime::Error> {
+    pub async fn on_event<T: Event>(&mut self, event: &T) -> Result<u64, wasmtime::Error> {
         let event = rmp_serde::to_vec(event).unwrap();
         let len = event.len() as u32;
         let ptr = self.alloc(len).await?;

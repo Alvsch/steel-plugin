@@ -177,7 +177,7 @@ pub fn on_event(_args: TokenStream, input: TokenStream) -> TokenStream {
     if let Err(err) = validate(
         &FnRules {
             name: "on_event",
-            params: Some(&["& [u8]"]),
+            params: Some(&["PlayerJoinEvent"]),
             ret: Some("EventResult"),
             ..Default::default()
         },
@@ -199,11 +199,12 @@ pub fn on_event(_args: TokenStream, input: TokenStream) -> TokenStream {
     quote! {
         #[unsafe(no_mangle)]
         pub extern "C" fn on_event(ptr: u32, len: u32) -> u64 {
-            fn on_event_impl(#name1: &[u8]) -> EventResult {
+            fn on_event_impl(#name1: PlayerJoinEvent) -> EventResult {
                 #(#stmts)*
             }
 
             let event = unsafe { std::slice::from_raw_parts(ptr as *const u8, len as usize) };
+            let event: PlayerJoinEvent = rmp_serde::from_slice(event).unwrap();
             let result = on_event_impl(event);
             result.pack()
         }

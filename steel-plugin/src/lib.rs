@@ -1,7 +1,9 @@
 use std::fs;
 
 use steel_plugin_sdk::{
-    event::{EventHandlerFlags, EventId, PluginEvent, result::EventResult},
+    event::{
+        Event, EventHandlerFlags, PlayerJoinEvent, handler::EventHandler, result::EventResult,
+    },
     info, on_disable, on_enable, on_event, plugin_meta,
 };
 use uuid::Uuid;
@@ -14,25 +16,21 @@ plugin_meta!(
 );
 
 #[on_event]
-pub fn on_event(event: &[u8]) -> EventResult {
-    let event: PluginEvent = rmp_serde::from_slice(event).unwrap();
-    match event {
-        PluginEvent::PlayerJoinEvent(mut event) => {
-            info(&format!("{} joined the game!", event.player));
-            event.player = Uuid::new_v4();
+pub fn on_event(mut event: PlayerJoinEvent) -> EventResult {
+    info(&format!("{} joined the game!", event.player));
+    event.player = Uuid::new_v4();
 
-            let data = rmp_serde::to_vec(&PluginEvent::PlayerJoinEvent(event)).unwrap();
-            return EventResult::modified(data);
-        }
-        _ => (),
-    }
-
-    EventResult::default()
+    let data = rmp_serde::to_vec(&event).unwrap();
+    EventResult::modified(data)
 }
 
 #[on_enable]
 pub fn on_enable() {
-    steel_plugin_sdk::register_handler(EventId::PlayerJoinEvent, 0, EventHandlerFlags::empty());
+    steel_plugin_sdk::register_handler(&EventHandler {
+        event_name: PlayerJoinEvent::NAME.into(),
+        priority: 0,
+        flags: EventHandlerFlags::empty(),
+    });
     fs::write("/latest.log", "hello").unwrap();
     info("Hello, World!");
 }

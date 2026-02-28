@@ -1,54 +1,31 @@
 use bitflags::bitflags;
 use serde::{Deserialize, Serialize};
-use strum::FromRepr;
 use uuid::Uuid;
 
 use crate::types::BlockPos;
 
+pub mod handler;
 pub mod result;
 
 bitflags! {
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Serialize, Deserialize, Clone, Copy)]
     pub struct EventHandlerFlags: u8 {
         const RECEIVE_CANCELLED = 1;
     }
+
 }
 
-#[non_exhaustive]
-#[derive(Debug, Serialize, Deserialize)]
-pub enum PluginEvent {
-    PlayerJoinEvent(PlayerJoinEvent),
-    PlayerLeaveEvent(PlayerLeaveEvent),
-    PlayerChatEvent(PlayerChatEvent),
-    BlockBreakEvent(BlockBreakEvent),
-    BlockPlaceEvent(BlockPlaceEvent),
-}
-
-impl PluginEvent {
-    pub fn event_id(&self) -> EventId {
-        match self {
-            PluginEvent::PlayerJoinEvent(_) => EventId::PlayerJoinEvent,
-            PluginEvent::PlayerLeaveEvent(_) => EventId::PlayerLeaveEvent,
-            PluginEvent::PlayerChatEvent(_) => EventId::PlayerChatEvent,
-            PluginEvent::BlockBreakEvent(_) => EventId::BlockBreakEvent,
-            PluginEvent::BlockPlaceEvent(_) => EventId::BlockPlaceEvent,
-        }
-    }
-}
-
-#[repr(u16)]
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, FromRepr)]
-pub enum EventId {
-    PlayerJoinEvent,
-    PlayerLeaveEvent,
-    PlayerChatEvent,
-    BlockBreakEvent,
-    BlockPlaceEvent,
+pub trait Event: Serialize + for<'a> Deserialize<'a> {
+    const NAME: &str;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlayerJoinEvent {
     pub player: Uuid,
+}
+
+impl Event for PlayerJoinEvent {
+    const NAME: &str = "PlayerJoinEvent";
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -1,19 +1,16 @@
 use std::collections::{BTreeMap, HashMap};
 
-use steel_plugin_sdk::event::{EventHandlerFlags, EventId, PluginEvent, result::EventResult};
+use steel_plugin_sdk::event::{
+    Event, EventHandlerFlags, handler::EventHandler, result::EventResult,
+};
 use tokio::sync::Mutex;
 
 use crate::PluginManager;
 
-#[derive(Debug)]
-struct EventHandler {
-    plugin_name: String,
-    // TODO: use these flags
-    flags: EventHandlerFlags,
-}
+type PluginEventHandler = (String, EventHandler);
 
 pub struct EventRegistry {
-    registry: Mutex<HashMap<EventId, BTreeMap<i8, EventHandler>>>,
+    registry: Mutex<HashMap<String, BTreeMap<i8, PluginEventHandler>>>,
 }
 
 impl Default for EventRegistry {
@@ -30,37 +27,27 @@ impl EventRegistry {
         }
     }
 
-    pub async fn register_handler(
-        &self,
-        event_id: EventId,
-        priority: i8,
-        flags: EventHandlerFlags,
-        plugin_name: String,
-    ) {
+    pub async fn register_handler(&self, plugin_name: String, handler: EventHandler) {
         self.registry
             .lock()
             .await
-            .entry(event_id)
+            .entry(handler.event_name.to_string())
             .or_default()
-            .insert(priority, EventHandler { plugin_name, flags });
+            .insert(handler.priority, (plugin_name, handler));
     }
 
-    pub async fn call_event(
-        &self,
-        manager: &mut PluginManager,
-        mut event: PluginEvent,
-    ) -> PluginEvent {
+    pub async fn call_event<T: Event>(&self, manager: &mut PluginManager, mut event: T) -> T {
         let lock = self.registry.lock().await;
-        let Some(handlers) = lock.get(&event.event_id()) else {
+        let Some(handlers) = lock.get(T::NAME) else {
             return event;
         };
         let mut cancelled = false;
-        for handler in handlers.values() {
+        for (plugin_name, handler) in handlers.values() {
             if cancelled && !handler.flags.contains(EventHandlerFlags::RECEIVE_CANCELLED) {
                 continue;
             }
 
-            let instance = manager.get_mut(&handler.plugin_name).unwrap();
+            let instance = manager.get_mut(plugin_name).unwrap();
             let result = instance.on_event(&event).await.unwrap();
             let result = EventResult::unpack(result).modified;
 
@@ -71,7 +58,7 @@ impl EventRegistry {
                     .split_at(1);
 
                 if !data.is_empty() {
-                    event = rmp_serde::from_slice(&data).unwrap();
+                    event = rmp_serde::from_slice(data).unwrap();
                 }
 
                 if cancelled_data[0] != 0 {

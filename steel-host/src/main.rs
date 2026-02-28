@@ -1,9 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 use steel_host::{EventRegistry, PluginHostData, PluginLoader, PluginManager};
-use steel_plugin_sdk::{
-    event::{PlayerJoinEvent, PluginEvent},
-    utils::unpack_handler,
-};
+use steel_plugin_sdk::event::PlayerJoinEvent;
 use tokio::fs::create_dir_all;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
@@ -44,14 +41,15 @@ async fn main() {
         .func_wrap_async(
             "host",
             "register_handler",
-            |caller: Caller<PluginHostData>, (packed,): (u32,)| {
+            |mut caller: Caller<PluginHostData>, (ptr, len): (u32, u32)| {
                 Box::new(async move {
-                    let (event_id, priority, flags) = unpack_handler(packed);
+                    let memory = caller.get_export("memory").unwrap().into_memory().unwrap();
+                    let data = &memory.data(&caller)[ptr as usize..(ptr + len) as usize];
+                    let handler = rmp_serde::from_slice(data).unwrap();
+
                     let registry = &*caller.data().registry;
-                    let name = caller.data().name.clone();
-                    registry
-                        .register_handler(event_id, priority, flags, name)
-                        .await;
+                    let plugin_name = caller.data().name.clone();
+                    registry.register_handler(plugin_name, handler).await;
                 })
             },
         )
@@ -79,9 +77,9 @@ async fn main() {
     manager.add_all(loaded_plugins);
     manager.enable_all().await;
 
-    let event = PluginEvent::PlayerJoinEvent(PlayerJoinEvent {
+    let event = PlayerJoinEvent {
         player: Uuid::new_v4(),
-    });
+    };
 
     info!("old: {event:#?}");
     let new_event = registry.call_event(&mut manager, event).await;
