@@ -1,8 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use steel_plugin_sdk::event::{
-    Event, EventHandlerFlags, handler::EventHandler, result::EventResult,
-};
+use steel_plugin_sdk::event::{Event, EventHandlerFlags, handler::EventHandler};
 use tokio::sync::Mutex;
 
 use crate::PluginManager;
@@ -49,9 +47,8 @@ impl EventRegistry {
 
             let instance = manager.get_mut(plugin_name).unwrap();
             let result = instance.on_event(&event).await.unwrap();
-            let result = EventResult::unpack(result).modified;
 
-            if let Some((ptr, len)) = result {
+            if let Some((ptr, len)) = result.unpack() {
                 // TODO: index bounds?
                 let (cancelled_data, data) = instance.memory.data(&mut instance.store)
                     [ptr as usize..(ptr + len) as usize]

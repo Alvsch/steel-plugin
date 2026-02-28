@@ -206,7 +206,7 @@ pub fn on_event(_args: TokenStream, input: TokenStream) -> TokenStream {
             let event = unsafe { std::slice::from_raw_parts(ptr as *const u8, len as usize) };
             let event: PlayerJoinEvent = rmp_serde::from_slice(event).unwrap();
             let result = on_event_impl(event);
-            result.pack()
+            result.as_u64()
         }
 
     }
