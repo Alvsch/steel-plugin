@@ -14,12 +14,11 @@ plugin_meta!(
 );
 
 #[event_handler]
-pub fn handle_join(mut event: PlayerJoinEvent) -> EventResult {
+pub fn handle_join(mut event: PlayerJoinEvent) -> EventResult<PlayerJoinEvent> {
     info(&format!("{} joined the game!", event.player));
     event.player = Uuid::new_v4();
 
-    let data = rmp_serde::to_vec(&event).unwrap();
-    EventResult::modified(data)
+    EventResult::modified(&event)
 }
 
 #[on_enable]

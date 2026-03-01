@@ -182,10 +182,19 @@ pub fn event_handler(args: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemFn);
     let args = parse_macro_input!(args as EventHandlerArgs);
 
+    let inputs = &item.sig.inputs;
+    let (event_pat, event_ty) = if let Some(FnArg::Typed(pat_ty)) = inputs.first() {
+        (&pat_ty.pat, &pat_ty.ty)
+    } else {
+        return Error::new(item.sig.span(), "expected at least one parameter")
+            .into_compile_error()
+            .into();
+    };
+
     if let Err(err) = validate(
         &FnRules {
             require_pub: true,
-            ret: Some("EventResult"),
+            ret: Some(&format!("EventResult < {} >", quote! { #event_ty })),
             ..Default::default()
         },
         &item,
@@ -204,19 +213,10 @@ pub fn event_handler(args: TokenStream, input: TokenStream) -> TokenStream {
     let handler_const = format_ident!("__{}", item.sig.ident.to_string().to_uppercase());
     let stmts = &item.block.stmts;
 
-    let inputs = &item.sig.inputs;
-    let (event_pat, event_ty) = if let Some(FnArg::Typed(pat_ty)) = inputs.first() {
-        (&pat_ty.pat, &pat_ty.ty)
-    } else {
-        return Error::new(item.sig.span(), "expected at least one parameter")
-            .into_compile_error()
-            .into();
-    };
-
     quote! {
         #[unsafe(no_mangle)]
         pub extern "C" fn #export_fn_name(ptr: u32, len: u32) -> u64 {
-            fn #impl_fn_name(#event_pat: #event_ty) -> EventResult {
+            fn #impl_fn_name(#event_pat: #event_ty) -> EventResult<#event_ty> {
                 #(#stmts)*
             }
 

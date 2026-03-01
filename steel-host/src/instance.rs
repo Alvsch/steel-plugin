@@ -44,20 +44,17 @@ impl PluginInstance {
         &mut self,
         handler_name: &str,
         event: &T,
-    ) -> Result<EventResult, wasmtime::Error> {
+    ) -> Result<EventResult<T>, wasmtime::Error> {
         let event = rmp_serde::to_vec(event).unwrap();
         let len = event.len() as u32;
         let ptr = self.alloc(len).await?;
 
-        self.memory
-            .write(&mut self.store, ptr as usize, &event)
-            .unwrap();
+        self.memory.write(&mut self.store, ptr as usize, &event)?;
 
         let func = self
             .instance
-            .get_typed_func(&mut self.store, handler_name)
-            .unwrap();
-        let result = func.call_async(&mut self.store, (ptr, len)).await.unwrap();
+            .get_typed_func(&mut self.store, handler_name)?;
+        let result = func.call_async(&mut self.store, (ptr, len)).await?;
 
         self.dealloc(ptr, len).await?;
         Ok(EventResult::from_u64(result))

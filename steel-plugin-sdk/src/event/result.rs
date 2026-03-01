@@ -1,27 +1,26 @@
-use std::{
-    mem::forget,
-    num::{NonZero, NonZeroU64},
-};
-
+use crate::event::Event;
+use rmp_serde::encode;
 use serde::{Deserialize, Serialize};
+use std::marker::PhantomData;
+use std::{mem::forget, num::NonZeroU64};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
-pub struct EventResult {
+pub struct EventResult<T: Event> {
     modified: Option<NonZeroU64>,
+    _marker: PhantomData<T>,
 }
 
-impl EventResult {
+impl<T: Event> EventResult<T> {
     #[must_use]
     pub fn new(ptr: u32, len: u32) -> Self {
-        Self {
-            modified: NonZero::new(((u64::from(ptr)) << 32) | u64::from(len)),
-        }
+        Self::from_u64(((u64::from(ptr)) << 32) | u64::from(len))
     }
 
     #[must_use]
     pub const fn from_u64(value: u64) -> Self {
         Self {
             modified: NonZeroU64::new(value),
+            _marker: PhantomData,
         }
     }
 
@@ -39,8 +38,10 @@ impl EventResult {
     }
 
     #[must_use]
-    pub fn modified(mut data: Vec<u8>) -> Self {
-        data.insert(0, 0); // cancelled false
+    pub fn modified(event: &T) -> Self {
+        let mut data = vec![0u8]; // cancelled false
+        encode::write(&mut data, event).unwrap();
+
         let ptr = data.as_ptr() as u32;
         let len = data.len() as u32;
         forget(data);
