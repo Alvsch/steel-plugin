@@ -1,11 +1,9 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{Error, FnArg, ItemFn, Visibility, parse_macro_input, spanned::Spanned};
+use syn::{Error, FnArg, Ident, ItemFn, Visibility, parse_macro_input, spanned::Spanned};
 
-use crate::{
-    args::{PluginMetaArgs, RegisterEventArgs},
-    rules::FnRules,
-};
+use crate::args::EventHandlerArgs;
+use crate::{args::PluginMetaArgs, rules::FnRules};
 
 mod args;
 mod rules;
@@ -42,15 +40,18 @@ pub fn plugin_meta(input: TokenStream) -> TokenStream {
 fn validate(rules: &FnRules, item: &ItemFn) -> Result<(), Error> {
     let sig = &item.sig;
 
-    if sig.ident != rules.name {
+    if let Some(expected_name) = rules.name
+        && sig.ident != expected_name
+    {
         return Err(Error::new(
             sig.ident.span(),
-            format!("function must be named '{}'", rules.name),
+            format!("function must be named '{expected_name}'"),
         ));
     }
 
     match rules.params {
-        None => {
+        None => (),
+        Some([]) => {
             if let Some(arg) = sig.inputs.first() {
                 return Err(Error::new(arg.span(), "function must have no parameters"));
             }
@@ -131,7 +132,8 @@ pub fn on_enable(_args: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemFn);
     if let Err(err) = validate(
         &FnRules {
-            name: "on_enable",
+            name: Some("on_enable"),
+            require_pub: true,
             ..Default::default()
         },
         &item,
@@ -155,7 +157,8 @@ pub fn on_disable(_args: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemFn);
     if let Err(err) = validate(
         &FnRules {
-            name: "on_disable",
+            name: Some("on_disable"),
+            require_pub: true,
             ..Default::default()
         },
         &item,
@@ -175,52 +178,70 @@ pub fn on_disable(_args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn on_event(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn event_handler(args: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemFn);
+    let args = parse_macro_input!(args as EventHandlerArgs);
+
+    if let Err(err) = validate(
+        &FnRules {
+            require_pub: true,
+            ret: Some("EventResult"),
+            ..Default::default()
+        },
+        &item,
+    ) {
+        return err.to_compile_error().into();
+    }
+
+    let priority = args.priority;
+    let flags = args.flags.unwrap_or_else(
+        || syn::parse_quote! { ::steel_plugin_sdk::event::EventHandlerFlags::empty() },
+    );
+
+    let export_fn_name = format_ident!("__{}", item.sig.ident);
+    let export_fn_name_str = export_fn_name.to_string();
+    let impl_fn_name = format_ident!("{}_impl", export_fn_name);
+    let handler_const = format_ident!("__{}", item.sig.ident.to_string().to_uppercase());
+    let stmts = &item.block.stmts;
 
     let inputs = &item.sig.inputs;
-    let (arg_pat, arg_ty) = if let Some(FnArg::Typed(pat_ty)) = inputs.first() {
+    let (event_pat, event_ty) = if let Some(FnArg::Typed(pat_ty)) = inputs.first() {
         (&pat_ty.pat, &pat_ty.ty)
     } else {
-        return Error::new(inputs.span(), "expected at least one parameter")
+        return Error::new(item.sig.span(), "expected at least one parameter")
             .into_compile_error()
             .into();
     };
 
-    let export_name = format_ident!("__{}", item.sig.ident);
-    let impl_name = format_ident!("{}_impl", export_name);
-    let stmts = &item.block.stmts;
-
     quote! {
         #[unsafe(no_mangle)]
-        pub extern "C" fn #export_name(ptr: u32, len: u32) -> u64 {
-            fn #impl_name(#arg_pat: #arg_ty) -> EventResult {
+        pub extern "C" fn #export_fn_name(ptr: u32, len: u32) -> u64 {
+            fn #impl_fn_name(#event_pat: #event_ty) -> EventResult {
                 #(#stmts)*
             }
 
             let event = unsafe { std::slice::from_raw_parts(ptr as *const u8, len as usize) };
-            let event: #arg_ty = rmp_serde::from_slice(event).unwrap();
-            let result = #impl_name(event);
+            let event: #event_ty = rmp_serde::from_slice(event).unwrap();
+            let result = #impl_fn_name(event);
             result.as_u64()
         }
 
+        pub const #handler_const: ::steel_plugin_sdk::event::handler::EventHandler = ::steel_plugin_sdk::event::handler::EventHandler {
+            event_name: std::borrow::Cow::Borrowed(<#event_ty as ::steel_plugin_sdk::event::Event>::NAME),
+            handler_name: std::borrow::Cow::Borrowed(#export_fn_name_str),
+            priority: #priority,
+            flags: #flags,
+        };
     }
     .into()
 }
 
 #[proc_macro]
 pub fn register_event(input: TokenStream) -> TokenStream {
-    let args = parse_macro_input!(input as RegisterEventArgs);
-    let fn_name = format!("__{}", args.fn_name);
-    let event_ty = args.event_ty;
-
+    let fn_name = parse_macro_input!(input as Ident);
+    let handler_const = format_ident!("__{}", fn_name.to_string().to_uppercase());
     quote! {
-        ::steel_plugin_sdk::register_handler(&::steel_plugin_sdk::event::handler::EventHandler {
-            event_name: <#event_ty as ::steel_plugin_sdk::event::Event>::NAME.into(),
-            handler_name: #fn_name.into(),
-            priority: 0,
-            flags: ::steel_plugin_sdk::event::EventHandlerFlags::empty(),
-        });
+        ::steel_plugin_sdk::register_handler(&#handler_const);
     }
     .into()
 }

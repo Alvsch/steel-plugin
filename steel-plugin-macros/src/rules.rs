@@ -1,5 +1,5 @@
 pub struct FnRules<'a> {
-    pub name: &'a str,
+    pub name: Option<&'a str>,
     pub params: Option<&'a [&'a str]>,
     pub ret: Option<&'a str>,
     pub require_pub: bool,
@@ -8,7 +8,7 @@ pub struct FnRules<'a> {
 impl Default for FnRules<'_> {
     fn default() -> Self {
         Self {
-            name: "",
+            name: None,
             params: None,
             ret: None,
             require_pub: true,
