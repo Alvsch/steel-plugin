@@ -1,15 +1,15 @@
 use std::{path::PathBuf, sync::Arc};
-use steel_host::{EventRegistry, PluginHostData, PluginLoader, PluginManager};
+use steel_host::{EventRegistry, PluginLoader, PluginManager, configure_linker};
 use steel_plugin_sdk::event::PlayerJoinEvent;
 use tokio::fs::create_dir_all;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 use uuid::Uuid;
-use wasmtime::{Caller, Config, Linker, OptLevel};
-use wasmtime_wasi::p1::wasi_snapshot_preview1::add_to_linker;
+use wasmtime::{Config, Linker, OptLevel};
 
 #[tokio::main]
 async fn main() {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::new(
             "debug,cranelift_codegen=info,wasmtime_internal_cranelift=info",
@@ -22,40 +22,8 @@ async fn main() {
 
     let engine = wasmtime::Engine::new(&config).unwrap();
     let mut linker = Linker::new(&engine);
-    add_to_linker(&mut linker, |data: &mut PluginHostData| &mut data.wasi).unwrap();
-    linker
-        .func_wrap(
-            "host",
-            "info",
-            |mut caller: Caller<PluginHostData>, ptr: u32, len: u32| {
-                let memory = caller.get_export("memory").unwrap().into_memory().unwrap();
-                let buf = &memory.data(&caller)[ptr as usize..ptr as usize + len as usize];
-                let message = str::from_utf8(buf).unwrap();
+    configure_linker(&mut linker);
 
-                let plugin_name = caller.data().name.as_str();
-                info!("[{plugin_name}] {message}");
-            },
-        )
-        .unwrap();
-    linker
-        .func_wrap_async(
-            "host",
-            "register_handler",
-            |mut caller: Caller<PluginHostData>, (ptr, len): (u32, u32)| {
-                Box::new(async move {
-                    let memory = caller.get_export("memory").unwrap().into_memory().unwrap();
-                    let data = &memory.data(&caller)[ptr as usize..(ptr + len) as usize];
-                    let handler = rmp_serde::from_slice(data).unwrap();
-
-                    let registry = &*caller.data().registry;
-                    let plugin_name = caller.data().name.clone();
-                    registry.register_handler(plugin_name, handler).await;
-                })
-            },
-        )
-        .unwrap();
-
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     let plugins_path = path.join("plugins");
     create_dir_all(&plugins_path).await.unwrap();
 

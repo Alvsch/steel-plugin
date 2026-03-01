@@ -19,6 +19,7 @@ pub struct PluginInstance {
 }
 
 impl PluginInstance {
+    #[must_use]
     pub fn is_enabled(&self) -> bool {
         self.status == PluginStatus::Enabled
     }
