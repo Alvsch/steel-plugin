@@ -39,9 +39,8 @@ impl EventRegistry {
         let Some(handlers) = lock.get(T::NAME) else {
             return event;
         };
-        let mut cancelled = false;
         for (plugin_name, handler) in handlers.values() {
-            if cancelled && !handler.flags.contains(EventHandlerFlags::RECEIVE_CANCELLED) {
+            if event.cancelled() && !handler.flags.contains(EventHandlerFlags::RECEIVE_CANCELLED) {
                 continue;
             }
 
@@ -52,19 +51,9 @@ impl EventRegistry {
                 .unwrap();
 
             if let Some((ptr, len)) = result.unpack() {
-                // TODO: index bounds?
-                let (cancelled_data, data) = instance.memory.data(&mut instance.store)
-                    [ptr as usize..(ptr + len) as usize]
-                    .split_at(1);
-
-                if !data.is_empty() {
-                    event = rmp_serde::from_slice(data).unwrap();
-                }
-
-                if cancelled_data[0] != 0 {
-                    cancelled = true;
-                }
-
+                let data =
+                    &instance.memory.data(&mut instance.store)[ptr as usize..(ptr + len) as usize];
+                event = rmp_serde::from_slice(data).unwrap();
                 instance.dealloc(ptr, len).await.unwrap();
             }
         }

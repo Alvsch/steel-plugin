@@ -78,6 +78,7 @@ async fn main() {
     manager.enable_all().await;
 
     let event = PlayerJoinEvent {
+        cancelled: false,
         player: Uuid::new_v4(),
     };
 

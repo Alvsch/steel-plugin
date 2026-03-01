@@ -17,15 +17,22 @@ bitflags! {
 
 pub trait Event: Serialize + for<'a> Deserialize<'a> {
     const NAME: &str;
+
+    fn cancelled(&self) -> bool;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlayerJoinEvent {
+    pub cancelled: bool,
     pub player: Uuid,
 }
 
 impl Event for PlayerJoinEvent {
     const NAME: &str = "PlayerJoinEvent";
+
+    fn cancelled(&self) -> bool {
+        self.cancelled
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

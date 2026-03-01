@@ -1,5 +1,5 @@
 use crate::event::Event;
-use rmp_serde::encode;
+use rmp_serde::to_vec;
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use std::{mem::forget, num::NonZeroU64};
@@ -39,20 +39,10 @@ impl<T: Event> EventResult<T> {
 
     #[must_use]
     pub fn modified(event: &T) -> Self {
-        let mut data = vec![0u8]; // cancelled false
-        encode::write(&mut data, event).unwrap();
-
+        let data = to_vec(event).unwrap();
         let ptr = data.as_ptr() as u32;
         let len = data.len() as u32;
         forget(data);
         Self::new(ptr, len)
-    }
-
-    #[must_use]
-    pub fn cancelled() -> Self {
-        let boxed = Box::new([true]);
-        let ptr = boxed.as_ptr() as u32;
-        forget(boxed);
-        Self::new(ptr, 1)
     }
 }
