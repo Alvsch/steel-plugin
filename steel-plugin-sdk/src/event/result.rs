@@ -1,4 +1,5 @@
 use crate::event::Event;
+use crate::utils;
 use rmp_serde::to_vec;
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
@@ -12,8 +13,8 @@ pub struct EventResult<T: Event> {
 
 impl<T: Event> EventResult<T> {
     #[must_use]
-    pub fn new(ptr: u32, len: u32) -> Self {
-        Self::from_u64(((u64::from(ptr)) << 32) | u64::from(len))
+    pub const fn new(ptr: u32, len: u32) -> Self {
+        Self::from_u64(utils::pack(ptr, len))
     }
 
     #[must_use]
@@ -32,9 +33,7 @@ impl<T: Event> EventResult<T> {
     #[must_use]
     pub fn unpack(&self) -> Option<(u32, u32)> {
         let value = self.modified?.get();
-        let ptr = (value >> 32) as u32;
-        let len = (value & u64::from(u32::MAX)) as u32;
-        Some((ptr, len))
+        Some(utils::unpack(value))
     }
 
     #[must_use]

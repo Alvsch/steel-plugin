@@ -56,6 +56,11 @@ impl PluginManager {
 
     pub fn add(&mut self, plugin: PluginInstance) {
         let name = plugin.meta.name.clone();
+        if name == "steel" {
+            error!("Skipping plugin 'steel': this name is reserved and cannot be loaded.",);
+            return;
+        }
+
         self.plugins.insert(name, plugin);
     }
 

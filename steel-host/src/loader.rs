@@ -15,7 +15,7 @@ use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder, p1::WasiP1Ctx};
 use crate::{
     EventRegistry, PluginExports, PluginMeta,
     instance::{PluginInstance, PluginStatus},
-    read_custom_section, topological_sort,
+    read_custom_section, utils,
 };
 
 pub struct PluginHostData {
@@ -87,11 +87,17 @@ impl PluginLoader {
                     .ok_or(PluginLoaderError::MissingPluginMeta)?;
                 let mut plugin_meta: PluginMeta = rmp_serde::from_slice(meta_section)
                     .map_err(PluginLoaderError::InvalidPluginMeta)?;
+
+                if plugin_meta.name == "steel" {
+                    error!("Skipping plugin 'steel': this name is reserved and cannot be loaded.",);
+                    continue;
+                }
+
                 plugin_meta.file_path = file_path.canonicalize()?;
                 plugins.push(plugin_meta);
             }
         }
-        let (topology, invalid) = topological_sort::sort_plugins(plugins);
+        let (topology, invalid) = utils::sort_plugins(plugins);
         if !invalid.is_empty() {
             error!("plugins with invalid dependencies: {:#?}", invalid);
         }

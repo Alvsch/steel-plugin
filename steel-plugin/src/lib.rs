@@ -1,8 +1,10 @@
 use std::fs;
 
+use serde::{Deserialize, Serialize};
+use steel_plugin_sdk::event::Event;
 use steel_plugin_sdk::{
     event::{PlayerJoinEvent, result::EventResult},
-    event_handler, info, on_disable, on_enable, plugin_meta, register_event,
+    event_handler, info, on_disable, on_enable, plugin_meta, register_event, register_handler,
 };
 use uuid::Uuid;
 
@@ -12,6 +14,19 @@ plugin_meta!(
     api_version = 1,
     depends = [],
 );
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MyEvent {
+    name: String,
+}
+
+impl Event for MyEvent {
+    const NAME: &str = "MyEvent";
+
+    fn cancelled(&self) -> bool {
+        false
+    }
+}
 
 #[event_handler]
 pub fn handle_join(mut event: PlayerJoinEvent) -> EventResult<PlayerJoinEvent> {
@@ -23,7 +38,9 @@ pub fn handle_join(mut event: PlayerJoinEvent) -> EventResult<PlayerJoinEvent> {
 
 #[on_enable]
 pub fn on_enable() {
-    register_event!(handle_join);
+    register_event::<MyEvent>();
+    register_handler!(handle_join);
+
     fs::write("/latest.log", "hello").unwrap();
     info("Hello, World!");
 }

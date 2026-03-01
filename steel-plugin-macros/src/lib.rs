@@ -1,4 +1,4 @@
-use proc_macro::TokenStream;
+use proc_macro::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{Error, FnArg, Ident, ItemFn, Visibility, parse_macro_input, spanned::Spanned};
 
@@ -11,6 +11,14 @@ mod rules;
 #[proc_macro]
 pub fn plugin_meta(input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(input as PluginMetaArgs);
+    if args.name == "steel" {
+        return Error::new(
+            Span::call_site().into(),
+            "The plugin name 'steel' is reserved",
+        )
+        .to_compile_error()
+        .into();
+    }
 
     let bytes: Vec<u8> = args.serialize();
     let len = bytes.len();
@@ -237,7 +245,7 @@ pub fn event_handler(args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn register_event(input: TokenStream) -> TokenStream {
+pub fn register_handler(input: TokenStream) -> TokenStream {
     let fn_name = parse_macro_input!(input as Ident);
     let handler_const = format_ident!("__{}", fn_name.to_string().to_uppercase());
     quote! {
