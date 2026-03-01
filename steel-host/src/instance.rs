@@ -1,5 +1,5 @@
 use steel_plugin_sdk::event::{Event, result::EventResult};
-use wasmtime::{Memory, Store};
+use wasmtime::{Instance, Memory, Store};
 
 use crate::{PluginExports, PluginHostData, PluginMeta};
 
@@ -10,6 +10,7 @@ pub enum PluginStatus {
 }
 
 pub struct PluginInstance {
+    pub instance: Instance,
     pub meta: PluginMeta,
     pub status: PluginStatus,
     pub exports: PluginExports,
@@ -39,7 +40,11 @@ impl PluginInstance {
             .await
     }
 
-    pub async fn on_event<T: Event>(&mut self, event: &T) -> Result<EventResult, wasmtime::Error> {
+    pub async fn on_event<T: Event>(
+        &mut self,
+        handler_name: &str,
+        event: &T,
+    ) -> Result<EventResult, wasmtime::Error> {
         let event = rmp_serde::to_vec(event).unwrap();
         let len = event.len() as u32;
         let ptr = self.alloc(len).await?;
@@ -48,11 +53,11 @@ impl PluginInstance {
             .write(&mut self.store, ptr as usize, &event)
             .unwrap();
 
-        let result = self
-            .exports
-            .on_event
-            .call_async(&mut self.store, (ptr, len))
-            .await?;
+        let func = self
+            .instance
+            .get_typed_func(&mut self.store, handler_name)
+            .unwrap();
+        let result = func.call_async(&mut self.store, (ptr, len)).await.unwrap();
 
         self.dealloc(ptr, len).await?;
         Ok(EventResult::from_u64(result))

@@ -1,9 +1,7 @@
 use std::fs;
 
 use steel_plugin_sdk::{
-    event::{
-        Event, EventHandlerFlags, PlayerJoinEvent, handler::EventHandler, result::EventResult,
-    },
+    event::{PlayerJoinEvent, result::EventResult},
     info, on_disable, on_enable, on_event, plugin_meta,
 };
 use uuid::Uuid;
@@ -16,7 +14,7 @@ plugin_meta!(
 );
 
 #[on_event]
-pub fn on_event(mut event: PlayerJoinEvent) -> EventResult {
+pub fn handle_join(mut event: PlayerJoinEvent) -> EventResult {
     info(&format!("{} joined the game!", event.player));
     event.player = Uuid::new_v4();
 
@@ -26,11 +24,7 @@ pub fn on_event(mut event: PlayerJoinEvent) -> EventResult {
 
 #[on_enable]
 pub fn on_enable() {
-    steel_plugin_sdk::register_handler(&EventHandler {
-        event_name: PlayerJoinEvent::NAME.into(),
-        priority: 0,
-        flags: EventHandlerFlags::empty(),
-    });
+    steel_plugin_sdk::register_event!(handle_join, PlayerJoinEvent);
     fs::write("/latest.log", "hello").unwrap();
     info("Hello, World!");
 }

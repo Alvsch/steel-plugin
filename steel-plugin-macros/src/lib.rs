@@ -1,8 +1,11 @@
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::{Error, FnArg, ItemFn, Visibility, parse_macro_input, spanned::Spanned};
 
-use crate::{args::PluginMetaArgs, rules::FnRules};
+use crate::{
+    args::{PluginMetaArgs, RegisterEventArgs},
+    rules::FnRules,
+};
 
 mod args;
 mod rules;
@@ -174,41 +177,50 @@ pub fn on_disable(_args: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn on_event(_args: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemFn);
-    if let Err(err) = validate(
-        &FnRules {
-            name: "on_event",
-            params: Some(&["PlayerJoinEvent"]),
-            ret: Some("EventResult"),
-            ..Default::default()
-        },
-        &item,
-    ) {
-        return err.to_compile_error().into();
-    }
 
-    let mut inputs = item.sig.inputs.iter();
-    let name1 = if let Some(FnArg::Typed(pat_ty)) = inputs.next() {
-        let pat = &pat_ty.pat;
-        quote! { #pat }
+    let inputs = &item.sig.inputs;
+    let (arg_pat, arg_ty) = if let Some(FnArg::Typed(pat_ty)) = inputs.first() {
+        (&pat_ty.pat, &pat_ty.ty)
     } else {
-        quote! { _arg0 }
+        return Error::new(inputs.span(), "expected at least one parameter")
+            .into_compile_error()
+            .into();
     };
 
+    let export_name = format_ident!("__{}", item.sig.ident);
+    let impl_name = format_ident!("{}_impl", export_name);
     let stmts = &item.block.stmts;
 
     quote! {
         #[unsafe(no_mangle)]
-        pub extern "C" fn on_event(ptr: u32, len: u32) -> u64 {
-            fn on_event_impl(#name1: PlayerJoinEvent) -> EventResult {
+        pub extern "C" fn #export_name(ptr: u32, len: u32) -> u64 {
+            fn #impl_name(#arg_pat: #arg_ty) -> EventResult {
                 #(#stmts)*
             }
 
             let event = unsafe { std::slice::from_raw_parts(ptr as *const u8, len as usize) };
-            let event: PlayerJoinEvent = rmp_serde::from_slice(event).unwrap();
-            let result = on_event_impl(event);
+            let event: #arg_ty = rmp_serde::from_slice(event).unwrap();
+            let result = #impl_name(event);
             result.as_u64()
         }
 
+    }
+    .into()
+}
+
+#[proc_macro]
+pub fn register_event(input: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(input as RegisterEventArgs);
+    let fn_name = format!("__{}", args.fn_name);
+    let event_ty = args.event_ty;
+
+    quote! {
+        ::steel_plugin_sdk::register_handler(&::steel_plugin_sdk::event::handler::EventHandler {
+            event_name: <#event_ty as ::steel_plugin_sdk::event::Event>::NAME.into(),
+            handler_name: #fn_name.into(),
+            priority: 0,
+            flags: ::steel_plugin_sdk::event::EventHandlerFlags::empty(),
+        });
     }
     .into()
 }

@@ -133,6 +133,7 @@ impl PluginLoader {
             .map_err(PluginLoaderError::PluginExportResolve)?;
 
         Ok(PluginInstance {
+            instance,
             meta: plugin_meta,
             status: PluginStatus::Disabled,
             exports,

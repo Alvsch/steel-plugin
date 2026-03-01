@@ -46,7 +46,10 @@ impl EventRegistry {
             }
 
             let instance = manager.get_mut(plugin_name).unwrap();
-            let result = instance.on_event(&event).await.unwrap();
+            let result = instance
+                .on_event(&handler.handler_name, &event)
+                .await
+                .unwrap();
 
             if let Some((ptr, len)) = result.unpack() {
                 // TODO: index bounds?

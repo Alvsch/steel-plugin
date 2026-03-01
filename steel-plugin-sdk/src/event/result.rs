@@ -24,7 +24,7 @@ impl EventResult {
             modified: NonZeroU64::new(value),
         }
     }
-    
+
     #[must_use]
     pub fn as_u64(&self) -> u64 {
         self.modified.map_or(0, NonZeroU64::get)

@@ -83,3 +83,18 @@ impl Parse for PluginMetaArgs {
         })
     }
 }
+
+pub struct RegisterEventArgs {
+    pub fn_name: syn::Ident,
+    pub event_ty: syn::Type,
+}
+
+impl Parse for RegisterEventArgs {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let fn_name = input.parse()?;
+        let _sperator: Token![,] = input.parse()?;
+        let event_ty = input.parse()?;
+
+        Ok(Self { fn_name, event_ty })
+    }
+}
