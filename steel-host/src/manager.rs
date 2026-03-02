@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 use indexmap::IndexMap;
 use thiserror::Error;
 use tracing::{debug, error, warn};
 
-use crate::instance::PluginInstance;
+use crate::{EventRegistry, instance::PluginInstance};
 
 #[derive(Debug, Error)]
 pub enum PluginManagerError {
@@ -24,19 +26,15 @@ pub enum PluginManagerError {
 
 pub struct PluginManager {
     plugins: IndexMap<String, PluginInstance>,
-}
-
-impl Default for PluginManager {
-    fn default() -> Self {
-        Self::new()
-    }
+    pub registry: Arc<EventRegistry>,
 }
 
 impl PluginManager {
     #[must_use]
-    pub fn new() -> Self {
+    pub fn new(registry: Arc<EventRegistry>) -> Self {
         Self {
             plugins: IndexMap::new(),
+            registry,
         }
     }
 
@@ -139,6 +137,7 @@ impl PluginManager {
 
         let plugin = self.plugins.get_mut(name).unwrap();
         plugin.disable().await?;
+        self.registry.unregister_handlers(name);
         Ok(())
     }
 

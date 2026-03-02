@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::event::EventHandlerFlags;
 
 /// Describes a handler registered for an event.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct EventHandler {
     /// Name of the event this handler listens to.
     pub event_name: Cow<'static, str>,

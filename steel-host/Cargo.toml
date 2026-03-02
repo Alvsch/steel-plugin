@@ -30,6 +30,7 @@ wasmparser = { workspace = true, features = ["std", "simd"] }
 indexmap.workspace = true
 thiserror.workspace = true
 uuid = { workspace = true, features = ["v4"] }
+parking_lot.workspace = true
 
 serde.workspace = true
 rmp-serde.workspace = true

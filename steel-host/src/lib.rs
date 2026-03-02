@@ -64,52 +64,38 @@ pub fn configure_linker(linker: &mut Linker<PluginHostData>) {
         )
         .unwrap();
     linker
-        .func_wrap_async(
+        .func_wrap(
             "host",
             "register_handler",
-            |mut caller: Caller<PluginHostData>, (ptr, len): (u32, u32)| {
-                Box::new(async move {
-                    let memory = PluginMemory::from(&mut caller);
-                    let handler: EventHandler = memory.read_msgpack(FatPtr::new(ptr, len).unwrap());
+            |mut caller: Caller<PluginHostData>, ptr: u32, len: u32| {
+                let memory = PluginMemory::from(&mut caller);
+                let handler: EventHandler = memory.read_msgpack(FatPtr::new(ptr, len).unwrap());
 
-                    let registry = &*caller.data().registry;
-                    let plugin_name = caller.data().name.clone();
-                    registry.register_handler(plugin_name, handler).await;
-                })
+                let registry = &*caller.data().registry;
+                let plugin_name = caller.data().name.clone();
+                registry.register_handler(plugin_name, handler);
             },
         )
         .unwrap();
     linker
-        .func_wrap_async(
+        .func_wrap(
             "host",
             "register_event",
-            |mut caller: Caller<PluginHostData>, (ptr, len): (u32, u32)| {
-                Box::new(async move {
-                    let memory = PluginMemory::from(&mut caller);
-                    let event_name: String = memory.read_msgpack(FatPtr::new(ptr, len).unwrap());
+            |mut caller: Caller<PluginHostData>, ptr: u32, len: u32| {
+                let memory = PluginMemory::from(&mut caller);
+                let event_name: String = memory.read_msgpack(FatPtr::new(ptr, len).unwrap());
 
-                    let registry = &*caller.data().registry;
-                    registry.register_event(event_name).await;
-                })
+                let registry = &*caller.data().registry;
+                registry.register_event(event_name);
             },
         )
         .unwrap();
 }
 
-pub async fn register_default_events(registry: &EventRegistry) {
-    registry
-        .register_event(PlayerJoinEvent::NAME.to_string())
-        .await;
-    registry
-        .register_event(PlayerLeaveEvent::NAME.to_string())
-        .await;
-    registry
-        .register_event(PlayerChatEvent::NAME.to_string())
-        .await;
-    registry
-        .register_event(BlockBreakEvent::NAME.to_string())
-        .await;
-    registry
-        .register_event(BlockPlaceEvent::NAME.to_string())
-        .await;
+pub fn register_default_events(registry: &EventRegistry) {
+    registry.register_event(PlayerJoinEvent::NAME.to_string());
+    registry.register_event(PlayerLeaveEvent::NAME.to_string());
+    registry.register_event(PlayerChatEvent::NAME.to_string());
+    registry.register_event(BlockBreakEvent::NAME.to_string());
+    registry.register_event(BlockPlaceEvent::NAME.to_string());
 }

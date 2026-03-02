@@ -2,7 +2,7 @@ use crate::event::Event;
 use crate::utils::fat::FatPtr;
 use rmp_serde::to_vec;
 use std::marker::PhantomData;
-use std::mem::forget;
+use std::mem;
 
 #[derive(Debug, Default)]
 pub struct EventResult<T: Event> {
@@ -24,7 +24,8 @@ impl<T: Event> EventResult<T> {
         let data = to_vec(event).unwrap();
         let ptr = data.as_ptr() as u32;
         let len = data.len() as u32;
-        forget(data);
+        // SAFETY: Ownership is transferred to the WASM host, which frees this memory.
+        mem::forget(data);
         Self::new(FatPtr::new(ptr, len))
     }
 }

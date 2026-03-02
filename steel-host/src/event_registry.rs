@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, HashMap};
 
 use crate::{PluginManager, utils::memory::PluginMemory};
+use parking_lot::Mutex;
 use steel_plugin_sdk::event::{Event, EventHandlerFlags, handler::EventHandler};
-use tokio::sync::Mutex;
 use tracing::{error, warn};
 
 /// A plugin-provided handler paired with its plugin name.
@@ -11,7 +11,7 @@ type PluginEventHandler = (String, EventHandler);
 /// Stores all registered events and their handlers.
 pub struct EventRegistry {
     /// Maps event names to their handlers.
-    registry: Mutex<HashMap<String, BTreeMap<i8, Vec<PluginEventHandler>>>>,
+    handlers: Mutex<HashMap<String, BTreeMap<i8, Vec<PluginEventHandler>>>>,
 }
 
 impl Default for EventRegistry {
@@ -24,7 +24,7 @@ impl EventRegistry {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            registry: Mutex::new(HashMap::new()),
+            handlers: Mutex::new(HashMap::new()),
         }
     }
 
@@ -32,8 +32,8 @@ impl EventRegistry {
     ///
     /// # Arguments
     /// * `event_name` - Unique name of the event to register.
-    pub async fn register_event(&self, event_name: String) {
-        let mut lock = self.registry.lock().await;
+    pub fn register_event(&self, event_name: String) {
+        let mut lock = self.handlers.lock();
         if lock.contains_key(&event_name) {
             warn!("Event '{}' is already registered.", event_name);
             return;
@@ -46,8 +46,8 @@ impl EventRegistry {
     /// # Arguments
     /// * `plugin_name` - Name of the plugin providing the handler.
     /// * `handler` - Metadata describing the handler and the target event.
-    pub async fn register_handler(&self, plugin_name: String, handler: EventHandler) {
-        if let Some(handler_map) = self.registry.lock().await.get_mut(&*handler.event_name) {
+    pub fn register_handler(&self, plugin_name: String, handler: EventHandler) {
+        if let Some(handler_map) = self.handlers.lock().get_mut(&*handler.event_name) {
             handler_map
                 .entry(handler.priority)
                 .or_default()
@@ -60,6 +60,19 @@ impl EventRegistry {
         }
     }
 
+    /// Unregister all handlers belonging to a specific plugin.
+    ///
+    /// # Arguments
+    /// * `plugin_name` - Name of the plugin providing the handler.
+    pub fn unregister_handlers(&self, plugin_name: &str) {
+        let mut handlers = self.handlers.lock();
+        for handlers_list in handlers.values_mut() {
+            for handler in handlers_list.values_mut() {
+                handler.retain(|(name, _)| name != plugin_name);
+            }
+        }
+    }
+
     /// Dispatches an event to all registered handlers for its type.
     ///
     /// Handlers are executed in order of their priority. If an event
@@ -69,9 +82,8 @@ impl EventRegistry {
     /// # Arguments
     /// * `manager` - The plugin manager used to look up plugin instances.
     /// * `event` - The event to dispatch.
-    pub async fn call_event<T: Event>(&self, manager: &mut PluginManager, event: &mut T) {
-        let lock = self.registry.lock().await;
-        let Some(handler_map) = lock.get(T::NAME) else {
+    pub async fn dispatch<T: Event>(&self, manager: &mut PluginManager, event: &mut T) {
+        let Some(handler_map) = self.handlers.lock().get(T::NAME).cloned() else {
             return;
         };
         for handler_list in handler_map.values() {
