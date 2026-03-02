@@ -100,9 +100,11 @@ impl EventRegistry {
                     .await
                     .unwrap();
 
-                let memory = PluginMemory::new(instance.memory, &mut instance.store);
+                let mut lock = instance.store.lock().await;
+                let memory = PluginMemory::new(instance.memory, &mut *lock);
                 if let Some(fat) = result.fat {
                     *event = memory.read_msgpack(fat);
+                    drop(lock);
                     instance.dealloc(fat).await.unwrap();
                 }
             }

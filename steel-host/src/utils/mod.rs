@@ -1,8 +1,23 @@
-use std::collections::{HashMap, HashSet, VecDeque};
-
 use crate::PluginMeta;
+use std::collections::{HashMap, HashSet, VecDeque};
+use wasmparser::{Parser, Payload};
 
 pub mod memory;
+
+pub fn read_custom_section<'a>(
+    bytes: &'a [u8],
+    name: &str,
+) -> wasmparser::Result<Option<&'a [u8]>> {
+    for payload in Parser::new(0).parse_all(bytes) {
+        match payload? {
+            Payload::CustomSection(reader) if reader.name() == name => {
+                return Ok(Some(reader.data()));
+            }
+            _ => {}
+        }
+    }
+    Ok(None)
+}
 
 pub fn sort_plugins(plugins: Vec<PluginMeta>) -> (Vec<PluginMeta>, Vec<PluginMeta>) {
     let mut in_degree: Vec<usize> = vec![0; plugins.len()];

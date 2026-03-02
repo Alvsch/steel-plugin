@@ -1,27 +1,33 @@
+use rmp_serde::decode;
 use std::{
     io,
     path::{Path, PathBuf},
     sync::Arc,
 };
-
-use rmp_serde::decode;
 use thiserror::Error;
 use tokio::fs::{create_dir_all, read, read_dir};
+use tokio::sync::{Mutex, RwLock};
 use tracing::error;
 use wasmparser::BinaryReaderError;
-use wasmtime::{Engine, Linker, Module, Store};
+use wasmtime::{Engine, Linker, Memory, Module, Store};
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder, p1::WasiP1Ctx};
 
+use crate::rpc::{HostRpc, PluginId};
+use crate::utils::read_custom_section;
 use crate::{
     EventRegistry, PluginExports, PluginMeta,
     instance::{PluginInstance, PluginStatus},
-    read_custom_section, utils,
+    utils,
 };
 
 pub struct PluginHostData {
     pub name: String,
+    pub plugin_id: PluginId,
     pub wasi: WasiP1Ctx,
     pub registry: Arc<EventRegistry>,
+    pub rpc: Arc<RwLock<HostRpc>>,
+    pub exports: Option<PluginExports>,
+    pub memory: Option<Memory>,
 }
 
 #[derive(Debug, Error)]
@@ -45,6 +51,7 @@ pub struct PluginLoader {
     linker: Linker<PluginHostData>,
     data_dir: PathBuf,
     registry: Arc<EventRegistry>,
+    rpc: Arc<RwLock<HostRpc>>,
 }
 
 impl PluginLoader {
@@ -54,12 +61,14 @@ impl PluginLoader {
         linker: Linker<PluginHostData>,
         data_dir: PathBuf,
         registry: Arc<EventRegistry>,
+        rpc: Arc<RwLock<HostRpc>>,
     ) -> Self {
         Self {
             engine,
             linker,
             data_dir,
             registry,
+            rpc,
         }
     }
 
@@ -124,26 +133,43 @@ impl PluginLoader {
             .preopened_dir(host_path, "/", DirPerms::all(), FilePerms::all())?
             .build_p1();
 
-        let mut store = Store::try_new(
+        let mut rpc = self.rpc.write().await;
+        let plugin_id = rpc.next_id();
+        let store = Store::try_new(
             &self.engine,
             PluginHostData {
                 name: plugin_meta.name.clone(),
+                plugin_id,
                 wasi,
                 registry: self.registry.clone(),
+                rpc: self.rpc.clone(),
+                exports: None,
+                memory: None,
             },
         )?;
+        let store = Arc::new(Mutex::new(store));
+        rpc.register_plugin(plugin_id, plugin_meta.name.clone(), store.clone());
+
+        let mut lock = store.lock().await;
 
         // init
-        let instance = self.linker.instantiate_async(&mut store, &module).await?;
-        let exports = PluginExports::resolve(&instance, &mut store)
+        let instance = self.linker.instantiate_async(&mut *lock, &module).await?;
+        let exports = PluginExports::resolve(&instance, &mut lock)
             .map_err(PluginLoaderError::PluginExportResolve)?;
+
+        lock.data_mut().exports = Some(exports.clone());
+
+        let memory = instance.get_memory(&mut *lock, "memory").unwrap();
+        lock.data_mut().memory = Some(memory);
+
+        drop(lock);
 
         Ok(PluginInstance {
             instance,
             meta: plugin_meta,
             status: PluginStatus::Disabled,
             exports,
-            memory: instance.get_memory(&mut store, "memory").unwrap(),
+            memory,
             store,
         })
     }

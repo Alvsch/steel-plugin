@@ -1,9 +1,11 @@
 use std::sync::Arc;
 
 use indexmap::IndexMap;
+use parking_lot::RwLock;
 use thiserror::Error;
 use tracing::{debug, error, warn};
 
+use crate::rpc::HostRpc;
 use crate::{EventRegistry, instance::PluginInstance};
 
 #[derive(Debug, Error)]
@@ -26,6 +28,7 @@ pub enum PluginManagerError {
 
 pub struct PluginManager {
     plugins: IndexMap<String, PluginInstance>,
+    pub rpc: Arc<RwLock<HostRpc>>,
     pub registry: Arc<EventRegistry>,
 }
 
@@ -34,6 +37,7 @@ impl PluginManager {
     pub fn new(registry: Arc<EventRegistry>) -> Self {
         Self {
             plugins: IndexMap::new(),
+            rpc: Arc::new(RwLock::new(HostRpc::new())),
             registry,
         }
     }
@@ -137,6 +141,7 @@ impl PluginManager {
 
         let plugin = self.plugins.get_mut(name).unwrap();
         plugin.disable().await?;
+        self.rpc.write().unregister_plugin(name);
         self.registry.unregister_handlers(name);
         Ok(())
     }

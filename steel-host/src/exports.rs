@@ -2,6 +2,7 @@ use wasmtime::{Instance, Store, TypedFunc};
 
 use crate::PluginHostData;
 
+#[derive(Clone)]
 pub struct PluginExports {
     /// (`ptr`, `len`)
     pub alloc: TypedFunc<u32, u32>,

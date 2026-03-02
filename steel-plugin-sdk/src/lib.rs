@@ -5,15 +5,22 @@ pub use steel_plugin_macros::{
 };
 
 pub mod event;
+pub mod rpc;
 pub mod types;
 pub mod utils;
 
-mod host {
+pub(crate) mod host {
     #[link(wasm_import_module = "host")]
     unsafe extern "C" {
         pub unsafe fn info(ptr: u32, len: u32);
         pub unsafe fn register_handler(ptr: u32, len: u32);
         pub unsafe fn register_event(ptr: u32, len: u32);
+
+        // rpc
+        pub unsafe fn rpc_register(export_name: u64);
+        pub unsafe fn rpc_plugin_id(name: u64) -> u32;
+        pub unsafe fn rpc_resolve(plugin_id: u32, name: u64) -> u32;
+        pub unsafe fn rpc_dispatch(plugin_id: u32, method_id: u32, data: u64);
     }
 }
 
