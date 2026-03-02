@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use crate::PluginManager;
+use crate::{PluginManager, utils::memory::PluginMemory};
 use steel_plugin_sdk::event::{Event, EventHandlerFlags, handler::EventHandler};
 use tokio::sync::Mutex;
 use tracing::{error, warn};
@@ -88,11 +88,10 @@ impl EventRegistry {
                     .await
                     .unwrap();
 
-                if let Some((ptr, len)) = result.unpack() {
-                    let data = &instance.memory.data(&mut instance.store)
-                        [ptr as usize..(ptr + len) as usize];
-                    *event = rmp_serde::from_slice(data).unwrap();
-                    instance.dealloc(ptr, len).await.unwrap();
+                let memory = PluginMemory::new(instance.memory, &mut instance.store);
+                if let Some(fat) = result.fat {
+                    *event = memory.read_msgpack(fat);
+                    instance.dealloc(fat).await.unwrap();
                 }
             }
         }

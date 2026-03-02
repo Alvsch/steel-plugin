@@ -2,6 +2,8 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use crate::PluginMeta;
 
+pub mod memory;
+
 pub fn sort_plugins(plugins: Vec<PluginMeta>) -> (Vec<PluginMeta>, Vec<PluginMeta>) {
     let mut in_degree: Vec<usize> = vec![0; plugins.len()];
     let mut adj: Vec<Vec<usize>> = vec![vec![]; plugins.len()];

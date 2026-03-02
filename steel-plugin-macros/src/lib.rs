@@ -231,7 +231,7 @@ pub fn event_handler(args: TokenStream, input: TokenStream) -> TokenStream {
             let event = unsafe { std::slice::from_raw_parts(ptr as *const u8, len as usize) };
             let event: #event_ty = rmp_serde::from_slice(event).unwrap();
             let result = #impl_fn_name(event);
-            result.as_u64()
+            result.fat.map_or(0, |fat| fat.pack())
         }
 
         pub const #handler_const: ::steel_plugin_sdk::event::handler::EventHandler = ::steel_plugin_sdk::event::handler::EventHandler {

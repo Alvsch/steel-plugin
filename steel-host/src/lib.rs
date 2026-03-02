@@ -1,5 +1,7 @@
 use serde::Deserialize;
 use std::{fmt::Debug, path::PathBuf};
+use steel_plugin_sdk::event::handler::EventHandler;
+use steel_plugin_sdk::utils::fat::FatPtr;
 use tracing::info;
 use wasmparser::{Parser, Payload};
 use wasmtime::{Caller, Linker};
@@ -11,8 +13,11 @@ pub use crate::event_registry::EventRegistry;
 pub use crate::exports::PluginExports;
 pub use crate::loader::{PluginHostData, PluginLoader, PluginLoaderError};
 pub use crate::manager::PluginManager;
+use crate::utils::memory::PluginMemory;
 pub use instance::PluginInstance;
-use steel_plugin_sdk::event::{BlockBreakEvent, BlockPlaceEvent, Event, PlayerChatEvent, PlayerJoinEvent, PlayerLeaveEvent};
+use steel_plugin_sdk::event::{
+    BlockBreakEvent, BlockPlaceEvent, Event, PlayerChatEvent, PlayerJoinEvent, PlayerLeaveEvent,
+};
 
 mod event_registry;
 mod exports;
@@ -50,9 +55,8 @@ pub fn configure_linker(linker: &mut Linker<PluginHostData>) {
             "host",
             "info",
             |mut caller: Caller<PluginHostData>, ptr: u32, len: u32| {
-                let memory = caller.get_export("memory").unwrap().into_memory().unwrap();
-                let buf = &memory.data(&caller)[ptr as usize..ptr as usize + len as usize];
-                let message = str::from_utf8(buf).unwrap();
+                let memory = PluginMemory::from(&mut caller);
+                let message: String = memory.read_msgpack(FatPtr::new(ptr, len).unwrap());
 
                 let plugin_name = caller.data().name.as_str();
                 info!("[{plugin_name}] {message}");
@@ -65,9 +69,8 @@ pub fn configure_linker(linker: &mut Linker<PluginHostData>) {
             "register_handler",
             |mut caller: Caller<PluginHostData>, (ptr, len): (u32, u32)| {
                 Box::new(async move {
-                    let memory = caller.get_export("memory").unwrap().into_memory().unwrap();
-                    let data = &memory.data(&caller)[ptr as usize..(ptr + len) as usize];
-                    let handler = rmp_serde::from_slice(data).unwrap();
+                    let memory = PluginMemory::from(&mut caller);
+                    let handler: EventHandler = memory.read_msgpack(FatPtr::new(ptr, len).unwrap());
 
                     let registry = &*caller.data().registry;
                     let plugin_name = caller.data().name.clone();
@@ -82,9 +85,8 @@ pub fn configure_linker(linker: &mut Linker<PluginHostData>) {
             "register_event",
             |mut caller: Caller<PluginHostData>, (ptr, len): (u32, u32)| {
                 Box::new(async move {
-                    let memory = caller.get_export("memory").unwrap().into_memory().unwrap();
-                    let data = &memory.data(&caller)[ptr as usize..(ptr + len) as usize];
-                    let event_name = String::from_utf8(data.to_vec()).unwrap();
+                    let memory = PluginMemory::from(&mut caller);
+                    let event_name: String = memory.read_msgpack(FatPtr::new(ptr, len).unwrap());
 
                     let registry = &*caller.data().registry;
                     registry.register_event(event_name).await;
@@ -95,9 +97,19 @@ pub fn configure_linker(linker: &mut Linker<PluginHostData>) {
 }
 
 pub async fn register_default_events(registry: &EventRegistry) {
-    registry.register_event(PlayerJoinEvent::NAME.to_string()).await;
-    registry.register_event(PlayerLeaveEvent::NAME.to_string()).await;
-    registry.register_event(PlayerChatEvent::NAME.to_string()).await;
-    registry.register_event(BlockBreakEvent::NAME.to_string()).await;
-    registry.register_event(BlockPlaceEvent::NAME.to_string()).await;
+    registry
+        .register_event(PlayerJoinEvent::NAME.to_string())
+        .await;
+    registry
+        .register_event(PlayerLeaveEvent::NAME.to_string())
+        .await;
+    registry
+        .register_event(PlayerChatEvent::NAME.to_string())
+        .await;
+    registry
+        .register_event(BlockBreakEvent::NAME.to_string())
+        .await;
+    registry
+        .register_event(BlockPlaceEvent::NAME.to_string())
+        .await;
 }

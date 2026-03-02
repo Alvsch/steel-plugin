@@ -1,39 +1,22 @@
 use crate::event::Event;
-use crate::utils;
+use crate::utils::fat::FatPtr;
 use rmp_serde::to_vec;
-use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
-use std::{mem::forget, num::NonZeroU64};
+use std::mem::forget;
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Default)]
 pub struct EventResult<T: Event> {
-    modified: Option<NonZeroU64>,
+    pub fat: Option<FatPtr>,
     _marker: PhantomData<T>,
 }
 
 impl<T: Event> EventResult<T> {
     #[must_use]
-    pub const fn new(ptr: u32, len: u32) -> Self {
-        Self::from_u64(utils::pack(ptr, len))
-    }
-
-    #[must_use]
-    pub const fn from_u64(value: u64) -> Self {
+    pub const fn new(fat: Option<FatPtr>) -> Self {
         Self {
-            modified: NonZeroU64::new(value),
+            fat,
             _marker: PhantomData,
         }
-    }
-
-    #[must_use]
-    pub fn as_u64(&self) -> u64 {
-        self.modified.map_or(0, NonZeroU64::get)
-    }
-
-    #[must_use]
-    pub fn unpack(&self) -> Option<(u32, u32)> {
-        let value = self.modified?.get();
-        Some(utils::unpack(value))
     }
 
     #[must_use]
@@ -42,6 +25,15 @@ impl<T: Event> EventResult<T> {
         let ptr = data.as_ptr() as u32;
         let len = data.len() as u32;
         forget(data);
-        Self::new(ptr, len)
+        Self::new(FatPtr::new(ptr, len))
+    }
+}
+
+impl<T: Event> From<u64> for EventResult<T> {
+    fn from(value: u64) -> Self {
+        Self {
+            fat: FatPtr::unpack(value),
+            _marker: PhantomData,
+        }
     }
 }

@@ -1,7 +1,10 @@
-use steel_plugin_sdk::event::{Event, result::EventResult};
+use steel_plugin_sdk::{
+    event::{Event, result::EventResult},
+    utils::fat::FatPtr,
+};
 use wasmtime::{Instance, Memory, Store};
 
-use crate::{PluginExports, PluginHostData, PluginMeta};
+use crate::{PluginExports, PluginHostData, PluginMeta, utils::memory::PluginMemory};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PluginStatus {
@@ -24,9 +27,10 @@ impl PluginInstance {
         self.status == PluginStatus::Enabled
     }
 
-    pub async fn write_to_memory(&mut self, buffer: &[u8]) -> Result<u32, wasmtime::Error> {
-        let ptr = self.alloc(buffer.len() as u32).await?;
-        self.memory.write(&mut self.store, ptr as usize, buffer)?;
+    pub async fn write_to_memory(&mut self, src: &[u8]) -> Result<u32, wasmtime::Error> {
+        let ptr = self.alloc(src.len() as u32).await?;
+        let mut memory = PluginMemory::new(self.memory, &mut self.store);
+        memory.write(ptr, src);
         Ok(ptr)
     }
 
@@ -34,10 +38,10 @@ impl PluginInstance {
         self.exports.alloc.call_async(&mut self.store, len).await
     }
 
-    pub async fn dealloc(&mut self, ptr: u32, len: u32) -> Result<(), wasmtime::Error> {
+    pub async fn dealloc(&mut self, fat: FatPtr) -> Result<(), wasmtime::Error> {
         self.exports
             .dealloc
-            .call_async(&mut self.store, (ptr, len))
+            .call_async(&mut self.store, (fat.ptr(), fat.len()))
             .await
     }
 
@@ -46,19 +50,18 @@ impl PluginInstance {
         handler_name: &str,
         event: &T,
     ) -> Result<EventResult<T>, wasmtime::Error> {
-        let event = rmp_serde::to_vec(event).unwrap();
-        let len = event.len() as u32;
-        let ptr = self.alloc(len).await?;
-
-        self.memory.write(&mut self.store, ptr as usize, &event)?;
+        let mut memory = PluginMemory::new(self.memory, &mut self.store);
+        let fat = memory.write_msgpack(event, &self.exports.alloc).await;
 
         let func = self
             .instance
             .get_typed_func(&mut self.store, handler_name)?;
-        let result = func.call_async(&mut self.store, (ptr, len)).await?;
+        let result: u64 = func
+            .call_async(&mut self.store, (fat.ptr(), fat.len()))
+            .await?;
 
-        self.dealloc(ptr, len).await?;
-        Ok(EventResult::from_u64(result))
+        self.dealloc(fat).await?;
+        Ok(EventResult::from(result))
     }
 
     pub async fn enable(&mut self) -> Result<(), wasmtime::Error> {
