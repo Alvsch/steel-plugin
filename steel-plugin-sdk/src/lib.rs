@@ -1,7 +1,7 @@
 use crate::event::Event;
 use crate::event::handler::EventHandler;
 pub use steel_plugin_macros::{
-    event_handler, on_disable, on_enable, plugin_meta, register_handler,
+    event_handler, export, on_disable, on_enable, plugin_meta, register_handler,
 };
 
 pub mod event;

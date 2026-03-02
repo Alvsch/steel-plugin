@@ -186,6 +186,50 @@ pub fn on_disable(_args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
+pub fn export(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(input as ItemFn);
+    if let Err(err) = validate(
+        &FnRules {
+            name: None,
+            params: Some(&["Vec < u8 >"]),
+            ret: Some("Vec < u8 >"),
+            require_pub: true,
+        },
+        &item,
+    ) {
+        return err.to_compile_error().into();
+    }
+
+    let inputs = &item.sig.inputs;
+    let arg = inputs.first().unwrap();
+
+    let fn_name = item.sig.ident;
+    let impl_fn_name = format_ident!("{}_impl", fn_name);
+
+    let stmts = &item.block.stmts;
+
+    quote! {
+        #[unsafe(no_mangle)]
+        pub extern "C" fn #fn_name(data_ptr: u64) -> u64 {
+            fn #impl_fn_name(#arg) -> Vec<u8> {
+                #(#stmts)*
+            }
+
+            let data_ptr = ::steel_plugin_sdk::utils::fat::FatPtr::unpack(data_ptr).unwrap();
+            let data = unsafe {
+                slice::from_raw_parts(data_ptr.ptr() as *mut u8, data_ptr.len() as usize).to_vec()
+            };
+
+            let return_data = #impl_fn_name(data);
+            let fat = ::steel_plugin_sdk::utils::fat::FatPtr::new(return_data.as_ptr() as u32, return_data.len() as u32).unwrap();
+            forget(return_data);
+            fat.pack()
+        }
+    }
+    .into()
+}
+
+#[proc_macro_attribute]
 pub fn event_handler(args: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemFn);
     let args = parse_macro_input!(args as EventHandlerArgs);
