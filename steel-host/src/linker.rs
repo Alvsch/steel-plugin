@@ -1,4 +1,4 @@
-use crate::PluginHostData;
+use crate::PluginState;
 use crate::utils::memory::PluginMemory;
 use steel_plugin_sdk::event::handler::EventHandler;
 use steel_plugin_sdk::utils::fat::FatPtr;
@@ -6,7 +6,7 @@ use tracing::info;
 use wasmtime::Caller;
 use wasmtime_wasi::p1::wasi_snapshot_preview1;
 
-type HostLinker = wasmtime::Linker<PluginHostData>;
+type HostLinker = wasmtime::Linker<PluginState>;
 
 pub fn configure_all(linker: &mut HostLinker) {
     configure_base(linker);
@@ -14,13 +14,12 @@ pub fn configure_all(linker: &mut HostLinker) {
 }
 
 fn configure_base(linker: &mut HostLinker) {
-    wasi_snapshot_preview1::add_to_linker(linker, |data: &mut PluginHostData| &mut data.wasi)
-        .unwrap();
+    wasi_snapshot_preview1::add_to_linker(linker, |data: &mut PluginState| &mut data.wasi).unwrap();
     linker
         .func_wrap(
             "host",
             "info",
-            |mut caller: Caller<PluginHostData>, ptr: u32, len: u32| {
+            |mut caller: Caller<PluginState>, ptr: u32, len: u32| {
                 let memory = PluginMemory::from(&mut caller);
                 let buf = memory.read(FatPtr::new(ptr, len).unwrap());
                 let message = str::from_utf8(buf).unwrap().to_string();
@@ -34,7 +33,7 @@ fn configure_base(linker: &mut HostLinker) {
         .func_wrap(
             "host",
             "register_handler",
-            |mut caller: Caller<PluginHostData>, ptr: u32, len: u32| {
+            |mut caller: Caller<PluginState>, ptr: u32, len: u32| {
                 let memory = PluginMemory::from(&mut caller);
                 let handler: EventHandler = memory.read_msgpack(FatPtr::new(ptr, len).unwrap());
 
@@ -48,7 +47,7 @@ fn configure_base(linker: &mut HostLinker) {
         .func_wrap(
             "host",
             "register_event",
-            |mut caller: Caller<PluginHostData>, ptr: u32, len: u32| {
+            |mut caller: Caller<PluginState>, ptr: u32, len: u32| {
                 let memory = PluginMemory::from(&mut caller);
                 let buf = memory.read(FatPtr::new(ptr, len).unwrap());
                 let event_name = str::from_utf8(buf).unwrap().to_string();
@@ -64,7 +63,7 @@ fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
     linker.func_wrap_async(
         "host",
         "rpc_register",
-        |mut caller: Caller<PluginHostData>, (export_name,): (u64,)| {
+        |mut caller: Caller<PluginState>, (export_name,): (u64,)| {
             Box::new(async move {
                 let export_name = FatPtr::unpack(export_name).unwrap();
                 let memory = PluginMemory::from(&mut caller);
@@ -80,7 +79,7 @@ fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
                     .typed::<u64, u64>(&mut caller)
                     .unwrap();
 
-                let PluginHostData { plugin_id, rpc, .. } = caller.data();
+                let PluginState { plugin_id, rpc, .. } = caller.data();
                 let plugin_id = *plugin_id;
                 let mut rpc = rpc.write().await;
                 let method_id = rpc.next_id();
@@ -95,7 +94,7 @@ fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
     linker.func_wrap_async(
         "host",
         "rpc_resolve_plugin",
-        |mut caller: Caller<PluginHostData>, (plugin_name_ptr,): (u64,)| {
+        |mut caller: Caller<PluginState>, (plugin_name_ptr,): (u64,)| {
             Box::new(async move {
                 let plugin_name_ptr = FatPtr::unpack(plugin_name_ptr).unwrap();
                 let memory = PluginMemory::from(&mut caller);
@@ -109,7 +108,7 @@ fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
     linker.func_wrap_async(
         "host",
         "rpc_resolve_method",
-        |mut caller: Caller<PluginHostData>, (plugin_id, method_name_ptr): (u32, u64)| {
+        |mut caller: Caller<PluginState>, (plugin_id, method_name_ptr): (u32, u64)| {
             Box::new(async move {
                 let method_name_ptr = FatPtr::unpack(method_name_ptr).unwrap();
                 let memory = PluginMemory::from(&mut caller);
@@ -123,7 +122,7 @@ fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
     linker.func_wrap_async(
         "host",
         "rpc_dispatch",
-        |mut caller: Caller<PluginHostData>, (plugin_id, method_id, data_ptr): (u32, u32, u64)| {
+        |mut caller: Caller<PluginState>, (plugin_id, method_id, data_ptr): (u32, u32, u64)| {
             Box::new(async move {
                 let data_ptr = FatPtr::unpack(data_ptr).unwrap();
                 let memory = PluginMemory::from(&mut caller);

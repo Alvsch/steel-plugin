@@ -1,17 +1,14 @@
-use rmp_serde::decode;
 use std::{
-    io,
     path::{Path, PathBuf},
     sync::Arc,
 };
-use thiserror::Error;
 use tokio::fs::{create_dir_all, read, read_dir};
 use tokio::sync::{Mutex, RwLock};
 use tracing::error;
-use wasmparser::BinaryReaderError;
 use wasmtime::{Engine, Linker, Memory, Module, Store};
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder, p1::WasiP1Ctx};
 
+use crate::error::PluginLoaderError;
 use crate::rpc::{HostRpc, PluginId};
 use crate::utils::read_custom_section;
 use crate::{
@@ -20,7 +17,7 @@ use crate::{
     utils,
 };
 
-pub struct PluginHostData {
+pub struct PluginState {
     pub name: String,
     pub plugin_id: PluginId,
     pub wasi: WasiP1Ctx,
@@ -30,25 +27,9 @@ pub struct PluginHostData {
     pub memory: Option<Memory>,
 }
 
-#[derive(Debug, Error)]
-pub enum PluginLoaderError {
-    #[error("io: {0}")]
-    Io(#[from] io::Error),
-    #[error("binary reader: {0}")]
-    BinaryReader(#[from] BinaryReaderError),
-    #[error("missing plugin meta")]
-    MissingPluginMeta,
-    #[error("invalid plugin meta: {0}")]
-    InvalidPluginMeta(decode::Error),
-    #[error("wasmtime: {0}")]
-    Wasmtime(#[from] wasmtime::Error),
-    #[error("plugin export resolve: {0}")]
-    PluginExportResolve(wasmtime::Error),
-}
-
 pub struct PluginLoader {
     engine: Engine,
-    linker: Linker<PluginHostData>,
+    linker: Linker<PluginState>,
     data_dir: PathBuf,
     registry: Arc<EventRegistry>,
     rpc: Arc<RwLock<HostRpc>>,
@@ -58,7 +39,7 @@ impl PluginLoader {
     #[must_use]
     pub const fn new(
         engine: Engine,
-        linker: Linker<PluginHostData>,
+        linker: Linker<PluginState>,
         data_dir: PathBuf,
         registry: Arc<EventRegistry>,
         rpc: Arc<RwLock<HostRpc>>,
@@ -137,7 +118,7 @@ impl PluginLoader {
         let plugin_id = rpc.next_id();
         let store = Store::try_new(
             &self.engine,
-            PluginHostData {
+            PluginState {
                 name: plugin_meta.name.clone(),
                 plugin_id,
                 wasi,

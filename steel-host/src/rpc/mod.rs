@@ -1,4 +1,4 @@
-use crate::PluginHostData;
+use crate::PluginState;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -9,7 +9,7 @@ pub type MethodId = u32;
 pub type RpcMethod = TypedFunc<u64, u64>;
 
 pub struct PluginRpc {
-    pub store: Arc<Mutex<Store<PluginHostData>>>,
+    pub store: Arc<Mutex<Store<PluginState>>>,
     methods: HashMap<MethodId, RpcMethod>,
     method_name: HashMap<String, MethodId>,
 }
@@ -69,7 +69,7 @@ impl HostRpc {
         &mut self,
         plugin_id: PluginId,
         plugin_name: String,
-        store: Arc<Mutex<Store<PluginHostData>>>,
+        store: Arc<Mutex<Store<PluginState>>>,
     ) {
         self.plugins.insert(plugin_id, PluginRpc::new(store));
         self.plugin_name.insert(plugin_name, plugin_id);
@@ -82,7 +82,7 @@ impl HostRpc {
 }
 
 impl PluginRpc {
-    fn new(store: Arc<Mutex<Store<PluginHostData>>>) -> Self {
+    fn new(store: Arc<Mutex<Store<PluginState>>>) -> Self {
         Self {
             store,
             methods: HashMap::new(),

@@ -6,7 +6,7 @@ use steel_plugin_sdk::{
 use tokio::sync::Mutex;
 use wasmtime::{Instance, Memory, Store};
 
-use crate::{PluginExports, PluginHostData, PluginMeta, utils::memory::PluginMemory};
+use crate::{PluginExports, PluginMeta, PluginState, utils::memory::PluginMemory};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PluginStatus {
@@ -20,7 +20,7 @@ pub struct PluginInstance {
     pub status: PluginStatus,
     pub exports: PluginExports,
     pub memory: Memory,
-    pub store: Arc<Mutex<Store<PluginHostData>>>,
+    pub store: Arc<Mutex<Store<PluginState>>>,
 }
 
 impl PluginInstance {

@@ -2,7 +2,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use steel_plugin_sdk::utils::fat::FatPtr;
 use wasmtime::{AsContext, AsContextMut, Caller, Extern, Memory, TypedFunc};
 
-use crate::PluginHostData;
+use crate::PluginState;
 
 pub struct PluginMemory<'a, S> {
     memory: Memory,
@@ -11,7 +11,7 @@ pub struct PluginMemory<'a, S> {
 
 impl<'a, S> PluginMemory<'a, S>
 where
-    S: AsContext<Data = PluginHostData> + AsContextMut<Data = PluginHostData>,
+    S: AsContext<Data = PluginState> + AsContextMut<Data = PluginState>,
 {
     pub const fn new(memory: Memory, store: &'a mut S) -> Self {
         Self { memory, store }
@@ -49,10 +49,8 @@ where
     }
 }
 
-impl<'a, 'b> From<&'a mut Caller<'b, PluginHostData>>
-    for PluginMemory<'a, Caller<'b, PluginHostData>>
-{
-    fn from(caller: &'a mut Caller<'b, PluginHostData>) -> Self {
+impl<'a, 'b> From<&'a mut Caller<'b, PluginState>> for PluginMemory<'a, Caller<'b, PluginState>> {
+    fn from(caller: &'a mut Caller<'b, PluginState>) -> Self {
         let memory = caller
             .get_export("memory")
             .and_then(Extern::into_memory)
