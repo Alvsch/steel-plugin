@@ -4,10 +4,9 @@ use steel_plugin_sdk::event::{
 };
 use wasmparser::{Parser, Payload};
 
+mod discover;
 pub mod memory;
-mod sorting;
-
-pub use sorting::sort_plugins;
+pub mod sorting;
 
 pub fn read_custom_section<'a>(
     bytes: &'a [u8],

@@ -2,29 +2,11 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use parking_lot::RwLock;
-use thiserror::Error;
 use tracing::{debug, error, warn};
 
+use crate::error::PluginManagerError;
 use crate::rpc::HostRpc;
 use crate::{EventRegistry, instance::PluginInstance};
-
-#[derive(Debug, Error)]
-pub enum PluginManagerError {
-    #[error("plugin not found")]
-    PluginNotFound,
-    #[error("already enabled")]
-    AlreadyEnabled,
-    #[error("already disabled")]
-    AlreadyDisabled,
-    #[error("depends on '{dependency}' which is not enabled")]
-    MissingDependency { dependency: String },
-    #[error("still depended on by: {dependents:?}")]
-    StillDependent { dependents: Box<[String]> },
-    #[error("still enabled")]
-    StillEnabled,
-    #[error("wasmtime: {0}")]
-    Wasmtime(#[from] wasmtime::Error),
-}
 
 pub struct PluginManager {
     plugins: IndexMap<String, PluginInstance>,

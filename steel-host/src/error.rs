@@ -18,3 +18,21 @@ pub enum PluginLoaderError {
     #[error("plugin export resolve: {0}")]
     PluginExportResolve(wasmtime::Error),
 }
+
+#[derive(Debug, Error)]
+pub enum PluginManagerError {
+    #[error("plugin not found")]
+    PluginNotFound,
+    #[error("already enabled")]
+    AlreadyEnabled,
+    #[error("already disabled")]
+    AlreadyDisabled,
+    #[error("depends on '{dependency}' which is not enabled")]
+    MissingDependency { dependency: String },
+    #[error("still depended on by: {dependents:?}")]
+    StillDependent { dependents: Box<[String]> },
+    #[error("still enabled")]
+    StillEnabled,
+    #[error("wasmtime: {0}")]
+    Wasmtime(#[from] wasmtime::Error),
+}
