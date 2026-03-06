@@ -83,30 +83,3 @@ impl Parse for PluginMetaArgs {
         })
     }
 }
-
-pub struct EventHandlerArgs {
-    pub priority: i8,
-    pub flags: Option<syn::Expr>,
-}
-
-impl Parse for EventHandlerArgs {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut priority = 0i8;
-        let mut flags = None;
-
-        while !input.is_empty() {
-            let ident: syn::Ident = input.parse()?;
-            input.parse::<Token![=]>()?;
-            match ident.to_string().as_str() {
-                "priority" => priority = input.parse::<syn::LitInt>()?.base10_parse()?,
-                "flags" => flags = Some(input.parse::<syn::Expr>()?),
-                _ => return Err(syn::Error::new(ident.span(), "unknown argument")),
-            }
-            if input.peek(Token![,]) {
-                input.parse::<Token![,]>()?;
-            }
-        }
-
-        Ok(Self { priority, flags })
-    }
-}

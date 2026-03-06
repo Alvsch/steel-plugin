@@ -12,6 +12,7 @@ pub struct PluginRpc {
     pub store: Arc<Mutex<Store<PluginState>>>,
     methods: HashMap<MethodId, RpcMethod>,
     method_name: HashMap<String, MethodId>,
+    pub alloc: TypedFunc<u32, u32>,
 }
 
 pub struct HostRpc {
@@ -70,8 +71,9 @@ impl HostRpc {
         plugin_id: PluginId,
         plugin_name: String,
         store: Arc<Mutex<Store<PluginState>>>,
+        alloc: TypedFunc<u32, u32>,
     ) {
-        self.plugins.insert(plugin_id, PluginRpc::new(store));
+        self.plugins.insert(plugin_id, PluginRpc::new(store, alloc));
         self.plugin_name.insert(plugin_name, plugin_id);
     }
 
@@ -82,11 +84,12 @@ impl HostRpc {
 }
 
 impl PluginRpc {
-    fn new(store: Arc<Mutex<Store<PluginState>>>) -> Self {
+    fn new(store: Arc<Mutex<Store<PluginState>>>, alloc: TypedFunc<u32, u32>) -> Self {
         Self {
             store,
             methods: HashMap::new(),
             method_name: HashMap::new(),
+            alloc,
         }
     }
 

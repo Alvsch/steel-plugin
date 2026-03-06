@@ -1,38 +1,31 @@
-pub use crate::event_registry::EventRegistry;
-pub use crate::exports::PluginExports;
-pub use crate::manager::PluginManager;
-pub use instance::PluginInstance;
-pub use meta::PluginMeta;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs::{create_dir_all, read, read_dir};
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 use tracing::error;
-pub use utils::register_default_events;
 
 use crate::error::PluginLoaderError;
 use crate::linker::configure_all;
+use crate::plugin::meta::PluginMeta;
 use crate::plugin::{PluginState, PluginStore};
 use crate::rpc::HostRpc;
 use crate::utils::read_custom_section;
 use crate::utils::sorting::sort_plugins;
 pub use wasmtime;
-use wasmtime::{Config, Engine, Instance, Linker, Module, Store};
+use wasmtime::{Config, Engine, Linker, Module, Store};
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder};
 
 pub mod error;
-mod event_registry;
-mod exports;
-mod instance;
 pub mod linker;
-mod manager;
-mod meta;
 pub mod plugin;
 pub mod rpc;
 mod utils;
 
+pub use utils::discover::discover_plugins;
+
 pub struct HostState {
     rpc: RwLock<HostRpc>,
+    enabled_plugins: RwLock<Vec<PluginStore>>,
 }
 
 pub struct PluginHost {
@@ -54,6 +47,7 @@ impl PluginHost {
             linker,
             state: Arc::new(HostState {
                 rpc: RwLock::new(HostRpc::new()),
+                enabled_plugins: RwLock::new(Vec::new()),
             }),
         })
     }
@@ -103,7 +97,7 @@ impl PluginHost {
     pub async fn load_plugin(
         &mut self,
         plugin_meta: PluginMeta,
-    ) -> Result<(Arc<PluginStore>, Instance), PluginLoaderError> {
+    ) -> Result<PluginStore, PluginLoaderError> {
         let bytes = read(&plugin_meta.file_path).await?;
 
         let precompiled = self.engine.precompile_module(&bytes)?;
@@ -117,11 +111,13 @@ impl PluginHost {
             .build_p1();
 
         let state = PluginState::new(self.state.clone(), wasi, plugin_meta).await;
-        let store = Arc::new(PluginStore {
-            store: Mutex::new(Store::new(&self.engine, state)),
-        });
-
-        let instance = self.linker.instantiate(&mut *store.lock().await, &module)?;
-        Ok((store, instance))
+        let mut store = Store::new(&self.engine, state);
+        let instance = self.linker.instantiate(&mut store, &module)?;
+        store
+            .data_mut()
+            .instance
+            .set(instance)
+            .expect("instance already initialized");
+        Ok(PluginStore::new(store, instance))
     }
 }

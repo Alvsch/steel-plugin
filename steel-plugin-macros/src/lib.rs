@@ -1,8 +1,7 @@
 use proc_macro::{Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{Error, FnArg, Ident, ItemFn, Visibility, parse_macro_input, spanned::Spanned};
+use syn::{Error, FnArg, ItemFn, Visibility, parse_macro_input, spanned::Spanned};
 
-use crate::args::EventHandlerArgs;
 use crate::{args::PluginMetaArgs, rules::FnRules};
 
 mod args;
@@ -225,75 +224,6 @@ pub fn export(_args: TokenStream, input: TokenStream) -> TokenStream {
             forget(return_data);
             fat.pack()
         }
-    }
-    .into()
-}
-
-#[proc_macro_attribute]
-pub fn event_handler(args: TokenStream, input: TokenStream) -> TokenStream {
-    let item = parse_macro_input!(input as ItemFn);
-    let args = parse_macro_input!(args as EventHandlerArgs);
-
-    let inputs = &item.sig.inputs;
-    let (event_pat, event_ty) = if let Some(FnArg::Typed(pat_ty)) = inputs.first() {
-        (&pat_ty.pat, &pat_ty.ty)
-    } else {
-        return Error::new(item.sig.span(), "expected at least one parameter")
-            .into_compile_error()
-            .into();
-    };
-
-    if let Err(err) = validate(
-        &FnRules {
-            require_pub: true,
-            ret: Some(&format!("EventResult < {} >", quote! { #event_ty })),
-            ..Default::default()
-        },
-        &item,
-    ) {
-        return err.to_compile_error().into();
-    }
-
-    let priority = args.priority;
-    let flags = args.flags.unwrap_or_else(
-        || syn::parse_quote! { ::steel_plugin_sdk::event::EventHandlerFlags::empty() },
-    );
-
-    let export_fn_name = format_ident!("__{}", item.sig.ident);
-    let export_fn_name_str = export_fn_name.to_string();
-    let impl_fn_name = format_ident!("{}_impl", export_fn_name);
-    let handler_const = format_ident!("__{}", item.sig.ident.to_string().to_uppercase());
-    let stmts = &item.block.stmts;
-
-    quote! {
-        #[unsafe(no_mangle)]
-        pub extern "C" fn #export_fn_name(ptr: u32, len: u32) -> u64 {
-            fn #impl_fn_name(#event_pat: #event_ty) -> EventResult<#event_ty> {
-                #(#stmts)*
-            }
-
-            let event = unsafe { std::slice::from_raw_parts(ptr as *const u8, len as usize) };
-            let event: #event_ty = rmp_serde::from_slice(event).unwrap();
-            let result = #impl_fn_name(event);
-            result.fat.map_or(0, |fat| fat.pack())
-        }
-
-        pub const #handler_const: ::steel_plugin_sdk::event::handler::EventHandler = ::steel_plugin_sdk::event::handler::EventHandler {
-            event_name: std::borrow::Cow::Borrowed(<#event_ty as ::steel_plugin_sdk::event::Event>::NAME),
-            handler_name: std::borrow::Cow::Borrowed(#export_fn_name_str),
-            priority: #priority,
-            flags: #flags,
-        };
-    }
-    .into()
-}
-
-#[proc_macro]
-pub fn register_handler(input: TokenStream) -> TokenStream {
-    let fn_name = parse_macro_input!(input as Ident);
-    let handler_const = format_ident!("__{}", fn_name.to_string().to_uppercase());
-    quote! {
-        ::steel_plugin_sdk::register_handler(&#handler_const);
     }
     .into()
 }

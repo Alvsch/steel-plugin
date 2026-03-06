@@ -1,10 +1,6 @@
-use crate::EventRegistry;
-use steel_plugin_sdk::event::{
-    BlockBreakEvent, BlockPlaceEvent, Event, PlayerChatEvent, PlayerJoinEvent, PlayerLeaveEvent,
-};
 use wasmparser::{Parser, Payload};
 
-mod discover;
+pub mod discover;
 pub mod memory;
 pub mod sorting;
 
@@ -21,12 +17,4 @@ pub fn read_custom_section<'a>(
         }
     }
     Ok(None)
-}
-
-pub fn register_default_events(registry: &EventRegistry) {
-    registry.register_event(PlayerJoinEvent::NAME.to_string());
-    registry.register_event(PlayerLeaveEvent::NAME.to_string());
-    registry.register_event(PlayerChatEvent::NAME.to_string());
-    registry.register_event(BlockBreakEvent::NAME.to_string());
-    registry.register_event(BlockPlaceEvent::NAME.to_string());
 }
