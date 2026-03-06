@@ -191,7 +191,7 @@ pub fn export(_args: TokenStream, input: TokenStream) -> TokenStream {
         &FnRules {
             name: None,
             params: Some(&["Vec < u8 >"]),
-            ret: Some("Vec < u8 >"),
+            ret: Some("Option < Vec < u8 > >"),
             require_pub: true,
         },
         &item,
@@ -210,7 +210,7 @@ pub fn export(_args: TokenStream, input: TokenStream) -> TokenStream {
     quote! {
         #[unsafe(no_mangle)]
         pub extern "C" fn #fn_name(data_ptr: u64) -> u64 {
-            fn #impl_fn_name(#arg) -> Vec<u8> {
+            fn #impl_fn_name(#arg) -> Option<Vec<u8>> {
                 #(#stmts)*
             }
 
@@ -219,7 +219,9 @@ pub fn export(_args: TokenStream, input: TokenStream) -> TokenStream {
                 slice::from_raw_parts(data_ptr.ptr() as *mut u8, data_ptr.len() as usize).to_vec()
             };
 
-            let return_data = #impl_fn_name(data);
+            let Some(return_data) = #impl_fn_name(data) else {
+                return 0;
+            };
             let fat = ::steel_plugin_sdk::utils::fat::FatPtr::new(return_data.as_ptr() as u32, return_data.len() as u32).unwrap();
             forget(return_data);
             fat.pack()

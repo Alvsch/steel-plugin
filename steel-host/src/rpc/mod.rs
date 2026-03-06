@@ -1,11 +1,10 @@
 use crate::PluginState;
 use std::collections::HashMap;
 use std::sync::Arc;
+use steel_plugin_sdk::rpc::{MethodId, PluginId};
 use tokio::sync::Mutex;
 use wasmtime::{Store, TypedFunc};
 
-pub type PluginId = u32;
-pub type MethodId = u32;
 pub type RpcMethod = TypedFunc<u64, u64>;
 
 pub struct PluginRpc {

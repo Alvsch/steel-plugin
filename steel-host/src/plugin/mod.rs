@@ -1,8 +1,8 @@
 use crate::error::PluginManagerError;
-use crate::rpc::PluginId;
 use crate::{HostState, PluginMeta};
 use std::cell::OnceCell;
 use std::sync::Arc;
+use steel_plugin_sdk::rpc::PluginId;
 use tokio::sync::{Mutex, MutexGuard};
 use wasmtime::{Instance, Store};
 use wasmtime_wasi::p1::WasiP1Ctx;

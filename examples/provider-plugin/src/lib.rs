@@ -11,11 +11,13 @@ plugin_meta!(
 );
 
 #[export]
-pub fn get_balance(data: Vec<u8>) -> Vec<u8> {
+pub fn get_balance(data: Vec<u8>) -> Option<Vec<u8>> {
     let msg = str::from_utf8(&data).unwrap();
-    info(&format!("get_balance: {msg}"));
 
-    Vec::new()
+    let result = format!("get_balance: {msg}");
+    info(&result);
+
+    Some(result.into_bytes())
 }
 
 #[on_enable]

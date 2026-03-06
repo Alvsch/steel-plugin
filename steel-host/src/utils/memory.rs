@@ -13,6 +13,7 @@ impl<'a, S> PluginMemory<'a, S>
 where
     S: AsContext<Data = PluginState> + AsContextMut<Data = PluginState>,
 {
+    #[inline]
     pub const fn new(memory: Memory, store: &'a mut S) -> Self {
         Self { memory, store }
     }
