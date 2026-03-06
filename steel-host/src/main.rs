@@ -1,10 +1,13 @@
 use std::path::PathBuf;
 use steel_host::{PluginHost, discover_plugins};
 use tokio::fs::create_dir_all;
+use tracing::Level;
 use wasmtime::{Config, OptLevel};
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+
     let mut config = Config::new();
     config.cranelift_opt_level(OptLevel::Speed);
 

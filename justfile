@@ -5,6 +5,9 @@ build-plugin:
 build: build-plugin
     cargo build -p steel-host
 
+run: build
+    cargo run --bin steel-host
+
 fmt:
     cargo fmt
 

@@ -11,7 +11,7 @@ plugin_meta!(
 #[on_enable]
 pub fn on_enable() {
     info("hello from the consumer!");
-    rpc_dispatch(0, 2, b"hello");
+    rpc_dispatch(0, 1, b"hello");
 }
 
 #[on_disable]

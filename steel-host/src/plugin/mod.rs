@@ -45,23 +45,34 @@ impl PluginState {
 
 #[derive(Clone)]
 pub struct PluginStore {
-    inner: Arc<Mutex<(Store<PluginState>, Instance)>>,
+    inner: Arc<Mutex<Store<PluginState>>>,
 }
 
 impl PluginStore {
     #[must_use]
-    pub fn new(store: Store<PluginState>, instance: Instance) -> Self {
+    pub fn new(store: Store<PluginState>) -> Self {
         Self {
-            inner: Arc::new(Mutex::new((store, instance))),
+            inner: Arc::new(Mutex::new(store)),
         }
     }
 
-    pub async fn lock(&self) -> MutexGuard<'_, (Store<PluginState>, Instance)> {
+    pub async fn lock(&self) -> MutexGuard<'_, Store<PluginState>> {
         self.inner.lock().await
     }
 
     pub async fn enable_plugin(&self) -> Result<(), PluginManagerError> {
-        let (store, instance) = &mut *self.lock().await;
+        let store = &mut *self.lock().await;
+        let instance = store.data().instance();
+        let alloc = instance.get_typed_func(&mut *store, "alloc")?;
+
+        let data = store.data();
+        data.host.rpc.write().await.register_plugin(
+            data.plugin_id,
+            data.meta.name.clone(),
+            self.inner.clone(),
+            alloc,
+        );
+
         let on_enable = instance.get_typed_func::<(), ()>(&mut *store, "on_enable")?;
         on_enable.call_async(&mut *store, ()).await?;
 

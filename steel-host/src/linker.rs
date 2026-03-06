@@ -99,30 +99,30 @@ fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
                 let data = memory.read(data_ptr).to_vec();
 
                 let rpc = caller.data().host.rpc.read().await;
-                let plugin = rpc.get_plugin(plugin_id).unwrap();
-                let method = plugin.get_method(method_id);
+                let provider = rpc.get_plugin(plugin_id).unwrap();
+                let method = provider.get_method(method_id);
 
-                let mut remote_store = plugin.store.lock().await;
+                let mut provider_store = provider.store.lock().await;
 
                 let len = data.len() as u32;
-                let ptr = plugin
+                let ptr = provider
                     .alloc
-                    .call_async(&mut *remote_store, len)
+                    .call_async(&mut *provider_store, len)
                     .await
                     .unwrap();
 
-                let remote_memory = remote_store
+                let provider_memory = provider_store
                     .data()
                     .instance()
-                    .get_memory(&mut *remote_store, "memory")
+                    .get_memory(&mut *provider_store, "memory")
                     .unwrap();
 
-                let mut remote_memory = PluginMemory::new(remote_memory, &mut *remote_store);
-                remote_memory.write(ptr, &data);
+                let mut provider_memory = PluginMemory::new(provider_memory, &mut *provider_store);
+                provider_memory.write(ptr, &data);
 
                 let fat = FatPtr::new(ptr, len).unwrap();
                 method
-                    .call_async(&mut *remote_store, fat.pack())
+                    .call_async(&mut *provider_store, fat.pack())
                     .await
                     .unwrap();
             })
