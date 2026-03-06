@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 /// A fat pointer consisting of a 32-bit address and a 32-bit length, packed
 /// into a single `u64`.
+#[repr(transparent)]
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FatPtr(NonZeroU64);
 

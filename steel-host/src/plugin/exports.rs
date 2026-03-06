@@ -1,7 +1,8 @@
 use wasmtime::{Instance, Store, TypedFunc};
 
-use crate::PluginHostData;
+use crate::PluginState;
 
+#[derive(Clone)]
 pub struct PluginExports {
     /// (`ptr`, `len`)
     pub alloc: TypedFunc<u32, u32>,
@@ -12,10 +13,7 @@ pub struct PluginExports {
 }
 
 impl PluginExports {
-    pub fn resolve(
-        instance: &Instance,
-        store: &mut Store<PluginHostData>,
-    ) -> wasmtime::Result<Self> {
+    pub fn resolve(instance: &Instance, store: &mut Store<PluginState>) -> wasmtime::Result<Self> {
         Ok(Self {
             alloc: instance.get_typed_func(&mut *store, "alloc")?,
             dealloc: instance.get_typed_func(&mut *store, "dealloc")?,

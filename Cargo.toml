@@ -1,9 +1,10 @@
 [workspace]
 members = [
     "steel-host",
-    "steel-plugin",
     "steel-plugin-macros",
-    "steel-plugin-sdk"
+    "steel-plugin-sdk",
+    "examples/consumer-plugin",
+    "examples/provider-plugin",
 ]
 resolver = "2"
 
