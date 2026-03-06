@@ -1,22 +1,3 @@
-// Plugin A -> Host -> Plugin B
-//
-// plugin defined interface
-// accessible to host for registration and plugin for usage
-//
-// rpc_plugin_id(name: &str) -> u32
-//
-// register interface
-// rpc_register(export_name: &str);
-//
-// call interface
-// rpc_resolve(plugin_id: u32, name: &str) -> u32
-// rpc_dispatch(plugin_id: u32, method_id: u32, data: &[u8]);
-//
-// pub unsafe fn rpc_register(export_name: u64);
-// pub unsafe fn rpc_plugin_id(plugin_name: u64) -> u32;
-// pub unsafe fn rpc_resolve(plugin_id: u32, name: u64) -> u32;
-// pub unsafe fn rpc_dispatch(plugin_id: u32, method_id: u32, data: u64) -> u64;
-
 use crate::host;
 use crate::utils::fat::FatPtr;
 
