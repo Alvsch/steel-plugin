@@ -9,6 +9,8 @@ async fn main() {
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
     let mut config = Config::new();
+    #[cfg(feature = "profiler")]
+    config.profiler(wasmtime::ProfilingStrategy::JitDump);
     config.cranelift_opt_level(OptLevel::Speed);
 
     let plugins_folder = PathBuf::from("plugins");

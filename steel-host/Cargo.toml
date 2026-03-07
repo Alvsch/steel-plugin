@@ -5,11 +5,9 @@ edition.workspace = true
 authors.workspace = true
 
 [features]
-debug-wasm = [
+profiler = [
+    "wasmtime/profiling",
     "wasmtime/demangle",
-    "wasmtime/addr2line",
-    "wasmtime/coredump",
-    "wasmtime/debug-builtins",
 ]
 
 [dependencies]
@@ -27,10 +25,7 @@ wasmtime = { workspace = true, features = [
 wasmtime-wasi.workspace = true
 wasmparser = { workspace = true, features = ["std", "simd"] }
 
-indexmap.workspace = true
 thiserror.workspace = true
-uuid = { workspace = true, features = ["v4"] }
-parking_lot.workspace = true
 
 serde.workspace = true
 rmp-serde.workspace = true
