@@ -84,4 +84,20 @@ impl PluginStore {
 
         Ok(())
     }
+
+    pub async fn disable_plugin(&self) -> Result<(), PluginManagerError> {
+        let store = &mut *self.lock().await;
+        let exports = store.data().exports().clone();
+
+        exports.on_disable.call_async(&mut *store, ()).await?;
+        store.data_mut().status = PluginStatus::Disabled;
+
+        let data = store.data();
+        let mut enabled = data.host.enabled_plugins.write().await;
+        enabled.retain(|p| !Arc::ptr_eq(&p.inner, &self.inner));
+
+        let mut rpc = data.host.rpc.write().await;
+        rpc.unregister_plugin(&data.meta.name);
+        Ok(())
+    }
 }

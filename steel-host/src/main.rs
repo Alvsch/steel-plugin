@@ -12,6 +12,7 @@ async fn main() {
     #[cfg(feature = "profiler")]
     config.profiler(wasmtime::ProfilingStrategy::JitDump);
     config.cranelift_opt_level(OptLevel::Speed);
+    config.wasm_multi_memory(false);
 
     let plugins_folder = PathBuf::from("plugins");
     create_dir_all(&plugins_folder).await.unwrap();
