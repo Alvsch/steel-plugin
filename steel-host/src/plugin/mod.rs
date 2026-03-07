@@ -3,6 +3,7 @@ use crate::{HostState, PluginMeta};
 use std::cell::OnceCell;
 use std::sync::Arc;
 use steel_plugin_sdk::rpc::PluginId;
+use steel_plugin_sdk::utils::fat::FatPtr;
 use tokio::sync::{Mutex, MutexGuard};
 use wasmtime::{Instance, Store};
 use wasmtime_wasi::p1::WasiP1Ctx;
@@ -23,6 +24,7 @@ pub struct PluginState {
     pub status: PluginStatus,
     pub wasi: WasiP1Ctx,
     pub instance: OnceCell<Instance>,
+    pub scratch: FatPtr,
 }
 
 impl PluginState {
@@ -35,6 +37,7 @@ impl PluginState {
             status: PluginStatus::Disabled,
             wasi,
             instance: OnceCell::new(),
+            scratch: FatPtr::new(1, 1).unwrap(),
         }
     }
 

@@ -2,12 +2,15 @@ use wasmtime::{Instance, Store, TypedFunc};
 
 use crate::PluginState;
 
+pub type AllocFunc = TypedFunc<u32, u32>;
+pub type DeallocFunc = TypedFunc<(u32, u32), ()>;
+
 #[derive(Clone)]
 pub struct PluginExports {
     /// (`ptr`, `len`)
-    pub alloc: TypedFunc<u32, u32>,
+    pub alloc: AllocFunc,
     /// (`ptr`, `len`)
-    pub dealloc: TypedFunc<(u32, u32), ()>,
+    pub dealloc: DeallocFunc,
     pub on_enable: TypedFunc<(), ()>,
     pub on_disable: TypedFunc<(), ()>,
 }

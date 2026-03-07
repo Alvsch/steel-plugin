@@ -190,7 +190,7 @@ pub fn export(_args: TokenStream, input: TokenStream) -> TokenStream {
     if let Err(err) = validate(
         &FnRules {
             name: None,
-            params: Some(&["Vec < u8 >"]),
+            params: Some(&["& [u8]"]),
             ret: Some("Option < Vec < u8 > >"),
             require_pub: true,
         },
@@ -216,7 +216,7 @@ pub fn export(_args: TokenStream, input: TokenStream) -> TokenStream {
 
             let data_ptr = ::steel_plugin_sdk::utils::fat::FatPtr::unpack(data_ptr).unwrap();
             let data = unsafe {
-                slice::from_raw_parts(data_ptr.ptr() as *mut u8, data_ptr.len() as usize).to_vec()
+                slice::from_raw_parts(data_ptr.ptr() as *mut u8, data_ptr.len() as usize)
             };
 
             let Some(return_data) = #impl_fn_name(data) else {

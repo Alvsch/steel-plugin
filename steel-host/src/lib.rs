@@ -8,6 +8,7 @@ use crate::linker::configure_all;
 use crate::plugin::meta::PluginMeta;
 use crate::plugin::{PluginState, PluginStore};
 use crate::rpc::HostRpc;
+use steel_plugin_sdk::utils::fat::FatPtr;
 pub use wasmtime;
 use wasmtime::{Config, Engine, Linker, Module, Store};
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder};
@@ -19,6 +20,8 @@ pub mod rpc;
 mod utils;
 
 pub use utils::discover::discover_plugins;
+
+pub const SCRATCH_SIZE: u32 = 4 * 1024;
 
 pub struct HostState {
     rpc: RwLock<HostRpc>,
@@ -68,11 +71,17 @@ impl PluginHost {
         let state = PluginState::new(self.state.clone(), wasi, plugin_meta).await;
         let mut store = Store::new(&self.engine, state);
         let instance = self.linker.instantiate_async(&mut store, &module).await?;
-        store
-            .data_mut()
-            .instance
+
+        // preallocate scratch
+        let alloc = instance.get_typed_func::<u32, u32>(&mut store, "alloc")?;
+        let scratch_ptr = alloc.call_async(&mut store, SCRATCH_SIZE).await?;
+        let data = store.data_mut();
+        data.scratch = FatPtr::new(scratch_ptr, SCRATCH_SIZE).unwrap();
+
+        data.instance
             .set(instance)
             .expect("instance already initialized");
+
         Ok(PluginStore::new(store))
     }
 }

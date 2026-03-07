@@ -4,7 +4,7 @@ use steel_plugin_sdk::{
 };
 use wasmtime::Caller;
 
-use crate::{plugin::PluginState, utils::memory::PluginMemory};
+use crate::{plugin::PluginState, utils, utils::memory::PluginMemory};
 
 pub async fn register(mut caller: Caller<'_, PluginState>, export_name: u64) {
     let export_name = FatPtr::unpack(export_name).unwrap();
@@ -66,26 +66,26 @@ pub async fn dispatch(
     let method = provider.get_method(method_id);
     let mut provider_store = provider.store.lock().await;
 
-    // Allocate data into provider
-    let len = data.len() as u32;
-    let ptr = provider
-        .alloc
-        .call_async(&mut *provider_store, len)
-        .await
-        .unwrap();
-
     let memory = provider_store
         .data()
         .instance()
         .get_memory(&mut *provider_store, "memory")
         .unwrap();
 
-    let mut provider_memory = PluginMemory::new(memory, &mut *provider_store);
-    provider_memory.write(ptr, &data);
+    let scratch = provider_store.data().scratch;
 
-    let fat_data = FatPtr::new(ptr, len).unwrap();
+    let fat_data =
+        utils::write_scratch(&mut provider_store, memory, &provider.alloc, scratch, &data)
+            .await
+            .unwrap();
+
     let result = method
         .call_async(&mut *provider_store, fat_data.pack())
+        .await
+        .unwrap();
+
+    let provider_instance = provider_store.data().instance();
+    utils::dealloc_scratch(&mut provider_store, &provider_instance, fat_data)
         .await
         .unwrap();
 
