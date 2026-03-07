@@ -36,7 +36,6 @@ impl PluginRpc {
 pub struct HostRpc {
     plugins: BTreeMap<PluginId, PluginRpc>,
     plugin_name: HashMap<String, PluginId>,
-    id: u32,
 }
 
 impl Default for HostRpc {
@@ -51,14 +50,7 @@ impl HostRpc {
         Self {
             plugins: BTreeMap::new(),
             plugin_name: HashMap::new(),
-            id: 0,
         }
-    }
-
-    pub const fn next_id(&mut self) -> u32 {
-        let next_id = self.id;
-        self.id += 1;
-        next_id
     }
 
     #[must_use]

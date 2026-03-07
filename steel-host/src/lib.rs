@@ -1,39 +1,35 @@
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use steel_plugin_sdk::utils::fat::FatPtr;
 use tokio::fs::{create_dir_all, read};
-use tokio::sync::RwLock;
+use wasmtime::{Config, Engine, Linker, Module, Store};
+use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder};
 
 use crate::error::PluginLoaderError;
 use crate::linker::configure_all;
+use crate::plugin::exports::PluginExports;
 use crate::plugin::meta::PluginMeta;
 use crate::plugin::{PluginState, PluginStore};
-use crate::rpc::HostRpc;
-use steel_plugin_sdk::utils::fat::FatPtr;
+use crate::state::HostState;
+
+pub use utils::discover::discover_plugins;
 pub use wasmtime;
-use wasmtime::{Config, Engine, Linker, Module, Store};
-use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder};
 
 pub mod error;
 pub mod linker;
 pub mod plugin;
 pub mod rpc;
+mod state;
 mod utils;
-
-use crate::plugin::exports::PluginExports;
-pub use utils::discover::discover_plugins;
 
 pub const SCRATCH_SIZE: u32 = 4 * 1024;
 
-pub struct HostState {
-    rpc: RwLock<HostRpc>,
-    enabled_plugins: RwLock<Vec<PluginStore>>,
-}
-
 pub struct PluginHost {
-    data_folder: PathBuf,
     engine: Engine,
     linker: Linker<PluginState>,
     state: Arc<HostState>,
+    data_folder: PathBuf,
 }
 
 impl PluginHost {
@@ -46,10 +42,7 @@ impl PluginHost {
             data_folder,
             engine,
             linker,
-            state: Arc::new(HostState {
-                rpc: RwLock::new(HostRpc::new()),
-                enabled_plugins: RwLock::new(Vec::new()),
-            }),
+            state: Arc::new(HostState::new()),
         })
     }
 
@@ -69,7 +62,7 @@ impl PluginHost {
             .preopened_dir(plugin_data_folder, "/", DirPerms::all(), FilePerms::all())?
             .build_p1();
 
-        let state = PluginState::new(self.state.clone(), wasi, plugin_meta).await;
+        let state = PluginState::new(self.state.clone(), wasi, plugin_meta);
         let mut store = Store::new(&self.engine, state);
         let instance = self.linker.instantiate_async(&mut store, &module).await?;
         let exports = PluginExports::resolve(instance, &mut store)?;

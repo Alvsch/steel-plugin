@@ -22,9 +22,10 @@ pub async fn register(mut caller: Caller<'_, PluginState>, export_name: u64) {
         .typed::<u64, u64>(&mut caller)
         .unwrap();
 
-    let plugin_id = caller.data().plugin_id;
-    let mut rpc = caller.data().host.rpc.write().await;
-    let method_id = rpc.next_id();
+    let data = caller.data();
+    let plugin_id = data.plugin_id;
+    let method_id = data.host.next_id();
+    let mut rpc = data.host.rpc.write().await;
     rpc.get_plugin_mut(plugin_id)
         .unwrap()
         .register_method(method_id, export_name, export);

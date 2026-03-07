@@ -29,8 +29,8 @@ pub struct PluginState {
 }
 
 impl PluginState {
-    pub async fn new(host: Arc<HostState>, wasi: WasiP1Ctx, meta: PluginMeta) -> Self {
-        let plugin_id = host.rpc.write().await.next_id();
+    pub fn new(host: Arc<HostState>, wasi: WasiP1Ctx, meta: PluginMeta) -> Self {
+        let plugin_id = host.next_id();
         Self {
             host,
             plugin_id,
