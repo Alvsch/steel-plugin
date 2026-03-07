@@ -1,6 +1,6 @@
 use serde::{Serialize, de::DeserializeOwned};
 use steel_plugin_sdk::utils::fat::FatPtr;
-use wasmtime::{AsContext, AsContextMut, Caller, Extern, Memory, TypedFunc};
+use wasmtime::{AsContext, AsContextMut, Memory, TypedFunc};
 
 use crate::PluginState;
 
@@ -47,18 +47,5 @@ where
         let ptr = alloc.call_async(&mut self.store, len).await.unwrap();
         self.write(ptr, &bytes);
         FatPtr::new(ptr, len).expect("alloc returned a null fat pointer")
-    }
-}
-
-impl<'a, 'b> From<&'a mut Caller<'b, PluginState>> for PluginMemory<'a, Caller<'b, PluginState>> {
-    fn from(caller: &'a mut Caller<'b, PluginState>) -> Self {
-        let memory = caller
-            .get_export("memory")
-            .and_then(Extern::into_memory)
-            .unwrap();
-        Self {
-            memory,
-            store: caller,
-        }
     }
 }

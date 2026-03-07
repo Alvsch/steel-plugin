@@ -1,5 +1,5 @@
 use crate::PluginState;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use steel_plugin_sdk::rpc::{MethodId, PluginId};
 use tokio::sync::Mutex;
@@ -9,13 +9,32 @@ pub type RpcMethod = TypedFunc<u64, u64>;
 
 pub struct PluginRpc {
     pub store: Arc<Mutex<Store<PluginState>>>,
-    methods: HashMap<MethodId, RpcMethod>,
+    methods: BTreeMap<MethodId, RpcMethod>,
     method_name: HashMap<String, MethodId>,
-    pub alloc: TypedFunc<u32, u32>,
+}
+
+impl PluginRpc {
+    fn new(store: Arc<Mutex<Store<PluginState>>>) -> Self {
+        Self {
+            store,
+            methods: BTreeMap::new(),
+            method_name: HashMap::new(),
+        }
+    }
+
+    pub fn register_method(&mut self, method_id: MethodId, method_name: String, method: RpcMethod) {
+        self.methods.insert(method_id, method);
+        self.method_name.insert(method_name, method_id);
+    }
+
+    #[must_use]
+    pub fn get_method(&self, method_id: MethodId) -> &RpcMethod {
+        self.methods.get(&method_id).unwrap()
+    }
 }
 
 pub struct HostRpc {
-    plugins: HashMap<PluginId, PluginRpc>,
+    plugins: BTreeMap<PluginId, PluginRpc>,
     plugin_name: HashMap<String, PluginId>,
     id: u32,
 }
@@ -30,7 +49,7 @@ impl HostRpc {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            plugins: HashMap::new(),
+            plugins: BTreeMap::new(),
             plugin_name: HashMap::new(),
             id: 0,
         }
@@ -70,35 +89,13 @@ impl HostRpc {
         plugin_id: PluginId,
         plugin_name: String,
         store: Arc<Mutex<Store<PluginState>>>,
-        alloc: TypedFunc<u32, u32>,
     ) {
-        self.plugins.insert(plugin_id, PluginRpc::new(store, alloc));
+        self.plugins.insert(plugin_id, PluginRpc::new(store));
         self.plugin_name.insert(plugin_name, plugin_id);
     }
 
     pub fn unregister_plugin(&mut self, plugin_name: &str) {
         let plugin_id = self.plugin_name.remove(plugin_name).unwrap();
         self.plugins.remove(&plugin_id);
-    }
-}
-
-impl PluginRpc {
-    fn new(store: Arc<Mutex<Store<PluginState>>>, alloc: TypedFunc<u32, u32>) -> Self {
-        Self {
-            store,
-            methods: HashMap::new(),
-            method_name: HashMap::new(),
-            alloc,
-        }
-    }
-
-    pub fn register_method(&mut self, method_id: MethodId, method_name: String, method: RpcMethod) {
-        self.methods.insert(method_id, method);
-        self.method_name.insert(method_name, method_id);
-    }
-
-    #[must_use]
-    pub fn get_method(&self, method_id: MethodId) -> &RpcMethod {
-        self.methods.get(&method_id).unwrap()
     }
 }

@@ -1,11 +1,12 @@
 use crate::error::PluginManagerError;
+use crate::plugin::exports::PluginExports;
 use crate::{HostState, PluginMeta};
 use std::cell::OnceCell;
 use std::sync::Arc;
 use steel_plugin_sdk::rpc::PluginId;
 use steel_plugin_sdk::utils::fat::FatPtr;
 use tokio::sync::{Mutex, MutexGuard};
-use wasmtime::{Instance, Store};
+use wasmtime::Store;
 use wasmtime_wasi::p1::WasiP1Ctx;
 
 pub mod exports;
@@ -23,7 +24,7 @@ pub struct PluginState {
     pub meta: PluginMeta,
     pub status: PluginStatus,
     pub wasi: WasiP1Ctx,
-    pub instance: OnceCell<Instance>,
+    pub exports: OnceCell<Arc<PluginExports>>,
     pub scratch: FatPtr,
 }
 
@@ -36,13 +37,13 @@ impl PluginState {
             meta,
             status: PluginStatus::Disabled,
             wasi,
-            instance: OnceCell::new(),
+            exports: OnceCell::new(),
             scratch: FatPtr::new(1, 1).unwrap(),
         }
     }
 
-    pub fn instance(&self) -> Instance {
-        *self.instance.get().expect("instance not yet initialized")
+    pub fn exports(&self) -> &Arc<PluginExports> {
+        self.exports.get().expect("instance not yet initialized")
     }
 }
 
@@ -65,19 +66,16 @@ impl PluginStore {
 
     pub async fn enable_plugin(&self) -> Result<(), PluginManagerError> {
         let store = &mut *self.lock().await;
-        let instance = store.data().instance();
-        let alloc = instance.get_typed_func(&mut *store, "alloc")?;
+        let exports = store.data().exports().clone();
 
         let data = store.data();
         data.host.rpc.write().await.register_plugin(
             data.plugin_id,
             data.meta.name.clone(),
             self.inner.clone(),
-            alloc,
         );
 
-        let on_enable = instance.get_typed_func::<(), ()>(&mut *store, "on_enable")?;
-        on_enable.call_async(&mut *store, ()).await?;
+        exports.on_enable.call_async(&mut *store, ()).await?;
 
         store.data_mut().status = PluginStatus::Enabled;
 
