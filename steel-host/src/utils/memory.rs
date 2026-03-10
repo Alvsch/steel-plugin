@@ -1,6 +1,5 @@
-use serde::{Serialize, de::DeserializeOwned};
 use steel_plugin_sdk::utils::fat::FatPtr;
-use wasmtime::{AsContext, AsContextMut, Memory, TypedFunc};
+use wasmtime::{AsContext, AsContextMut, Memory};
 
 use crate::PluginState;
 
@@ -30,22 +29,5 @@ where
     pub fn write(&mut self, ptr: u32, src: &[u8]) {
         self.memory.data_mut(&mut self.store)[ptr as usize..ptr as usize + src.len()]
             .copy_from_slice(src);
-    }
-
-    pub fn read_msgpack<T: DeserializeOwned>(&self, fat: FatPtr) -> T {
-        let bytes = self.read(fat);
-        rmp_serde::from_slice::<T>(bytes).unwrap()
-    }
-
-    pub async fn write_msgpack<T: Serialize>(
-        &mut self,
-        value: &T,
-        alloc: &TypedFunc<u32, u32>,
-    ) -> FatPtr {
-        let bytes = rmp_serde::to_vec(value).unwrap();
-        let len = bytes.len() as u32;
-        let ptr = alloc.call_async(&mut self.store, len).await.unwrap();
-        self.write(ptr, &bytes);
-        FatPtr::new(ptr, len).expect("alloc returned a null fat pointer")
     }
 }
