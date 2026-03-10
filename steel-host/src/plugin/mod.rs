@@ -69,11 +69,12 @@ impl PluginStore {
         let exports = store.data().exports().clone();
 
         let data = store.data();
-        data.host.rpc.write().await.register_plugin(
-            data.plugin_id,
-            data.meta.name.clone(),
-            self.inner.clone(),
-        );
+        data.host.rpc.rcu(|rpc| {
+            let mut rpc = Arc::clone(rpc);
+            let rpc_mut = Arc::make_mut(&mut rpc);
+            rpc_mut.register_plugin(data.plugin_id, data.meta.name.clone(), self.inner.clone());
+            rpc
+        });
 
         exports.on_enable.call_async(&mut *store, ()).await?;
 
@@ -96,8 +97,12 @@ impl PluginStore {
         let mut enabled = data.host.enabled_plugins.write().await;
         enabled.retain(|p| !Arc::ptr_eq(&p.inner, &self.inner));
 
-        let mut rpc = data.host.rpc.write().await;
-        rpc.unregister_plugin(&data.meta.name);
+        data.host.rpc.rcu(|rpc| {
+            let mut rpc = Arc::clone(rpc);
+            let rpc_mut = Arc::make_mut(&mut rpc);
+            rpc_mut.unregister_plugin(&data.meta.name);
+            rpc
+        });
         Ok(())
     }
 }

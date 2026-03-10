@@ -11,6 +11,7 @@ profiler = [
 ]
 
 [dependencies]
+arc-swap.workspace = true
 steel-plugin-sdk.workspace = true
 tokio.workspace = true
 

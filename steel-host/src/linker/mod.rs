@@ -35,25 +35,23 @@ fn configure_base(linker: &mut HostLinker) {
 }
 
 fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
-    linker.func_wrap_async(
+    linker.func_wrap(
         "host",
         "rpc_register",
-        |caller: Caller<PluginState>, (export_name,): (u64,)| {
-            Box::new(rpc::register(caller, export_name))
+        |caller: Caller<PluginState>, export_name: u64| {
+            rpc::register(caller, export_name);
         },
     )?;
-    linker.func_wrap_async(
+    linker.func_wrap(
         "host",
         "rpc_resolve_plugin",
-        |caller: Caller<PluginState>, (plugin_name,): (u64,)| {
-            Box::new(rpc::resolve_plugin(caller, plugin_name))
-        },
+        |caller: Caller<PluginState>, plugin_name: u64| rpc::resolve_plugin(caller, plugin_name),
     )?;
-    linker.func_wrap_async(
+    linker.func_wrap(
         "host",
         "rpc_resolve_method",
-        |caller: Caller<PluginState>, (plugin_id, method_name): (PluginId, u64)| {
-            Box::new(rpc::resolve_method(caller, plugin_id, method_name))
+        |caller: Caller<PluginState>, plugin_id: PluginId, method_name: u64| {
+            rpc::resolve_method(caller, plugin_id, method_name)
         },
     )?;
     linker.func_wrap_async(

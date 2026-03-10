@@ -1,10 +1,11 @@
-use crate::plugin::PluginStore;
-use crate::rpc::HostRpc;
+use arc_swap::ArcSwap;
 use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::sync::RwLock;
 
+use crate::{plugin::PluginStore, rpc::host::HostRpc};
+
 pub struct HostState {
-    pub rpc: RwLock<HostRpc>,
+    pub rpc: ArcSwap<HostRpc>,
     pub enabled_plugins: RwLock<Vec<PluginStore>>,
     next_id: AtomicU32,
 }
@@ -19,7 +20,7 @@ impl HostState {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            rpc: RwLock::new(HostRpc::new()),
+            rpc: ArcSwap::from_pointee(HostRpc::new()),
             enabled_plugins: RwLock::new(Vec::new()),
             next_id: AtomicU32::new(0),
         }
