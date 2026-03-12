@@ -1,5 +1,7 @@
 use std::path::PathBuf;
+use steel_host::event::dispatch_topic;
 use steel_host::{PluginHost, discover_plugins};
+use steel_plugin_sdk::event::PlayerJoinEvent;
 use tokio::fs::create_dir_all;
 use tracing::Level;
 use wasmtime::{Config, OptLevel};
@@ -24,4 +26,13 @@ async fn main() {
         let store = host.load_plugin(plugin_meta).await.unwrap();
         store.enable_plugin().await.unwrap();
     }
+
+    let event = PlayerJoinEvent {
+        player_id: 42,
+        username: "Alvsch".to_string(),
+    };
+    let payload = rmp_serde::to_vec(&event).unwrap();
+    let topic_id = 0;
+    let handlers = host.state.handler_registry.read().await;
+    dispatch_topic(topic_id, &payload, &handlers).await;
 }

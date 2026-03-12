@@ -26,6 +26,7 @@ pub struct PluginState {
     pub wasi: WasiP1Ctx,
     pub exports: OnceCell<Arc<PluginExports>>,
     pub scratch: FatPtr,
+    pub store: OnceCell<PluginStore>,
 }
 
 impl PluginState {
@@ -39,11 +40,16 @@ impl PluginState {
             wasi,
             exports: OnceCell::new(),
             scratch: FatPtr::new(1, 1).unwrap(),
+            store: OnceCell::new(),
         }
     }
 
     pub fn exports(&self) -> &Arc<PluginExports> {
-        self.exports.get().expect("instance not yet initialized")
+        self.exports.get().expect("exports not yet initialized")
+    }
+
+    pub fn store(&self) -> &PluginStore {
+        self.store.get().expect("store not yet initialized")
     }
 }
 
@@ -69,11 +75,9 @@ impl PluginStore {
         let exports = store.data().exports().clone();
 
         let data = store.data();
-        data.host.rpc.write().await.register_plugin(
-            data.plugin_id,
-            data.meta.name.clone(),
-            self.inner.clone(),
-        );
+        data.host
+            .register_plugin(data.plugin_id, data.meta.name.clone(), self.inner.clone())
+            .await;
 
         exports.on_enable.call_async(&mut *store, ()).await?;
 
@@ -96,8 +100,7 @@ impl PluginStore {
         let mut enabled = data.host.enabled_plugins.write().await;
         enabled.retain(|p| !Arc::ptr_eq(&p.inner, &self.inner));
 
-        let mut rpc = data.host.rpc.write().await;
-        rpc.unregister_plugin(&data.meta.name);
+        data.host.unregister_plugin(&data.meta.name).await;
         Ok(())
     }
 }

@@ -1,5 +1,6 @@
 pub use steel_plugin_macros::{export, on_disable, on_enable, plugin_meta};
 
+pub mod event;
 pub mod rpc;
 pub mod types;
 pub mod utils;
@@ -13,6 +14,8 @@ pub(crate) mod host {
         pub unsafe fn rpc_resolve_plugin(name: u64) -> u32;
         pub unsafe fn rpc_resolve_method(plugin_id: u32, name: u64) -> u32;
         pub unsafe fn rpc_dispatch(plugin_id: u32, method_id: u32, data: u64) -> u64;
+        // event
+        pub unsafe fn event_subscribe(topic_id: u32, fn_table_index: u32, priority: i32);
     }
 }
 

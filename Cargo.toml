@@ -5,6 +5,7 @@ members = [
     "steel-plugin-sdk",
     "examples/consumer-plugin",
     "examples/provider-plugin",
+    "examples/listening-plugin",
 ]
 resolver = "2"
 

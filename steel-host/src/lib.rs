@@ -17,6 +17,7 @@ pub use utils::discover::discover_plugins;
 pub use wasmtime;
 
 pub mod error;
+pub mod event;
 pub mod linker;
 pub mod plugin;
 pub mod rpc;
@@ -28,7 +29,7 @@ pub const SCRATCH_SIZE: u32 = 4 * 1024;
 pub struct PluginHost {
     engine: Engine,
     linker: Linker<PluginState>,
-    state: Arc<HostState>,
+    pub state: Arc<HostState>,
     data_folder: PathBuf,
 }
 
@@ -70,13 +71,20 @@ impl PluginHost {
         // preallocate scratch
         let scratch_ptr = exports.alloc.call_async(&mut store, SCRATCH_SIZE).await?;
 
-        let data = store.data_mut();
-        data.scratch = FatPtr::new(scratch_ptr, SCRATCH_SIZE).unwrap();
-        data.exports
-            .set(Arc::new(exports))
-            .map_err(|_| ())
-            .expect("instance already initialized");
-
-        Ok(PluginStore::new(store))
+        let store = PluginStore::new(store);
+        {
+            let mut lock = store.lock().await;
+            let data = lock.data_mut();
+            data.scratch = FatPtr::new(scratch_ptr, SCRATCH_SIZE).unwrap();
+            data.exports
+                .set(Arc::new(exports))
+                .map_err(|_| ())
+                .expect("exports already initialized");
+            data.store
+                .set(store.clone())
+                .map_err(|_| ())
+                .expect("store already initialized");
+        }
+        Ok(store)
     }
 }

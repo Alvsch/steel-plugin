@@ -37,8 +37,12 @@ pub async fn resolve_plugin(mut caller: Caller<'_, PluginState>, plugin_name: u6
     let memory = PluginMemory::new(exports.memory, &mut caller);
     let plugin_name = memory.read_string(plugin_name_ptr);
 
-    let rpc = caller.data().host.rpc.read().await;
-    rpc.resolve_plugin(&plugin_name).unwrap()
+    caller
+        .data()
+        .host
+        .resolve_plugin(&plugin_name)
+        .await
+        .unwrap()
 }
 
 pub async fn resolve_method(
