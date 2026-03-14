@@ -1,4 +1,4 @@
-pub use steel_plugin_macros::{export, on_disable, on_enable, plugin_meta};
+pub use steel_plugin_macros::{event_handler, on_disable, on_enable, plugin_meta, rpc_export};
 
 pub mod event;
 pub mod rpc;
@@ -19,8 +19,17 @@ pub(crate) mod host {
     }
 }
 
-pub fn info(message: &str) {
-    unsafe {
-        host::info(message.as_ptr() as u32, message.len() as u32);
-    }
+#[doc(hidden)]
+pub mod __export {
+    pub use crate::host::info;
+}
+
+#[macro_export]
+macro_rules! info {
+    ($($arg:tt)*) => {
+        let message = format!($($arg)*);
+        unsafe {
+            $crate::__export::info(message.as_ptr() as u32, message.len() as u32);
+        }
+    };
 }

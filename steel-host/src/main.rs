@@ -34,5 +34,5 @@ async fn main() {
     let payload = rmp_serde::to_vec(&event).unwrap();
     let topic_id = 0;
     let handlers = host.state.handler_registry.read().await;
-    dispatch_topic(topic_id, &payload, &handlers).await;
+    dispatch_topic(&handlers, topic_id, &payload).await;
 }

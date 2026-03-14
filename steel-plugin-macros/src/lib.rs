@@ -1,8 +1,8 @@
+use crate::rules::validate;
+use crate::{args::PluginMetaArgs, rules::FnRules};
 use proc_macro::{Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{Error, FnArg, ItemFn, Visibility, parse_macro_input, spanned::Spanned};
-
-use crate::{args::PluginMetaArgs, rules::FnRules};
+use syn::{Error, ItemFn, parse_macro_input};
 
 mod args;
 mod rules;
@@ -42,96 +42,6 @@ pub fn plugin_meta(input: TokenStream) -> TokenStream {
         }
     }
     .into()
-}
-
-fn validate(rules: &FnRules, item: &ItemFn) -> Result<(), Error> {
-    let sig = &item.sig;
-
-    if let Some(expected_name) = rules.name
-        && sig.ident != expected_name
-    {
-        return Err(Error::new(
-            sig.ident.span(),
-            format!("function must be named '{expected_name}'"),
-        ));
-    }
-
-    match rules.params {
-        None => (),
-        Some([]) => {
-            if let Some(arg) = sig.inputs.first() {
-                return Err(Error::new(arg.span(), "function must have no parameters"));
-            }
-        }
-        Some(expected_types) => {
-            if sig.inputs.len() != expected_types.len() {
-                return Err(Error::new(
-                    sig.inputs.span(),
-                    format!(
-                        "function must have exactly {} parameter(s)",
-                        expected_types.len()
-                    ),
-                ));
-            }
-            for (arg, expected) in sig.inputs.iter().zip(expected_types) {
-                let arg_ty = match arg {
-                    FnArg::Typed(pat_ty) => {
-                        let ty = &pat_ty.ty;
-                        quote!(#ty).to_string()
-                    }
-                    FnArg::Receiver(r) => {
-                        return Err(Error::new(
-                            r.span(),
-                            "function must not have a self parameter",
-                        ));
-                    }
-                };
-                if &arg_ty != expected {
-                    return Err(Error::new(
-                        arg.span(),
-                        format!("expected parameter type '{expected}', found '{arg_ty}'"),
-                    ));
-                }
-            }
-        }
-    }
-
-    match rules.ret {
-        None => {
-            if let syn::ReturnType::Type(_, ty) = &sig.output {
-                return Err(Error::new(ty.span(), "function must have no return type"));
-            }
-        }
-        Some(expected_ret) => match &sig.output {
-            syn::ReturnType::Default => {
-                return Err(Error::new(
-                    sig.span(),
-                    format!("function must return '{expected_ret}'"),
-                ));
-            }
-            syn::ReturnType::Type(_, ty) => {
-                if quote!(#ty).to_string() != expected_ret {
-                    return Err(Error::new(
-                        ty.span(),
-                        format!(
-                            "expected return type '{expected_ret}', found '{}'",
-                            quote!(#ty)
-                        ),
-                    ));
-                }
-            }
-        },
-    }
-
-    if let Some(asyncness) = sig.asyncness.as_ref() {
-        return Err(Error::new(asyncness.span(), "function must not be async"));
-    }
-
-    if rules.require_pub && !matches!(item.vis, Visibility::Public(_)) {
-        return Err(Error::new(item.vis.span(), "function must be public"));
-    }
-
-    Ok(())
 }
 
 #[proc_macro_attribute]
@@ -185,7 +95,7 @@ pub fn on_disable(_args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn export(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn rpc_export(_args: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemFn);
     if let Err(err) = validate(
         &FnRules {
@@ -216,7 +126,7 @@ pub fn export(_args: TokenStream, input: TokenStream) -> TokenStream {
 
             let data_ptr = ::steel_plugin_sdk::utils::fat::FatPtr::unpack(data_ptr).unwrap();
             let data = unsafe {
-                slice::from_raw_parts(data_ptr.ptr() as *mut u8, data_ptr.len() as usize)
+                std::slice::from_raw_parts(data_ptr.ptr() as *mut u8, data_ptr.len() as usize)
             };
 
             let Some(return_data) = #impl_fn_name(data) else {
@@ -225,6 +135,44 @@ pub fn export(_args: TokenStream, input: TokenStream) -> TokenStream {
             let fat = ::steel_plugin_sdk::utils::fat::FatPtr::new(return_data.as_ptr() as u32, return_data.len() as u32).unwrap();
             forget(return_data);
             fat.pack()
+        }
+    }
+    .into()
+}
+
+#[proc_macro_attribute]
+pub fn event_handler(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let item = parse_macro_input!(input as ItemFn);
+    if let Err(err) = validate(
+        &FnRules {
+            require_pub: false,
+            ..Default::default()
+        },
+        &item,
+    ) {
+        return err.to_compile_error().into();
+    }
+
+    let name = &item.sig.ident;
+    let stmts = &item.block.stmts;
+
+    let inputs = &item.sig.inputs;
+    let arg = inputs.first().expect("function needs one parameter");
+
+    quote! {
+        fn #name(packed: u64) {
+            #[inline(always)]
+            fn __impl(#arg) {
+                #(#stmts)*
+            }
+
+            let fat = ::steel_plugin_sdk::utils::fat::FatPtr::unpack(packed).unwrap();
+            let data = unsafe {
+                std::slice::from_raw_parts(fat.ptr() as *mut u8, fat.len() as usize)
+            };
+
+            let event = ::rmp_serde::from_slice(data).unwrap();
+            __impl(event);
         }
     }
     .into()

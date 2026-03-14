@@ -1,6 +1,5 @@
-use steel_plugin_sdk::event::event_subscribe;
-use steel_plugin_sdk::utils::fat::FatPtr;
-use steel_plugin_sdk::{info, on_disable, on_enable, plugin_meta};
+use steel_plugin_sdk::event::{PlayerJoinEvent, event_subscribe};
+use steel_plugin_sdk::{event_handler, info, on_disable, on_enable, plugin_meta};
 
 plugin_meta!(
     name = "listening",
@@ -9,18 +8,16 @@ plugin_meta!(
     depends = [],
 );
 
+#[event_handler]
+fn test_handler(event: PlayerJoinEvent) {
+    info!("{:?}", event);
+}
+
 #[on_enable]
 pub fn on_enable() {
-    info("hello from the listening!");
+    info!("hello from the listening!");
 
-    event_subscribe(
-        0,
-        |packed| {
-            let fat_ptr = FatPtr::unpack(packed).unwrap();
-            info(&format!("got a ptr: {fat_ptr:?}"));
-        },
-        0,
-    );
+    event_subscribe(0, test_handler, 0);
 }
 
 #[on_disable]

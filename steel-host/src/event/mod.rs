@@ -7,7 +7,7 @@ use wasmtime::{Ref, Store, TypedFunc};
 pub mod handler;
 pub mod topic;
 
-pub async fn dispatch_topic(topic_id: TopicId, payload: &[u8], handler_registry: &HandlerRegistry) {
+pub async fn dispatch_topic(handler_registry: &HandlerRegistry, topic_id: TopicId, payload: &[u8]) {
     let handlers = handler_registry.get_handlers(topic_id);
     for handler in handlers {
         let mut store = handler.store.lock().await;

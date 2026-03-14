@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub type TopicId = u32;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PlayerJoinEvent {
     pub player_id: u64,
     pub username: String,
