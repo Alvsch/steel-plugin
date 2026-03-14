@@ -2,7 +2,7 @@ use crate::event::handler::{HandlerEntry, HandlerRegistry};
 use crate::plugin::PluginState;
 use crate::utils;
 use steel_plugin_sdk::event::TopicId;
-use wasmtime::{Ref, Store, TypedFunc};
+use wasmtime::Store;
 
 pub mod handler;
 pub mod topic;
@@ -25,23 +25,11 @@ async fn dispatch_event(store: &mut Store<PluginState>, payload: &[u8], handler:
         .await
         .unwrap();
 
-    let table = instance
-        .get_table(&mut *store, "__indirect_function_table")
+    handler
+        .handler_fn
+        .call_async(&mut *store, fat_ptr.pack())
+        .await
         .unwrap();
-
-    let func_ref = table
-        .get(&mut *store, u64::from(handler.fn_table_index))
-        .unwrap();
-
-    let Ref::Func(Some(func)) = func_ref else {
-        utils::dealloc_scratch(store, instance, fat_ptr)
-            .await
-            .unwrap();
-        return;
-    };
-
-    let typed: TypedFunc<u64, ()> = func.typed(&*store).unwrap();
-    typed.call_async(&mut *store, fat_ptr.pack()).await.unwrap();
 
     utils::dealloc_scratch(store, instance, fat_ptr)
         .await

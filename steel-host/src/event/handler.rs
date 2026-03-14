@@ -1,10 +1,11 @@
 use crate::plugin::PluginStore;
 use std::collections::HashMap;
 use steel_plugin_sdk::event::TopicId;
+use wasmtime::TypedFunc;
 
 pub struct HandlerEntry {
     pub store: PluginStore,
-    pub fn_table_index: u32,
+    pub handler_fn: TypedFunc<u64, ()>,
     pub priority: i8,
 }
 
@@ -30,13 +31,13 @@ impl HandlerRegistry {
         &mut self,
         topic_id: TopicId,
         plugin_store: PluginStore,
-        fn_table_index: u32,
+        handler_fn: TypedFunc<u64, ()>,
         priority: i8,
     ) {
         let entries = self.handlers.entry(topic_id).or_default();
         let entry = HandlerEntry {
             store: plugin_store,
-            fn_table_index,
+            handler_fn,
             priority,
         };
         let pos = entries.partition_point(|e| e.priority <= priority);
