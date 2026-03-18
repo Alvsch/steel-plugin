@@ -9,8 +9,11 @@ plugin_meta!(
 );
 
 #[event_handler]
-fn test_handler(event: PlayerJoinEvent) {
+fn test_handler(mut event: PlayerJoinEvent) -> Option<PlayerJoinEvent> {
     info!("{:?}", event);
+    
+    event.username = "Alvsch1".to_string();
+    Some(event)
 }
 
 #[on_enable]

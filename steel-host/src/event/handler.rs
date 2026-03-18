@@ -3,9 +3,11 @@ use std::collections::HashMap;
 use steel_plugin_sdk::event::TopicId;
 use wasmtime::TypedFunc;
 
+pub type HandlerFn = TypedFunc<u64, u64>;
+
 pub struct HandlerEntry {
     pub store: PluginStore,
-    pub handler_fn: TypedFunc<u64, ()>,
+    pub handler_fn: HandlerFn,
     pub priority: i8,
 }
 
@@ -31,7 +33,7 @@ impl HandlerRegistry {
         &mut self,
         topic_id: TopicId,
         plugin_store: PluginStore,
-        handler_fn: TypedFunc<u64, ()>,
+        handler_fn: HandlerFn,
         priority: i8,
     ) {
         let entries = self.handlers.entry(topic_id).or_default();

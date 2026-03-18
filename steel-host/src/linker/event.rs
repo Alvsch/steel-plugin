@@ -1,6 +1,7 @@
+use crate::event::handler::HandlerFn;
 use crate::plugin::PluginState;
 use steel_plugin_sdk::event::TopicId;
-use wasmtime::{Caller, TypedFunc};
+use wasmtime::Caller;
 
 pub async fn subscribe(
     mut caller: Caller<'_, PluginState>,
@@ -19,7 +20,7 @@ pub async fn subscribe(
     let func_ref = table.get(&mut caller, u64::from(fn_table_index)).unwrap();
 
     let func = func_ref.as_func().unwrap().unwrap();
-    let typed: TypedFunc<u64, ()> = func.typed(&mut caller).unwrap();
+    let typed: HandlerFn = func.typed(&mut caller).unwrap();
 
     let data = caller.data();
     let mut handler_registry = data.host.handler_registry.write().await;

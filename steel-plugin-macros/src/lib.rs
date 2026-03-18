@@ -1,7 +1,7 @@
 use crate::rules::validate;
 use crate::{args::PluginMetaArgs, rules::FnRules};
 use proc_macro::{Span, TokenStream};
-use quote::{format_ident, quote};
+use quote::quote;
 use syn::{Error, ItemFn, parse_macro_input};
 
 mod args;
@@ -113,14 +113,13 @@ pub fn rpc_export(_args: TokenStream, input: TokenStream) -> TokenStream {
     let arg = inputs.first().unwrap();
 
     let fn_name = item.sig.ident;
-    let impl_fn_name = format_ident!("{}_impl", fn_name);
 
     let stmts = &item.block.stmts;
 
     quote! {
         #[unsafe(no_mangle)]
         pub extern "C" fn #fn_name(data_ptr: u64) -> u64 {
-            fn #impl_fn_name(#arg) -> Option<Vec<u8>> {
+            fn __impl(#arg) -> Option<Vec<u8>> {
                 #(#stmts)*
             }
 
@@ -129,11 +128,11 @@ pub fn rpc_export(_args: TokenStream, input: TokenStream) -> TokenStream {
                 std::slice::from_raw_parts(data_ptr.ptr() as *mut u8, data_ptr.len() as usize)
             };
 
-            let Some(return_data) = #impl_fn_name(data) else {
+            let Some(return_data) = __impl(data) else {
                 return 0;
             };
             let fat = ::steel_plugin_sdk::utils::fat::FatPtr::new(return_data.as_ptr() as u32, return_data.len() as u32).unwrap();
-            forget(return_data);
+            std::mem::forget(return_data);
             fat.pack()
         }
     }
@@ -143,9 +142,18 @@ pub fn rpc_export(_args: TokenStream, input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn event_handler(_args: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemFn);
+
+    let inputs = &item.sig.inputs;
+    let arg = inputs.first().expect("function needs one parameter");
+    let syn::FnArg::Typed(pat_type) = arg else {
+        panic!("self parameters not supported");
+    };
+    let arg_type = &pat_type.ty;
+
     if let Err(err) = validate(
         &FnRules {
             require_pub: false,
+            ret: Some(&format!("Option < {} >", quote! { #arg_type })),
             ..Default::default()
         },
         &item,
@@ -156,13 +164,10 @@ pub fn event_handler(_args: TokenStream, input: TokenStream) -> TokenStream {
     let name = &item.sig.ident;
     let stmts = &item.block.stmts;
 
-    let inputs = &item.sig.inputs;
-    let arg = inputs.first().expect("function needs one parameter");
-
     quote! {
-        fn #name(packed: u64) {
+        fn #name(packed: u64) -> u64 {
             #[inline(always)]
-            fn __impl(#arg) {
+            fn __impl(#arg) -> Option<#arg_type> {
                 #(#stmts)*
             }
 
@@ -172,7 +177,13 @@ pub fn event_handler(_args: TokenStream, input: TokenStream) -> TokenStream {
             };
 
             let event = ::rmp_serde::from_slice(data).unwrap();
-            __impl(event);
+            let Some(result) = __impl(event) else {
+                return 0;
+            };
+            let result = ::rmp_serde::to_vec(&result).unwrap();
+            let fat = ::steel_plugin_sdk::utils::fat::FatPtr::new(result.as_ptr() as u32, result.len() as u32).unwrap();
+            std::mem::forget(result);
+            fat.pack()
         }
     }
     .into()

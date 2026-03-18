@@ -24,7 +24,7 @@ pub const fn hash_topic(bytes: &[u8]) -> TopicId {
     hash
 }
 
-pub fn event_subscribe(topic_id: TopicId, function: fn(u64), priority: i8) {
+pub fn event_subscribe(topic_id: TopicId, function: fn(u64) -> u64, priority: i8) {
     let fn_table_index = function as usize as u32;
     unsafe {
         host::event_subscribe(topic_id, fn_table_index, i32::from(priority));

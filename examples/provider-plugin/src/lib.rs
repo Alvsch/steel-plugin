@@ -1,4 +1,3 @@
-use std::mem::forget;
 use steel_plugin_sdk::rpc::rpc_register;
 use steel_plugin_sdk::{info, on_disable, on_enable, plugin_meta, rpc_export};
 

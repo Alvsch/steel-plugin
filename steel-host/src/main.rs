@@ -3,7 +3,7 @@ use steel_host::event::dispatch_topic;
 use steel_host::{PluginHost, discover_plugins};
 use steel_plugin_sdk::event::{PlayerJoinEvent, hash_topic};
 use tokio::fs::create_dir_all;
-use tracing::Level;
+use tracing::{Level, info};
 use uuid::Uuid;
 use wasmtime::{Config, OptLevel};
 
@@ -28,12 +28,15 @@ async fn main() {
         store.enable_plugin().await.unwrap();
     }
 
-    let event = PlayerJoinEvent {
+    let mut payload = rmp_serde::to_vec(&PlayerJoinEvent {
         player_id: Uuid::new_v4(),
         username: "Alvsch".to_string(),
-    };
-    let payload = rmp_serde::to_vec(&event).unwrap();
-    let topic_id = hash_topic(b"PlayerJoinEvent");
+    })
+    .unwrap();
+
     let handlers = host.state.handler_registry.read().await;
-    dispatch_topic(&handlers, topic_id, &payload).await;
+
+    dispatch_topic(&handlers, hash_topic(b"PlayerJoinEvent"), &mut payload).await;
+    let value: PlayerJoinEvent = rmp_serde::from_slice(&payload).unwrap();
+    info!("{:?}", value);
 }
