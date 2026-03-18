@@ -9,7 +9,10 @@ use wasmtime::{Config, OptLevel};
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+    tracing_subscriber::fmt()
+        .with_ansi_sanitization(false)
+        .with_max_level(Level::INFO)
+        .init();
 
     let mut config = Config::new();
     #[cfg(feature = "profiler")]

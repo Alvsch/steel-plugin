@@ -30,7 +30,7 @@ steel-plugin-macros = { path = "steel-plugin-macros" }
 steel-core = { git = "https://github.com/Steel-Foundation/SteelMC" }
 steel-utils = { git = "https://github.com/Steel-Foundation/SteelMC" }
 
-tokio = { version = "1.49.0", features = ["macros", "rt", "rt-multi-thread", "fs"] }
+tokio = { version = "1.50.0", features = ["macros", "rt", "rt-multi-thread", "fs"] }
 
 wasmtime = { version = "42.0.1", default-features = false }
 wasmtime-wasi = "42.0.1"
@@ -43,12 +43,12 @@ thiserror = "2.0.18"
 uuid = { version = "1.22.0", features = ["serde", "v4"] }
 
 # proc macro
-syn = "2.0"
-quote = "1.0"
+syn = "2.0.117"
+quote = "1.0.45"
 
 # Logging
 tracing = "0.1.44"
-tracing-subscriber = { version = "=0.3.19", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 
 [workspace.lints.rust]
 # TODO: change to warn
