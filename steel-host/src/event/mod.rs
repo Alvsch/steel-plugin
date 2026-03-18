@@ -7,7 +7,6 @@ use steel_plugin_sdk::utils::fat::FatPtr;
 use wasmtime::Store;
 
 pub mod handler;
-pub mod topic;
 
 pub async fn dispatch_topic(
     handler_registry: &HandlerRegistry,
