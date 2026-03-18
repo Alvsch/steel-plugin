@@ -7,6 +7,7 @@ authors.workspace = true
 [dependencies]
 steel-plugin-macros.workspace = true
 serde.workspace = true
+uuid.workspace = true
 
 [lints]
 workspace = true

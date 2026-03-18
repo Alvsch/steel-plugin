@@ -14,7 +14,7 @@ pub struct PluginRpc {
 }
 
 impl PluginRpc {
-    fn new(store: Arc<Mutex<Store<PluginState>>>) -> Self {
+    pub(crate) fn new(store: Arc<Mutex<Store<PluginState>>>) -> Self {
         Self {
             store,
             methods: BTreeMap::new(),
@@ -34,8 +34,7 @@ impl PluginRpc {
 }
 
 pub struct HostRpc {
-    plugins: BTreeMap<PluginId, PluginRpc>,
-    plugin_name: HashMap<String, PluginId>,
+    pub plugins: BTreeMap<PluginId, PluginRpc>,
 }
 
 impl Default for HostRpc {
@@ -46,16 +45,10 @@ impl Default for HostRpc {
 
 impl HostRpc {
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             plugins: BTreeMap::new(),
-            plugin_name: HashMap::new(),
         }
-    }
-
-    #[must_use]
-    pub fn resolve_plugin(&self, plugin_name: &str) -> Option<PluginId> {
-        self.plugin_name.get(plugin_name).copied()
     }
 
     #[must_use]
@@ -74,20 +67,5 @@ impl HostRpc {
     #[must_use]
     pub fn get_plugin_mut(&mut self, plugin_id: PluginId) -> Option<&mut PluginRpc> {
         self.plugins.get_mut(&plugin_id)
-    }
-
-    pub fn register_plugin(
-        &mut self,
-        plugin_id: PluginId,
-        plugin_name: String,
-        store: Arc<Mutex<Store<PluginState>>>,
-    ) {
-        self.plugins.insert(plugin_id, PluginRpc::new(store));
-        self.plugin_name.insert(plugin_name, plugin_id);
-    }
-
-    pub fn unregister_plugin(&mut self, plugin_name: &str) {
-        let plugin_id = self.plugin_name.remove(plugin_name).unwrap();
-        self.plugins.remove(&plugin_id);
     }
 }

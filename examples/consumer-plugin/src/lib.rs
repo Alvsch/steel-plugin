@@ -10,14 +10,14 @@ plugin_meta!(
 
 #[on_enable]
 pub fn on_enable() {
-    info("hello from the consumer!");
+    info!("hello from the consumer!");
 
     let plugin_id = rpc_resolve_plugin("provider");
     let method_id = rpc_resolve_method(plugin_id, "get_balance");
     let result =
         rpc_dispatch(plugin_id, method_id, b"hello").and_then(|x| String::from_utf8(x).ok());
 
-    info(&format!("{result:?}"));
+    info!("{result:?}");
 }
 
 #[on_disable]

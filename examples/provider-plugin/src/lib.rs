@@ -1,7 +1,5 @@
-use std::mem::forget;
-use std::slice;
 use steel_plugin_sdk::rpc::rpc_register;
-use steel_plugin_sdk::{export, info, on_disable, on_enable, plugin_meta};
+use steel_plugin_sdk::{info, on_disable, on_enable, plugin_meta, rpc_export};
 
 plugin_meta!(
     name = "provider",
@@ -10,18 +8,18 @@ plugin_meta!(
     depends = [],
 );
 
-#[export]
+#[rpc_export]
 pub fn get_balance(data: &[u8]) -> Option<Vec<u8>> {
     let msg = str::from_utf8(data).unwrap();
     let result = format!("get_balance: {msg}");
-    info(&result);
+    info!("{result}");
 
     Some(result.into_bytes())
 }
 
 #[on_enable]
 pub fn on_enable() {
-    info("hello from the provider!");
+    info!("hello from the provider!");
     rpc_register("get_balance");
 }
 
