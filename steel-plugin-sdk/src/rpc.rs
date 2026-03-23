@@ -4,10 +4,11 @@ use crate::utils::fat::FatPtr;
 pub type PluginId = u32;
 pub type MethodId = u32;
 
-pub fn rpc_register(export_name: &str) {
+pub fn rpc_register(export_name: &str, function: fn(u64) -> u64) {
+    let fn_table_index = function as usize as u32;
     let fat = FatPtr::new(export_name.as_ptr() as u32, export_name.len() as u32).unwrap();
     unsafe {
-        host::rpc_register(fat.pack());
+        host::rpc_register(fat.pack(), fn_table_index);
     }
 }
 

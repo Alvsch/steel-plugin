@@ -102,7 +102,7 @@ pub fn rpc_export(_args: TokenStream, input: TokenStream) -> TokenStream {
             name: None,
             params: Some(&["& [u8]"]),
             ret: Some("Option < Vec < u8 > >"),
-            require_pub: true,
+            require_pub: false,
         },
         &item,
     ) {
@@ -117,8 +117,7 @@ pub fn rpc_export(_args: TokenStream, input: TokenStream) -> TokenStream {
     let stmts = &item.block.stmts;
 
     quote! {
-        #[unsafe(no_mangle)]
-        pub extern "C" fn #fn_name(data_ptr: u64) -> u64 {
+        fn #fn_name(data_ptr: u64) -> u64 {
             fn __impl(#arg) -> Option<Vec<u8>> {
                 #(#stmts)*
             }

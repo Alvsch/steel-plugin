@@ -32,8 +32,8 @@ steel-utils = { git = "https://github.com/Steel-Foundation/SteelMC" }
 
 tokio = { version = "1.50.0", features = ["macros", "rt", "rt-multi-thread", "fs"] }
 
-wasmtime = { version = "42.0.1", default-features = false }
-wasmtime-wasi = "42.0.1"
+wasmtime = { version = "43.0.0", default-features = false }
+wasmtime-wasi = "43.0.0"
 wasmparser = { version ="0.245.1", default-features = false }
 
 serde = { version = "1.0.228", features = ["derive"] }

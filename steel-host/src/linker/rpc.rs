@@ -7,21 +7,21 @@ use wasmtime::Caller;
 use crate::rpc::RpcMethod;
 use crate::{plugin::PluginState, utils, utils::memory::PluginMemory};
 
-pub async fn register(mut caller: Caller<'_, PluginState>, export_name: u64) {
+pub async fn register(mut caller: Caller<'_, PluginState>, export_name: u64, fn_table_index: u32) {
     let export_name = FatPtr::unpack(export_name).unwrap();
     let exports = caller.data().exports().clone();
     let memory = PluginMemory::new(&mut caller, &exports.memory);
 
-    let export_name = memory.read(export_name);
-    let export_name = str::from_utf8(export_name).unwrap().to_string();
+    let export_name = memory.read_string(export_name);
 
-    let export: RpcMethod = caller
-        .get_export(&export_name)
-        .unwrap()
-        .into_func()
-        .unwrap()
-        .typed(&mut caller)
+    let table = exports
+        .instance
+        .get_table(&mut caller, "__indirect_function_table")
         .unwrap();
+
+    let func_ref = table.get(&mut caller, u64::from(fn_table_index)).unwrap();
+    let func = func_ref.as_func().unwrap().unwrap();
+    let export: RpcMethod = func.typed(&mut caller).unwrap();
 
     let data = caller.data();
     let plugin_id = data.plugin_id;

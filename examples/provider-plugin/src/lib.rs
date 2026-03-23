@@ -9,7 +9,7 @@ plugin_meta!(
 );
 
 #[rpc_export]
-pub fn get_balance(data: &[u8]) -> Option<Vec<u8>> {
+fn get_balance(data: &[u8]) -> Option<Vec<u8>> {
     let msg = str::from_utf8(data).unwrap();
     let result = format!("get_balance: {msg}");
     info!("{result}");
@@ -20,7 +20,7 @@ pub fn get_balance(data: &[u8]) -> Option<Vec<u8>> {
 #[on_enable]
 pub fn on_enable() {
     info!("hello from the provider!");
-    rpc_register("get_balance");
+    rpc_register("get_balance", get_balance);
 }
 
 #[on_disable]

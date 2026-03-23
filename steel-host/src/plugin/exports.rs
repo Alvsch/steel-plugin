@@ -5,7 +5,6 @@ use crate::PluginState;
 pub type AllocFunc = TypedFunc<u32, u32>;
 pub type DeallocFunc = TypedFunc<(u32, u32), ()>;
 
-#[derive(Clone)]
 pub struct PluginExports {
     pub instance: Instance,
     pub memory: Memory,

@@ -41,8 +41,8 @@ fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
     linker.func_wrap_async(
         "host",
         "rpc_register",
-        |caller: Caller<PluginState>, (export_name,): (u64,)| {
-            Box::new(rpc::register(caller, export_name))
+        |caller: Caller<PluginState>, (export_name, fn_table_index): (u64, u32)| {
+            Box::new(rpc::register(caller, export_name, fn_table_index))
         },
     )?;
     linker.func_wrap_async(
