@@ -4,8 +4,8 @@ use wasmtime::{AsContext, AsContextMut, Memory};
 use crate::PluginState;
 
 pub struct PluginMemory<'a, S> {
-    memory: Memory,
     store: &'a mut S,
+    memory: &'a Memory,
 }
 
 impl<'a, S> PluginMemory<'a, S>
@@ -13,8 +13,8 @@ where
     S: AsContext<Data = PluginState> + AsContextMut<Data = PluginState>,
 {
     #[inline]
-    pub const fn new(memory: Memory, store: &'a mut S) -> Self {
-        Self { memory, store }
+    pub const fn new(store: &'a mut S, memory: &'a Memory) -> Self {
+        Self { store, memory }
     }
 
     pub fn read(&self, fat: FatPtr) -> &[u8] {

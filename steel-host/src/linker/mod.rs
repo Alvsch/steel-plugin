@@ -26,7 +26,7 @@ fn configure_base(linker: &mut HostLinker) {
             "info",
             |mut caller: Caller<PluginState>, ptr: u32, len: u32| {
                 let exports = caller.data().exports().clone();
-                let memory = PluginMemory::new(exports.memory, &mut caller);
+                let memory = PluginMemory::new(&mut caller, &exports.memory);
                 let buf = memory.read(FatPtr::new(ptr, len).unwrap());
                 let message = str::from_utf8(buf).unwrap().to_string();
 

@@ -1,6 +1,6 @@
 use crate::SCRATCH_SIZE;
 use crate::plugin::PluginState;
-use crate::plugin::exports::{AllocFunc, DeallocFunc};
+use crate::plugin::{AllocFunc, DeallocFunc};
 use steel_plugin_sdk::utils::fat::FatPtr;
 use wasmparser::{Parser, Payload};
 use wasmtime::{Instance, Memory, Store};

@@ -48,7 +48,7 @@ async fn dispatch_event(
         return;
     };
 
-    let memory = PluginMemory::new(exports.memory, store);
+    let memory = PluginMemory::new(store, &exports.memory);
     let value = memory.read(result).to_vec();
     exports
         .dealloc

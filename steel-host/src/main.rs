@@ -28,7 +28,7 @@ async fn main() {
     let discovered_plugins = discover_plugins(&plugins_folder).await.unwrap();
     for plugin_meta in discovered_plugins {
         let store = host.load_plugin(plugin_meta).await.unwrap();
-        store.enable_plugin().await.unwrap();
+        host.state.enable_plugin(&store).await.unwrap();
     }
 
     let mut payload = rmp_serde::to_vec(&PlayerJoinEvent {

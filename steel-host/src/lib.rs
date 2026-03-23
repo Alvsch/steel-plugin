@@ -3,14 +3,13 @@ use std::sync::Arc;
 
 use steel_plugin_sdk::utils::fat::FatPtr;
 use tokio::fs::{create_dir_all, read};
+use tokio::sync::Mutex;
 use wasmtime::{Config, Engine, Linker, Module, Store};
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder};
 
 use crate::error::PluginLoaderError;
 use crate::linker::configure_all;
-use crate::plugin::exports::PluginExports;
-use crate::plugin::meta::PluginMeta;
-use crate::plugin::{PluginState, PluginStore};
+use crate::plugin::{PluginExports, PluginMeta, PluginState, PluginStore};
 use crate::state::HostState;
 
 pub use utils::discover::discover_plugins;
@@ -71,7 +70,7 @@ impl PluginHost {
         // preallocate scratch
         let scratch_ptr = exports.alloc.call_async(&mut store, SCRATCH_SIZE).await?;
 
-        let store = PluginStore::new(store);
+        let store = Arc::new(Mutex::new(store));
         {
             let mut lock = store.lock().await;
             let data = lock.data_mut();

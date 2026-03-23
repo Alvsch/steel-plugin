@@ -4,22 +4,23 @@ use steel_plugin_sdk::{
 };
 use wasmtime::Caller;
 
+use crate::rpc::RpcMethod;
 use crate::{plugin::PluginState, utils, utils::memory::PluginMemory};
 
 pub async fn register(mut caller: Caller<'_, PluginState>, export_name: u64) {
     let export_name = FatPtr::unpack(export_name).unwrap();
     let exports = caller.data().exports().clone();
-    let memory = PluginMemory::new(exports.memory, &mut caller);
+    let memory = PluginMemory::new(&mut caller, &exports.memory);
 
     let export_name = memory.read(export_name);
     let export_name = str::from_utf8(export_name).unwrap().to_string();
 
-    let export = caller
+    let export: RpcMethod = caller
         .get_export(&export_name)
         .unwrap()
         .into_func()
         .unwrap()
-        .typed::<u64, u64>(&mut caller)
+        .typed(&mut caller)
         .unwrap();
 
     let data = caller.data();
@@ -34,7 +35,7 @@ pub async fn register(mut caller: Caller<'_, PluginState>, export_name: u64) {
 pub async fn resolve_plugin(mut caller: Caller<'_, PluginState>, plugin_name: u64) -> PluginId {
     let plugin_name_ptr = FatPtr::unpack(plugin_name).unwrap();
     let exports = caller.data().exports().clone();
-    let memory = PluginMemory::new(exports.memory, &mut caller);
+    let memory = PluginMemory::new(&mut caller, &exports.memory);
     let plugin_name = memory.read_string(plugin_name_ptr);
 
     caller
@@ -52,7 +53,7 @@ pub async fn resolve_method(
 ) -> MethodId {
     let method_name_ptr = FatPtr::unpack(method_name).unwrap();
     let exports = caller.data().exports().clone();
-    let memory = PluginMemory::new(exports.memory, &mut caller);
+    let memory = PluginMemory::new(&mut caller, &exports.memory);
     let method_name = memory.read_string(method_name_ptr);
 
     let rpc = caller.data().host.rpc.read().await;
@@ -67,7 +68,7 @@ pub async fn dispatch(
 ) -> u64 {
     let data_ptr = FatPtr::unpack(data_ptr).unwrap();
     let caller_exports = caller.data().exports().clone();
-    let caller_memory = PluginMemory::new(caller_exports.memory, &mut caller);
+    let caller_memory = PluginMemory::new(&mut caller, &caller_exports.memory);
     let data = caller_memory.read(data_ptr).to_vec();
 
     let rpc = caller.data().host.rpc.read().await;
@@ -103,7 +104,7 @@ pub async fn dispatch(
     };
 
     // Read result from provider
-    let provider_memory = PluginMemory::new(provider_exports.memory, &mut *provider_store);
+    let provider_memory = PluginMemory::new(&mut *provider_store, &provider_exports.memory);
     let data = provider_memory.read(fat_result).to_vec();
 
     drop(provider_store);
@@ -116,7 +117,7 @@ pub async fn dispatch(
         .await
         .unwrap();
 
-    let mut caller_memory = PluginMemory::new(caller_exports.memory, &mut caller);
+    let mut caller_memory = PluginMemory::new(&mut caller, &caller_exports.memory);
     caller_memory.write(ptr, &data);
 
     FatPtr::new(ptr, fat_result.len()).unwrap().pack()

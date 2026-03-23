@@ -1,17 +1,17 @@
+use crate::error::PluginManagerError;
 use crate::event::handler::HandlerRegistry;
-use crate::plugin::{PluginState, PluginStore};
+use crate::plugin::{PluginStatus, PluginStore};
 use crate::rpc::{HostRpc, PluginRpc};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use steel_plugin_sdk::rpc::PluginId;
-use tokio::sync::{Mutex, RwLock};
-use wasmtime::Store;
+use tokio::sync::RwLock;
 
 pub struct HostState {
     pub rpc: RwLock<HostRpc>,
     pub handler_registry: RwLock<HandlerRegistry>,
-    pub enabled_plugins: RwLock<Vec<PluginStore>>,
+    enabled_plugins: RwLock<Vec<PluginStore>>,
     plugin_name: RwLock<HashMap<String, PluginId>>,
     next_id: AtomicU32,
 }
@@ -47,7 +47,7 @@ impl HostState {
         &self,
         plugin_id: PluginId,
         plugin_name: String,
-        store: Arc<Mutex<Store<PluginState>>>,
+        store: PluginStore,
     ) {
         self.rpc
             .write()
@@ -63,5 +63,39 @@ impl HostState {
     pub async fn unregister_plugin(&self, plugin_name: &str) {
         let plugin_id = self.plugin_name.write().await.remove(plugin_name).unwrap();
         self.rpc.write().await.plugins.remove(&plugin_id);
+    }
+
+    pub async fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginManagerError> {
+        let store = &mut *plugin.lock().await;
+        let exports = store.data().exports().clone();
+
+        let data = store.data();
+        data.host
+            .register_plugin(data.plugin_id, data.meta.name.clone(), plugin.clone())
+            .await;
+
+        exports.on_enable.call_async(&mut *store, ()).await?;
+
+        store.data_mut().status = PluginStatus::Enabled;
+
+        let host = &store.data().host;
+        host.enabled_plugins.write().await.push(plugin.clone());
+
+        Ok(())
+    }
+
+    pub async fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginManagerError> {
+        let store = &mut *plugin.lock().await;
+        let exports = store.data().exports().clone();
+
+        exports.on_disable.call_async(&mut *store, ()).await?;
+        store.data_mut().status = PluginStatus::Disabled;
+
+        let data = store.data();
+        let mut enabled = data.host.enabled_plugins.write().await;
+        enabled.retain(|p| !Arc::ptr_eq(p, plugin));
+
+        data.host.unregister_plugin(&data.meta.name).await;
+        Ok(())
     }
 }
