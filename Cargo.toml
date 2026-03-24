@@ -45,6 +45,7 @@ uuid = { version = "1.22.0", features = ["serde", "v4"] }
 # proc macro
 syn = "2.0.117"
 quote = "1.0.45"
+proc-macro2 = "1.0.106"
 
 # Logging
 tracing = "0.1.44"

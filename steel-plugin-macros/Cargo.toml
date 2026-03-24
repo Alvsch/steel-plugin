@@ -9,6 +9,7 @@ proc-macro = true
 
 [dependencies]
 syn = { workspace = true, features = ["full"] }
+proc-macro2.workspace = true
 quote.workspace = true
 rmp.workspace = true
 
