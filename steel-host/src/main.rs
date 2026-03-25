@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 use steel_host::event::dispatch_topic;
 use steel_host::{PluginHost, discover_plugins};
 use steel_plugin_sdk::event::{PlayerJoinEvent, hash_topic};
@@ -23,12 +24,22 @@ async fn main() {
     let plugins_folder = PathBuf::from("plugins");
     create_dir_all(&plugins_folder).await.unwrap();
 
-    let mut host = PluginHost::new(config, plugins_folder.clone()).unwrap();
+    let host = Arc::new(PluginHost::new(config, plugins_folder.clone()).unwrap());
 
     let discovered_plugins = discover_plugins(&plugins_folder).await.unwrap();
+
+    let mut plugins = Vec::new();
     for plugin_meta in discovered_plugins {
-        let store = host.load_plugin(plugin_meta).await.unwrap();
-        host.state.enable_plugin(&store).await.unwrap();
+        let cloned = host.clone();
+        plugins.push(tokio::spawn(async move {
+            cloned.prepare_plugin(plugin_meta).await.unwrap()
+        }));
+    }
+
+    for handle in plugins.drain(..) {
+        let plugin = handle.await.unwrap();
+        host.load_plugin(&plugin).await.unwrap();
+        host.enable_plugin(&plugin).await.unwrap();
     }
 
     let mut payload = rmp_serde::to_vec(&PlayerJoinEvent {
