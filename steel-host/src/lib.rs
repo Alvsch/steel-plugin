@@ -134,4 +134,8 @@ impl PluginHost {
     pub async fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginManagerError> {
         self.state.enable_plugin(plugin).await
     }
+
+    pub async fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginManagerError> {
+        self.state.disable_plugin(plugin).await
+    }
 }

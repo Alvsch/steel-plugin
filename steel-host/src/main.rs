@@ -32,14 +32,16 @@ async fn main() {
     for plugin_meta in discovered_plugins {
         let cloned = host.clone();
         plugins.push(tokio::spawn(async move {
-            cloned.prepare_plugin(plugin_meta).await.unwrap()
+            cloned.prepare_plugin(plugin_meta).await
         }));
     }
 
+    let mut enabled = Vec::new();
     for handle in plugins.drain(..) {
-        let plugin = handle.await.unwrap();
+        let plugin = handle.await.unwrap().unwrap();
         host.load_plugin(&plugin).await.unwrap();
         host.enable_plugin(&plugin).await.unwrap();
+        enabled.push(plugin);
     }
 
     let mut payload = rmp_serde::to_vec(&PlayerJoinEvent {
@@ -53,4 +55,8 @@ async fn main() {
     dispatch_topic(&handlers, hash_topic(b"PlayerJoinEvent"), &mut payload).await;
     let value: PlayerJoinEvent = rmp_serde::from_slice(&payload).unwrap();
     info!("{:?}", value);
+
+    for plugin in enabled.drain(..).rev() {
+        host.state.disable_plugin(&plugin).await.unwrap();
+    }
 }
