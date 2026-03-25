@@ -30,9 +30,9 @@ pub(crate) fn event_handler(item: ItemFn, priority: i8) -> TokenStream {
     let topic: TokenStream = format!("b\"{}\"", quote! { #arg_type }).parse().unwrap();
 
     quote! {
-        ::inventory::submit! {
-            ::steel_plugin_sdk::Exported {
-                kind: ::steel_plugin_sdk::ExportedKind::Event {
+        ::steel_plugin_sdk::export::submit! {
+            ::steel_plugin_sdk::export::Exported {
+                kind: ::steel_plugin_sdk::export::ExportedKind::Event {
                     topic_id: ::steel_plugin_sdk::event::hash_topic(#topic),
                     priority: #priority,
                 },

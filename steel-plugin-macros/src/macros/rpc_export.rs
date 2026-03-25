@@ -23,9 +23,9 @@ pub(crate) fn rpc_export(item: ItemFn) -> TokenStream {
     let stmts = &item.block.stmts;
 
     quote! {
-        ::inventory::submit! {
-            ::steel_plugin_sdk::Exported {
-                kind: ::steel_plugin_sdk::ExportedKind::Rpc {
+        ::steel_plugin_sdk::export::submit! {
+            ::steel_plugin_sdk::export::Exported {
+                kind: ::steel_plugin_sdk::export::ExportedKind::Rpc {
                     export_name: std::borrow::Cow::Borrowed(stringify!(#fn_name)),
                 },
                 func: |data_ptr| {

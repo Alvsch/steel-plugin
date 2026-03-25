@@ -20,7 +20,7 @@ pub fn plugin_meta(input: PluginMetaArgs) -> TokenStream {
 
         #[unsafe(no_mangle)]
         pub extern "C" fn on_load() -> u64 {
-            let slice = inventory::iter::<::steel_plugin_sdk::Exported>().cloned().map(::steel_plugin_sdk::ExportedId::from).collect::<Vec<_>>();
+            let slice = ::steel_plugin_sdk::export::iter::<::steel_plugin_sdk::export::Exported>().cloned().map(::steel_plugin_sdk::export::ExportedId::from).collect::<Vec<_>>();
             let bytes = ::rmp_serde::to_vec(&slice).unwrap();
             let fat = ::steel_plugin_sdk::utils::fat::FatPtr::new(bytes.as_ptr() as u32, bytes.len() as u32).unwrap();
             std::mem::forget(bytes);

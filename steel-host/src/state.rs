@@ -6,7 +6,7 @@ use crate::utils::memory::PluginMemory;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
-use steel_plugin_sdk::ExportedId;
+use steel_plugin_sdk::export::{ExportedId, ExportedKind};
 use steel_plugin_sdk::rpc::PluginId;
 use steel_plugin_sdk::utils::fat::FatPtr;
 use tokio::sync::RwLock;
@@ -89,7 +89,7 @@ impl HostState {
             let typed_func: HandlerFn = func.typed(&mut *store).unwrap();
 
             match exported.kind {
-                steel_plugin_sdk::ExportedKind::Rpc { export_name } => {
+                ExportedKind::Rpc { export_name } => {
                     let data = store.data();
                     let plugin_id = data.plugin_id;
                     let method_id = data.host.next_id();
@@ -101,7 +101,7 @@ impl HostState {
                         .unwrap()
                         .register_method(method_id, export_name.to_string(), typed_func);
                 }
-                steel_plugin_sdk::ExportedKind::Event { topic_id, priority } => {
+                ExportedKind::Event { topic_id, priority } => {
                     self.handler_registry.write().await.subscribe(
                         topic_id,
                         plugin.clone(),
@@ -109,7 +109,7 @@ impl HostState {
                         priority,
                     );
                 }
-                steel_plugin_sdk::ExportedKind::Command => todo!(),
+                ExportedKind::Command => todo!(),
             }
         }
 
