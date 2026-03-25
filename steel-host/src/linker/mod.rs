@@ -1,6 +1,5 @@
 use crate::PluginState;
 use crate::utils::memory::PluginMemory;
-use steel_plugin_sdk::event::TopicId;
 use steel_plugin_sdk::rpc::{MethodId, PluginId};
 use steel_plugin_sdk::utils::fat::FatPtr;
 use tracing::info;
@@ -9,14 +8,12 @@ use wasmtime_wasi::p1::wasi_snapshot_preview1;
 
 type HostLinker = wasmtime::Linker<PluginState>;
 
-mod event;
 mod rpc;
 
 pub fn configure_all(linker: &mut HostLinker) {
     wasi_snapshot_preview1::add_to_linker(linker, |data: &mut PluginState| &mut data.wasi).unwrap();
     configure_base(linker);
     configure_rpc(linker).unwrap();
-    configure_event(linker).unwrap();
 }
 
 fn configure_base(linker: &mut HostLinker) {
@@ -40,13 +37,6 @@ fn configure_base(linker: &mut HostLinker) {
 fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
     linker.func_wrap_async(
         "host",
-        "rpc_register",
-        |caller: Caller<PluginState>, (export_name, fn_table_index): (u64, u32)| {
-            Box::new(rpc::register(caller, export_name, fn_table_index))
-        },
-    )?;
-    linker.func_wrap_async(
-        "host",
         "rpc_resolve_plugin",
         |caller: Caller<PluginState>, (plugin_name,): (u64,)| {
             Box::new(rpc::resolve_plugin(caller, plugin_name))
@@ -65,17 +55,6 @@ fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
         |caller: Caller<PluginState>,
          (plugin_id, method_id, data_ptr): (PluginId, MethodId, u64)| {
             Box::new(rpc::dispatch(caller, plugin_id, method_id, data_ptr))
-        },
-    )?;
-    Ok(())
-}
-
-fn configure_event(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
-    linker.func_wrap_async(
-        "host",
-        "event_subscribe",
-        |caller: Caller<PluginState>, (topic_id, fn_table_index, priority): (TopicId, u32, i32)| {
-            Box::new(event::subscribe(caller, topic_id, fn_table_index, priority))
         },
     )?;
     Ok(())

@@ -70,20 +70,23 @@ impl PluginHost {
         // preallocate scratch
         let scratch_ptr = exports.alloc.call_async(&mut store, SCRATCH_SIZE).await?;
 
+        let data = store.data_mut();
+        data.scratch = FatPtr::new(scratch_ptr, SCRATCH_SIZE).unwrap();
+        data.exports
+            .set(Arc::new(exports))
+            .map_err(|_| ())
+            .expect("exports already initialized");
+
         let store = Arc::new(Mutex::new(store));
         {
             let mut lock = store.lock().await;
             let data = lock.data_mut();
-            data.scratch = FatPtr::new(scratch_ptr, SCRATCH_SIZE).unwrap();
-            data.exports
-                .set(Arc::new(exports))
-                .map_err(|_| ())
-                .expect("exports already initialized");
             data.store
                 .set(store.clone())
                 .map_err(|_| ())
                 .expect("store already initialized");
         }
+        self.state.load_plugin(&store).await.unwrap();
         Ok(store)
     }
 }

@@ -4,33 +4,7 @@ use steel_plugin_sdk::{
 };
 use wasmtime::Caller;
 
-use crate::rpc::RpcMethod;
 use crate::{plugin::PluginState, utils, utils::memory::PluginMemory};
-
-pub async fn register(mut caller: Caller<'_, PluginState>, export_name: u64, fn_table_index: u32) {
-    let export_name = FatPtr::unpack(export_name).unwrap();
-    let exports = caller.data().exports().clone();
-    let memory = PluginMemory::new(&mut caller, &exports.memory);
-
-    let export_name = memory.read_string(export_name);
-
-    let table = exports
-        .instance
-        .get_table(&mut caller, "__indirect_function_table")
-        .unwrap();
-
-    let func_ref = table.get(&mut caller, u64::from(fn_table_index)).unwrap();
-    let func = func_ref.as_func().unwrap().unwrap();
-    let export: RpcMethod = func.typed(&mut caller).unwrap();
-
-    let data = caller.data();
-    let plugin_id = data.plugin_id;
-    let method_id = data.host.next_id();
-    let mut rpc = data.host.rpc.write().await;
-    rpc.get_plugin_mut(plugin_id)
-        .unwrap()
-        .register_method(method_id, export_name, export);
-}
 
 pub async fn resolve_plugin(mut caller: Caller<'_, PluginState>, plugin_name: u64) -> PluginId {
     let plugin_name_ptr = FatPtr::unpack(plugin_name).unwrap();

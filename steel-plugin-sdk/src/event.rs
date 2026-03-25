@@ -1,14 +1,7 @@
-use crate::host;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 pub type TopicId = u32;
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PlayerJoinEvent {
-    pub player_id: Uuid,
-    pub username: String,
-}
 
 #[must_use]
 pub const fn hash_topic(bytes: &[u8]) -> TopicId {
@@ -24,9 +17,8 @@ pub const fn hash_topic(bytes: &[u8]) -> TopicId {
     hash
 }
 
-pub fn event_subscribe(topic_id: TopicId, function: fn(u64) -> u64, priority: i8) {
-    let fn_table_index = function as usize as u32;
-    unsafe {
-        host::event_subscribe(topic_id, fn_table_index, i32::from(priority));
-    }
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PlayerJoinEvent {
+    pub player_id: Uuid,
+    pub username: String,
 }

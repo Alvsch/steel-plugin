@@ -12,6 +12,7 @@ pub struct PluginExports {
     pub alloc: AllocFunc,
     /// (`ptr`, `len`)
     pub dealloc: DeallocFunc,
+    pub on_load: TypedFunc<(), u64>,
     pub on_enable: TypedFunc<(), ()>,
     pub on_disable: TypedFunc<(), ()>,
 }
@@ -22,6 +23,7 @@ impl PluginExports {
             memory: instance.get_memory(&mut *store, "memory").unwrap(),
             alloc: instance.get_typed_func(&mut *store, "alloc")?,
             dealloc: instance.get_typed_func(&mut *store, "dealloc")?,
+            on_load: instance.get_typed_func(&mut *store, "on_load")?,
             on_enable: instance.get_typed_func(&mut *store, "on_enable")?,
             on_disable: instance.get_typed_func(&mut *store, "on_disable")?,
             instance,
