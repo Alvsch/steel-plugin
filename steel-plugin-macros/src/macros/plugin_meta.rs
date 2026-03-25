@@ -19,6 +19,15 @@ pub fn plugin_meta(input: PluginMetaArgs) -> TokenStream {
         pub static __PLUGIN_META_SECTION: [u8; #len] = [#(#bytes),*];
 
         #[unsafe(no_mangle)]
+        pub extern "C" fn on_load() -> u64 {
+            let slice = inventory::iter::<::steel_plugin_sdk::Exported>().cloned().map(::steel_plugin_sdk::ExportedId::from).collect::<Vec<_>>();
+            let bytes = ::rmp_serde::to_vec(&slice).unwrap();
+            let fat = ::steel_plugin_sdk::utils::fat::FatPtr::new(bytes.as_ptr() as u32, bytes.len() as u32).unwrap();
+            std::mem::forget(bytes);
+            fat.pack()
+        }
+
+        #[unsafe(no_mangle)]
         pub extern "C" fn alloc(len: u32) -> u32 {
             let layout = std::alloc::Layout::from_size_align(len as usize, 1).unwrap();
             unsafe { std::alloc::alloc(layout) as u32 }

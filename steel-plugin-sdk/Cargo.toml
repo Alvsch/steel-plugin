@@ -8,6 +8,7 @@ authors.workspace = true
 steel-plugin-macros.workspace = true
 serde.workspace = true
 uuid.workspace = true
+inventory.workspace = true
 
 [lints]
 workspace = true

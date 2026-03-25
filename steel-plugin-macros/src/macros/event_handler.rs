@@ -5,7 +5,6 @@ use syn::ItemFn;
 use crate::utils::rules::{FnRules, validate};
 
 pub(crate) fn event_handler(item: ItemFn) -> TokenStream {
-    let name = &item.sig.ident;
     let arg = &item
         .sig
         .inputs
@@ -28,26 +27,32 @@ pub(crate) fn event_handler(item: ItemFn) -> TokenStream {
         return err.to_compile_error();
     }
 
+    let topic: TokenStream = format!("b\"{}\"", quote! { #arg_type }).parse().unwrap();
+
     quote! {
-        fn #name(packed: u64) -> u64 {
-            #[inline(always)]
-            fn __impl(#arg) -> Option<#arg_type> {
-                #(#stmts)*
+        ::inventory::submit! {
+            ::steel_plugin_sdk::Exported {
+                kind: ::steel_plugin_sdk::ExportedKind::Event(::steel_plugin_sdk::event::hash_topic(#topic)),
+                func: |packed| {
+                    #[inline(always)]
+                    fn __impl(#arg) -> Option<#arg_type> {
+                        #(#stmts)*
+                    }
+                    let fat = ::steel_plugin_sdk::utils::fat::FatPtr::unpack(packed).unwrap();
+                    let data = unsafe {
+                        std::slice::from_raw_parts(fat.ptr() as *mut u8, fat.len() as usize)
+                    };
+
+                    let event = ::rmp_serde::from_slice(data).unwrap();
+                    let Some(result) = __impl(event) else {
+                        return 0;
+                    };
+                    let result = ::rmp_serde::to_vec(&result).unwrap();
+                    let fat = ::steel_plugin_sdk::utils::fat::FatPtr::new(result.as_ptr() as u32, result.len() as u32).unwrap();
+                    std::mem::forget(result);
+                    fat.pack()
+                },
             }
-
-            let fat = ::steel_plugin_sdk::utils::fat::FatPtr::unpack(packed).unwrap();
-            let data = unsafe {
-                std::slice::from_raw_parts(fat.ptr() as *mut u8, fat.len() as usize)
-            };
-
-            let event = ::rmp_serde::from_slice(data).unwrap();
-            let Some(result) = __impl(event) else {
-                return 0;
-            };
-            let result = ::rmp_serde::to_vec(&result).unwrap();
-            let fat = ::steel_plugin_sdk::utils::fat::FatPtr::new(result.as_ptr() as u32, result.len() as u32).unwrap();
-            std::mem::forget(result);
-            fat.pack()
         }
     }
 }

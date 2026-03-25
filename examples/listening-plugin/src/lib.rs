@@ -1,4 +1,4 @@
-use steel_plugin_sdk::event::{PlayerJoinEvent, event_subscribe, hash_topic};
+use steel_plugin_sdk::event::PlayerJoinEvent;
 use steel_plugin_sdk::{event_handler, info, on_disable, on_enable, plugin_meta};
 
 plugin_meta!(
@@ -19,8 +19,6 @@ fn test_handler(mut event: PlayerJoinEvent) -> Option<PlayerJoinEvent> {
 #[on_enable]
 pub fn on_enable() {
     info!("hello from the listening!");
-
-    event_subscribe(hash_topic(b"PlayerJoinEvent"), test_handler, 0);
 }
 
 #[on_disable]

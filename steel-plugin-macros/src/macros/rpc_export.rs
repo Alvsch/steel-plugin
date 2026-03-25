@@ -23,22 +23,27 @@ pub(crate) fn rpc_export(item: ItemFn) -> TokenStream {
     let stmts = &item.block.stmts;
 
     quote! {
-        fn #fn_name(data_ptr: u64) -> u64 {
-            fn __impl(#arg) -> Option<Vec<u8>> {
-                #(#stmts)*
+        ::inventory::submit! {
+            ::steel_plugin_sdk::Exported {
+                kind: ::steel_plugin_sdk::ExportedKind::Rpc(std::borrow::Cow::Borrowed(stringify!(#fn_name))),
+                func: |data_ptr| {
+                    #[inline(always)]
+                    fn __impl(#arg) -> Option<Vec<u8>> {
+                        #(#stmts)*
+                    }
+                    let data_ptr = ::steel_plugin_sdk::utils::fat::FatPtr::unpack(data_ptr).unwrap();
+                    let data = unsafe {
+                        std::slice::from_raw_parts(data_ptr.ptr() as *mut u8, data_ptr.len() as usize)
+                    };
+
+                    let Some(return_data) = __impl(data) else {
+                        return 0;
+                    };
+                    let fat = ::steel_plugin_sdk::utils::fat::FatPtr::new(return_data.as_ptr() as u32, return_data.len() as u32).unwrap();
+                    std::mem::forget(return_data);
+                    fat.pack()
+                },
             }
-
-            let data_ptr = ::steel_plugin_sdk::utils::fat::FatPtr::unpack(data_ptr).unwrap();
-            let data = unsafe {
-                std::slice::from_raw_parts(data_ptr.ptr() as *mut u8, data_ptr.len() as usize)
-            };
-
-            let Some(return_data) = __impl(data) else {
-                return 0;
-            };
-            let fat = ::steel_plugin_sdk::utils::fat::FatPtr::new(return_data.as_ptr() as u32, return_data.len() as u32).unwrap();
-            std::mem::forget(return_data);
-            fat.pack()
         }
     }
 }
