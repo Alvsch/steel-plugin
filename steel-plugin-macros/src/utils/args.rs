@@ -83,3 +83,27 @@ impl Parse for PluginMetaArgs {
         })
     }
 }
+
+pub struct EventPriority(pub i8);
+
+impl Parse for EventPriority {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let ident: syn::Ident = input.parse()?;
+        if ident != "priority" {
+            return Err(syn::Error::new(
+                ident.span(),
+                "unknown argument, expected `priority`",
+            ));
+        }
+        let _: Token![=] = input.parse()?;
+        let lit: LitInt = input.parse()?;
+        let priority = lit
+            .base10_parse::<i8>()
+            .map_err(|_| syn::Error::new(lit.span(), "priority must be a valid i8"))?;
+        if !input.is_empty() {
+            return Err(input.error("unexpected token, `priority` is the only allowed argument"));
+        }
+
+        Ok(Self(priority))
+    }
+}

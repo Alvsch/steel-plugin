@@ -25,7 +25,9 @@ pub(crate) fn rpc_export(item: ItemFn) -> TokenStream {
     quote! {
         ::inventory::submit! {
             ::steel_plugin_sdk::Exported {
-                kind: ::steel_plugin_sdk::ExportedKind::Rpc(std::borrow::Cow::Borrowed(stringify!(#fn_name))),
+                kind: ::steel_plugin_sdk::ExportedKind::Rpc {
+                    export_name: std::borrow::Cow::Borrowed(stringify!(#fn_name)),
+                },
                 func: |data_ptr| {
                     #[inline(always)]
                     fn __impl(#arg) -> Option<Vec<u8>> {

@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use syn::{ItemFn, parse_macro_input};
 
-use crate::utils::args::PluginMetaArgs;
+use crate::utils::args::{EventPriority, PluginMetaArgs};
 
 mod macros;
 pub(crate) mod utils;
@@ -31,7 +31,12 @@ pub fn rpc_export(_args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
-pub fn event_handler(_args: TokenStream, input: TokenStream) -> TokenStream {
+pub fn event_handler(args: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemFn);
-    macros::event_handler(item).into()
+    let priority = if args.is_empty() {
+        0
+    } else {
+        parse_macro_input!(args as EventPriority).0
+    };
+    macros::event_handler(item, priority).into()
 }

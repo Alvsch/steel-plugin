@@ -8,7 +8,7 @@ plugin_meta!(
     depends = [],
 );
 
-#[event_handler]
+#[event_handler(priority = -1)]
 fn test_handler(mut event: PlayerJoinEvent) -> Option<PlayerJoinEvent> {
     info!("{:?}", event);
 

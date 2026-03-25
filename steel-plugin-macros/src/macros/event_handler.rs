@@ -4,7 +4,7 @@ use syn::ItemFn;
 
 use crate::utils::rules::{FnRules, validate};
 
-pub(crate) fn event_handler(item: ItemFn) -> TokenStream {
+pub(crate) fn event_handler(item: ItemFn, priority: i8) -> TokenStream {
     let arg = &item
         .sig
         .inputs
@@ -32,7 +32,10 @@ pub(crate) fn event_handler(item: ItemFn) -> TokenStream {
     quote! {
         ::inventory::submit! {
             ::steel_plugin_sdk::Exported {
-                kind: ::steel_plugin_sdk::ExportedKind::Event(::steel_plugin_sdk::event::hash_topic(#topic)),
+                kind: ::steel_plugin_sdk::ExportedKind::Event {
+                    topic_id: ::steel_plugin_sdk::event::hash_topic(#topic),
+                    priority: #priority,
+                },
                 func: |packed| {
                     #[inline(always)]
                     fn __impl(#arg) -> Option<#arg_type> {

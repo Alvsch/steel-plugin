@@ -12,8 +12,8 @@ pub mod utils;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ExportedKind {
-    Rpc(Cow<'static, str>),
-    Event(TopicId),
+    Rpc { export_name: Cow<'static, str> },
+    Event { topic_id: TopicId, priority: i8 },
     Command,
 }
 
