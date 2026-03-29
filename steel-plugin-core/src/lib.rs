@@ -7,6 +7,7 @@ pub const STEEL_API_VERSION: u32 = 0;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PluginMeta {
     pub name: String,
+    #[serde(default)]
     pub description: String,
     pub version: String,
     pub depends: Vec<String>,
