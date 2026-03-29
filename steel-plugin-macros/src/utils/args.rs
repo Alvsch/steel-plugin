@@ -1,46 +1,16 @@
-use rmp::encode::{ValueWriteError, write_array_len, write_map_len, write_str, write_u32};
+use steel_plugin_core::PluginMeta;
 use syn::{
     LitInt, LitStr, Token,
     parse::{Parse, ParseBuffer, ParseStream},
 };
 
 #[derive(Debug)]
-pub struct PluginMetaArgs {
-    pub name: String,
-    pub version: String,
-    pub api_version: u32,
-    pub depends: Vec<String>,
-}
-
-impl PluginMetaArgs {
-    pub fn serialize(&self) -> Result<Vec<u8>, ValueWriteError> {
-        let mut buf = Vec::new();
-        write_map_len(&mut buf, 4)?;
-
-        write_str(&mut buf, "name")?;
-        write_str(&mut buf, &self.name)?;
-
-        write_str(&mut buf, "version")?;
-        write_str(&mut buf, &self.version)?;
-
-        write_str(&mut buf, "api_version")?;
-        write_u32(&mut buf, self.api_version)?;
-
-        write_str(&mut buf, "depends")?;
-        write_array_len(&mut buf, self.depends.len() as u32)?;
-        for dep in &self.depends {
-            write_str(&mut buf, dep)?;
-        }
-
-        Ok(buf)
-    }
-}
+pub struct PluginMetaArgs(pub PluginMeta);
 
 impl Parse for PluginMetaArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut name = None;
         let mut version = None;
-        let mut api_version = None;
         let mut depends = vec![];
 
         while !input.is_empty() {
@@ -53,9 +23,6 @@ impl Parse for PluginMetaArgs {
                 }
                 "version" => {
                     version = Some(input.parse::<LitStr>()?.value());
-                }
-                "api_version" => {
-                    api_version = Some(input.parse::<LitInt>()?.base10_parse::<u32>()?);
                 }
                 "depends" => {
                     let content;
@@ -75,12 +42,11 @@ impl Parse for PluginMetaArgs {
             let _ = input.parse::<Token![,]>();
         }
 
-        Ok(PluginMetaArgs {
+        Ok(PluginMetaArgs(PluginMeta {
             name: name.ok_or_else(|| input.error("missing `name`"))?,
             version: version.ok_or_else(|| input.error("missing `version`"))?,
-            api_version: api_version.ok_or_else(|| input.error("missing `api_version`"))?,
             depends,
-        })
+        }))
     }
 }
 

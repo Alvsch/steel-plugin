@@ -6,6 +6,8 @@ pub mod rpc;
 pub mod types;
 pub mod utils;
 
+pub use steel_plugin_core::STEEL_API_VERSION;
+
 pub(crate) mod host {
     #[link(wasm_import_module = "host")]
     unsafe extern "C" {

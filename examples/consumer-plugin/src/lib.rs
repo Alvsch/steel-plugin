@@ -1,12 +1,7 @@
 use steel_plugin_sdk::rpc::{rpc_dispatch, rpc_resolve_method, rpc_resolve_plugin};
 use steel_plugin_sdk::{info, on_disable, on_enable, plugin_meta};
 
-plugin_meta!(
-    name = "consumer",
-    version = "0.1.0",
-    api_version = 1,
-    depends = ["provider"],
-);
+plugin_meta!(name = "consumer", version = "0.1.0", depends = ["provider"],);
 
 #[on_enable]
 pub fn on_enable() {

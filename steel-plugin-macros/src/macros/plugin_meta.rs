@@ -4,13 +4,13 @@ use syn::Error;
 
 use crate::PluginMetaArgs;
 
-pub fn plugin_meta(input: PluginMetaArgs) -> TokenStream {
+pub fn plugin_meta(PluginMetaArgs(input): PluginMetaArgs) -> TokenStream {
     if input.name == "steel" {
         return Error::new(Span::call_site(), "The plugin name 'steel' is reserved")
             .to_compile_error();
     }
 
-    let bytes: Vec<u8> = input.serialize().expect("failed to serialize");
+    let bytes: Vec<u8> = input.serialize();
     let len = bytes.len();
 
     quote! {

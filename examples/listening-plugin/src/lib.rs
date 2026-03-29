@@ -1,12 +1,7 @@
 use steel_plugin_sdk::event::PlayerJoinEvent;
 use steel_plugin_sdk::{event_handler, info, on_disable, on_enable, plugin_meta};
 
-plugin_meta!(
-    name = "listening",
-    version = "0.1.0",
-    api_version = 1,
-    depends = [],
-);
+plugin_meta!(name = "listening", version = "0.1.0", depends = [],);
 
 #[event_handler(priority = -1)]
 fn test_handler(mut event: PlayerJoinEvent) -> Option<PlayerJoinEvent> {

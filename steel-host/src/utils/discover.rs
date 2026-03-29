@@ -3,8 +3,9 @@ use crate::utils::read_custom_section;
 use crate::utils::sorting::sort_plugins;
 use anyhow::Context;
 use std::path::Path;
+use steel_plugin_sdk::STEEL_API_VERSION;
 use tokio::fs::{read, read_dir};
-use tracing::error;
+use tracing::warn;
 
 /// Discover plugins in the specified directory and return their `PluginMeta` in topological order.
 pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<PluginMeta>> {
@@ -33,7 +34,15 @@ pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<PluginMet
                 rmp_serde::from_slice(meta_section).context("invalid plugin meta")?;
 
             if plugin_meta.name == "steel" {
-                error!("Skipping plugin 'steel': this name is reserved and cannot be loaded.",);
+                warn!("Skipping plugin 'steel': this name is reserved and cannot be loaded.",);
+                continue;
+            }
+
+            if plugin_meta.api_version != STEEL_API_VERSION {
+                warn!(
+                    "Plugin '{}' targets API version {} but host is running {}; skipping load",
+                    plugin_meta.name, plugin_meta.api_version, STEEL_API_VERSION
+                );
                 continue;
             }
 
@@ -43,7 +52,7 @@ pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<PluginMet
     }
     let (topology, invalid) = sort_plugins(plugins);
     if !invalid.is_empty() {
-        error!("plugins with invalid dependencies: {:#?}", invalid);
+        warn!("plugins with invalid dependencies: {:#?}", invalid);
     }
     Ok(topology)
 }

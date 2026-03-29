@@ -26,6 +26,7 @@ debug = true
 [workspace.dependencies]
 steel-plugin-sdk = { path = "steel-plugin-sdk" }
 steel-plugin-macros = { path = "steel-plugin-macros" }
+steel-plugin-core = { path = "steel-plugin-core" }
 
 steel-core = { git = "https://github.com/Steel-Foundation/SteelMC" }
 steel-utils = { git = "https://github.com/Steel-Foundation/SteelMC" }
