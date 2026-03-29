@@ -1,6 +1,7 @@
 use crate::state::HostState;
 use std::cell::OnceCell;
 use std::sync::Arc;
+use steel_plugin_core::PluginMeta;
 use steel_plugin_sdk::rpc::PluginId;
 use steel_plugin_sdk::utils::fat::FatPtr;
 use tokio::sync::Mutex;
@@ -8,10 +9,8 @@ use wasmtime::Store;
 use wasmtime_wasi::p1::WasiP1Ctx;
 
 pub use exports::{AllocFunc, DeallocFunc, PluginExports};
-pub use meta::PluginMeta;
 
 mod exports;
-mod meta;
 
 pub type PluginStore = Arc<Mutex<Store<PluginState>>>;
 

@@ -2,6 +2,7 @@ use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use steel_plugin_core::PluginMeta;
 use tokio::fs::{create_dir_all, read};
 use tokio::sync::Mutex;
 use wasmtime::{Config, Engine, Instance, Linker, Module, Store};
@@ -10,7 +11,7 @@ use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder};
 
 use crate::error::{PluginContractError, PluginError};
 use crate::linker::configure_all;
-use crate::plugin::{PluginExports, PluginMeta, PluginState, PluginStore};
+use crate::plugin::{PluginExports, PluginState, PluginStore};
 use crate::state::HostState;
 
 pub use utils::discover::discover_plugins;
