@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
+use semver::Version;
 use serde::{Deserialize, Serialize};
 
-pub const STEEL_API_VERSION: u32 = 0;
+pub const STEEL_API_VERSION: Version = Version::new(0, 1, 0);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PluginMeta {
@@ -11,7 +12,7 @@ pub struct PluginMeta {
     pub description: String,
     pub version: String,
     pub depends: Vec<String>,
-    pub api_version: u32,
+    pub api_version: Version,
     #[serde(skip)]
     pub file_path: PathBuf,
 }

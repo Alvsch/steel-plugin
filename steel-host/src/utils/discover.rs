@@ -2,6 +2,7 @@ use crate::PluginMeta;
 use crate::utils::read_custom_section;
 use crate::utils::sorting::sort_plugins;
 use anyhow::{Context, bail};
+use semver::Version;
 use std::path::Path;
 use steel_plugin_sdk::STEEL_API_VERSION;
 use tokio::fs::{read, read_dir};
@@ -53,7 +54,7 @@ async fn discover(file_path: &Path) -> anyhow::Result<PluginMeta> {
         bail!("Skipping plugin 'steel': this name is reserved and cannot be loaded.");
     }
 
-    if plugin_meta.api_version != STEEL_API_VERSION {
+    if !is_compatible_api_version(&plugin_meta.api_version) {
         bail!(
             "Plugin '{}' targets API version {} but host is running {}; skipping load",
             plugin_meta.name,
@@ -64,4 +65,8 @@ async fn discover(file_path: &Path) -> anyhow::Result<PluginMeta> {
 
     plugin_meta.file_path = file_path.canonicalize()?;
     Ok(plugin_meta)
+}
+
+pub fn is_compatible_api_version(version: &Version) -> bool {
+    version.major == STEEL_API_VERSION.major && version.minor <= STEEL_API_VERSION.minor
 }
