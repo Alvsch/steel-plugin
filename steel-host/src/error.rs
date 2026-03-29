@@ -18,6 +18,12 @@ pub enum PluginContractError {
     #[error("plugin provided a null pointer during on_load")]
     NullLoadData,
 
+    #[error("plugin provided an null pointer")]
+    NullPointer,
+
+    #[error("plugin provided an invalid plugin/method id")]
+    InvalidId,
+
     #[error("plugin provided an out of bounds pointer")]
     OutOfBoundsPointer,
 

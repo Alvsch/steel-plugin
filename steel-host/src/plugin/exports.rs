@@ -1,5 +1,5 @@
 use steel_plugin_sdk::utils::fat::FatPtr;
-use wasmtime::{Instance, Memory, Store, TypedFunc};
+use wasmtime::{AsContext, AsContextMut, Instance, Memory, Store, TypedFunc};
 
 use crate::{PluginState, error::PluginContractError};
 
@@ -64,9 +64,9 @@ impl PluginExports {
         })
     }
 
-    pub async fn alloc(
+    pub async fn alloc<S: AsContext<Data = PluginState> + AsContextMut<Data = PluginState>>(
         &self,
-        store: &mut Store<PluginState>,
+        store: &mut S,
         len: u32,
     ) -> Result<FatPtr, PluginContractError> {
         let ptr = self.alloc.call_async(store, len).await?;
@@ -79,7 +79,9 @@ impl PluginExports {
         store: &mut Store<PluginState>,
         fat: FatPtr,
     ) -> Result<(), PluginContractError> {
-        self.dealloc.call_async(store, (fat.ptr(), fat.len())).await?;
+        self.dealloc
+            .call_async(store, (fat.ptr(), fat.len()))
+            .await?;
         Ok(())
     }
 

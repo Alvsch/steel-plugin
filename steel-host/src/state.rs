@@ -4,6 +4,7 @@ use crate::plugin::{PluginStatus, PluginStore};
 use crate::rpc::{HostRpc, PluginRpc};
 use crate::utils::memory::PluginMemory;
 use std::collections::HashMap;
+use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use steel_plugin_sdk::export::{ExportedId, ExportedKind};
@@ -33,12 +34,13 @@ impl HostState {
             handler_registry: RwLock::new(HandlerRegistry::new()),
             enabled_plugins: RwLock::new(Vec::new()),
             plugin_name: RwLock::new(HashMap::new()),
-            next_id: AtomicU32::new(0),
+            next_id: AtomicU32::new(1),
         }
     }
 
-    pub fn next_id(&self) -> u32 {
-        self.next_id.fetch_add(1, Ordering::Relaxed)
+    pub fn next_id(&self) -> NonZeroU32 {
+        let next_id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        NonZeroU32::new(next_id).expect("next_id cant be zero")
     }
 
     #[must_use]
