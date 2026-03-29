@@ -1,6 +1,3 @@
-// TODO: remove
-#![allow(clippy::unwrap_used)]
-
 use proc_macro::TokenStream;
 use syn::{ItemFn, parse_macro_input};
 

@@ -27,7 +27,9 @@ pub(crate) fn event_handler(item: ItemFn, priority: i8) -> TokenStream {
         return err.to_compile_error();
     }
 
-    let topic: TokenStream = format!("b\"{}\"", quote! { #arg_type }).parse().unwrap();
+    let topic: TokenStream = format!("b\"{}\"", quote! { #arg_type })
+        .parse()
+        .expect("failed to parse");
 
     quote! {
         ::steel_plugin_sdk::export::submit! {

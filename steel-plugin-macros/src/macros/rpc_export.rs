@@ -19,7 +19,9 @@ pub(crate) fn rpc_export(item: ItemFn) -> TokenStream {
 
     let fn_name = item.sig.ident;
     let inputs = &item.sig.inputs;
-    let arg = inputs.first().unwrap();
+    let arg = inputs
+        .first()
+        .expect("function needs exactly one parameter");
     let stmts = &item.block.stmts;
 
     quote! {

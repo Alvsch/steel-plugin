@@ -10,7 +10,7 @@ pub fn plugin_meta(input: PluginMetaArgs) -> TokenStream {
             .to_compile_error();
     }
 
-    let bytes: Vec<u8> = input.serialize();
+    let bytes: Vec<u8> = input.serialize().expect("failed to serialize");
     let len = bytes.len();
 
     quote! {
