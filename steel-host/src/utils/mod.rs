@@ -38,7 +38,7 @@ pub async fn write_scratch(
     let fat = if len > scratch.len() {
         exports.alloc(store, len).await?
     } else {
-        scratch
+        FatPtr::new(scratch.ptr(), len).expect("scratch cant be null")
     };
     memory
         .write(&mut *store, fat.ptr() as usize, data)

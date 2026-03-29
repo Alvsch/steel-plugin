@@ -12,13 +12,12 @@ use crate::{
 
 pub async fn resolve_plugin(
     mut caller: Caller<'_, PluginState>,
-    plugin_name: u64,
+    plugin_name: FatPtr,
 ) -> Result<Option<PluginId>, PluginContractError> {
-    let plugin_name_ptr = FatPtr::unpack(plugin_name).ok_or(PluginContractError::NullPointer)?;
     let exports = caller.data().exports().clone();
     let memory = PluginMemory::new(&mut caller, &exports.memory);
     let plugin_name = memory
-        .read_string(plugin_name_ptr)
+        .read_string(plugin_name)
         .map_err(|err| PluginContractError::Other(err.to_string()))?;
 
     let plugin_id = caller.data().host.resolve_plugin(&plugin_name).await;
@@ -29,13 +28,12 @@ pub async fn resolve_plugin(
 pub async fn resolve_method(
     mut caller: Caller<'_, PluginState>,
     plugin_id: PluginId,
-    method_name: u64,
+    method_name: FatPtr,
 ) -> Result<Option<MethodId>, PluginContractError> {
-    let method_name_ptr = FatPtr::unpack(method_name).ok_or(PluginContractError::NullPointer)?;
     let exports = caller.data().exports().clone();
     let memory = PluginMemory::new(&mut caller, &exports.memory);
     let method_name = memory
-        .read_string(method_name_ptr)
+        .read_string(method_name)
         .map_err(|err| PluginContractError::Other(err.to_string()))?;
 
     let rpc = caller.data().host.rpc.read().await;
@@ -47,9 +45,8 @@ pub async fn dispatch(
     mut caller: Caller<'_, PluginState>,
     plugin_id: PluginId,
     method_id: MethodId,
-    data_ptr: u64,
+    data_ptr: FatPtr,
 ) -> Result<Option<FatPtr>, PluginContractError> {
-    let data_ptr = FatPtr::unpack(data_ptr).ok_or(PluginContractError::NullPointer)?;
     let caller_exports = caller.data().exports().clone();
     let caller_memory = PluginMemory::new(&mut caller, &caller_exports.memory);
     let data = caller_memory.read(data_ptr).to_vec();

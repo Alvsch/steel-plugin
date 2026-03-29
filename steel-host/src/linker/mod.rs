@@ -44,6 +44,8 @@ fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
         "rpc_resolve_plugin",
         |caller: Caller<PluginState>, (plugin_name,): (u64,)| {
             Box::new(async move {
+                let plugin_name =
+                    FatPtr::unpack(plugin_name).ok_or(PluginContractError::NullPointer)?;
                 let plugin_id = rpc::resolve_plugin(caller, plugin_name).await?;
                 Ok(plugin_id.map_or(0, NonZeroU32::get))
             })
@@ -55,6 +57,8 @@ fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
         |caller: Caller<PluginState>, (plugin_id, method_name): (u32, u64)| {
             Box::new(async move {
                 let plugin_id = NonZeroU32::new(plugin_id).ok_or(PluginContractError::InvalidId)?;
+                let method_name =
+                    FatPtr::unpack(method_name).ok_or(PluginContractError::NullPointer)?;
                 let method_id = rpc::resolve_method(caller, plugin_id, method_name).await?;
                 Ok(method_id.map_or(0, NonZeroU32::get))
             })
@@ -67,6 +71,7 @@ fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
             Box::new(async move {
                 let plugin_id = NonZeroU32::new(plugin_id).ok_or(PluginContractError::InvalidId)?;
                 let method_id = NonZeroU32::new(method_id).ok_or(PluginContractError::InvalidId)?;
+                let data_ptr = FatPtr::unpack(data_ptr).ok_or(PluginContractError::NullPointer)?;
                 let result = rpc::dispatch(caller, plugin_id, method_id, data_ptr).await?;
                 Ok(result.map_or(0, FatPtr::pack))
             })
