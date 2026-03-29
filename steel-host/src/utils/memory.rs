@@ -1,3 +1,5 @@
+use std::str::Utf8Error;
+
 use steel_plugin_sdk::utils::fat::FatPtr;
 use wasmtime::{AsContext, AsContextMut, Memory};
 
@@ -21,9 +23,9 @@ where
         &self.memory.data(&self.store)[fat.ptr() as usize..(fat.ptr() + fat.len()) as usize]
     }
 
-    pub fn read_string(&self, fat: FatPtr) -> String {
+    pub fn read_string(&self, fat: FatPtr) -> Result<String, Utf8Error> {
         let slice = self.read(fat);
-        str::from_utf8(slice).unwrap().to_string()
+        str::from_utf8(slice).map(ToString::to_string)
     }
 
     pub fn write(&mut self, ptr: u32, src: &[u8]) {

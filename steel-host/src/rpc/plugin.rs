@@ -24,7 +24,7 @@ impl PluginRpc {
     }
 
     #[must_use]
-    pub fn get_method(&self, method_id: MethodId) -> &RpcMethod {
-        self.methods.get(&method_id).unwrap()
+    pub fn get_method(&self, method_id: MethodId) -> Option<&RpcMethod> {
+        self.methods.get(&method_id)
     }
 }

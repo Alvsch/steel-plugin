@@ -25,10 +25,11 @@ wasmtime = { workspace = true, features = [
 wasmtime-wasi.workspace = true
 wasmparser = { workspace = true, features = ["std", "simd"] }
 
-thiserror.workspace = true
-
 serde.workspace = true
 rmp-serde.workspace = true
+
+thiserror.workspace = true
+anyhow.workspace = true
 
 # Logging
 tracing.workspace = true

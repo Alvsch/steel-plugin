@@ -1,15 +1,16 @@
-use crate::error::PluginManagerError;
+use crate::error::{PluginContractError, PluginError};
 use crate::event::handler::{HandlerFn, HandlerRegistry};
 use crate::plugin::{PluginStatus, PluginStore};
 use crate::rpc::{HostRpc, PluginRpc};
 use crate::utils::memory::PluginMemory;
 use std::collections::HashMap;
+use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use steel_plugin_sdk::export::{ExportedId, ExportedKind};
 use steel_plugin_sdk::rpc::PluginId;
-use steel_plugin_sdk::utils::fat::FatPtr;
 use tokio::sync::RwLock;
+use tracing::warn;
 
 pub struct HostState {
     pub rpc: RwLock<HostRpc>,
@@ -33,12 +34,13 @@ impl HostState {
             handler_registry: RwLock::new(HandlerRegistry::new()),
             enabled_plugins: RwLock::new(Vec::new()),
             plugin_name: RwLock::new(HashMap::new()),
-            next_id: AtomicU32::new(0),
+            next_id: AtomicU32::new(1),
         }
     }
 
-    pub fn next_id(&self) -> u32 {
-        self.next_id.fetch_add(1, Ordering::Relaxed)
+    pub fn next_id(&self) -> NonZeroU32 {
+        let next_id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        NonZeroU32::new(next_id).expect("next_id cant be zero")
     }
 
     #[must_use]
@@ -47,11 +49,14 @@ impl HostState {
     }
 
     pub async fn unregister_plugin(&self, plugin_name: &str) {
-        let plugin_id = self.plugin_name.write().await.remove(plugin_name).unwrap();
+        let Some(plugin_id) = self.plugin_name.write().await.remove(plugin_name) else {
+            warn!("attempted to unregister plugin '{plugin_name}' but it was not registered");
+            return;
+        };
         self.rpc.write().await.plugins.remove(&plugin_id);
     }
 
-    pub async fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginManagerError> {
+    pub async fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
         let mut store = plugin.lock().await;
         let data = store.data();
         let exports = data.exports().clone();
@@ -69,24 +74,33 @@ impl HostState {
 
         // gather exported functions
         let exported_ids: Vec<ExportedId> = {
-            let packed = exports.on_load.call_async(&mut *store, ()).await?;
-            let data_ptr = FatPtr::unpack(packed).unwrap();
+            let data_ptr = exports.on_load(&mut store).await?;
             let memory = PluginMemory::new(&mut *store, &exports.memory);
             let data = memory.read(data_ptr);
-            rmp_serde::from_slice(data).unwrap()
+
+            rmp_serde::from_slice(data)
+                .map_err(|_| PluginContractError::Other("invalid load data".to_string()))?
         };
 
         let table = exports
             .instance
             .get_table(&mut *store, "__indirect_function_table")
-            .unwrap();
+            .ok_or(PluginContractError::Other(
+                "missing '__indirect_function_table'".to_string(),
+            ))?;
 
         // resolve and register exported functions
         for exported in exported_ids {
-            let func_ref = table.get(&mut *store, u64::from(exported.id)).unwrap();
+            let func_ref = table
+                .get(&mut *store, u64::from(exported.id))
+                .ok_or_else(|| PluginContractError::Other("invalid export id".to_string()))?;
 
-            let func = func_ref.as_func().unwrap().unwrap();
-            let typed_func: HandlerFn = func.typed(&mut *store).unwrap();
+            let func = func_ref
+                .as_func()
+                .ok_or_else(|| PluginContractError::Other("export not a function".to_string()))?
+                .ok_or_else(|| PluginContractError::Other("null function export".to_string()))?;
+
+            let typed_func: HandlerFn = func.typed(&mut *store)?;
 
             match exported.kind {
                 ExportedKind::Rpc { export_name } => {
@@ -98,7 +112,7 @@ impl HostState {
                         .write()
                         .await
                         .get_plugin_mut(plugin_id)
-                        .unwrap()
+                        .expect("plugin should be registered")
                         .register_method(method_id, export_name.to_string(), typed_func);
                 }
                 ExportedKind::Event { topic_id, priority } => {
@@ -116,11 +130,11 @@ impl HostState {
         Ok(())
     }
 
-    pub async fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginManagerError> {
+    pub async fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginError> {
         let store = &mut *plugin.lock().await;
         let exports = store.data().exports().clone();
 
-        exports.on_enable.call_async(&mut *store, ()).await?;
+        exports.on_enable(&mut *store).await?;
         store.data_mut().status = PluginStatus::Enabled;
 
         let host = &store.data().host;
@@ -129,11 +143,11 @@ impl HostState {
         Ok(())
     }
 
-    pub async fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginManagerError> {
+    pub async fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginError> {
         let store = &mut *plugin.lock().await;
         let exports = store.data().exports().clone();
 
-        exports.on_disable.call_async(&mut *store, ()).await?;
+        exports.on_disable(&mut *store).await?;
         store.data_mut().status = PluginStatus::Disabled;
 
         let data = store.data();
