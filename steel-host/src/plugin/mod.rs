@@ -42,7 +42,7 @@ impl PluginState {
             status: PluginStatus::Disabled,
             wasi,
             exports: OnceCell::new(),
-            scratch: FatPtr::new(1, 1).unwrap(),
+            scratch: FatPtr::new(1, 1).expect("neither ptr nor len is zero"),
             store: OnceCell::new(),
         }
     }

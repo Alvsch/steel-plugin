@@ -1,14 +1,14 @@
+use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use steel_plugin_sdk::utils::fat::FatPtr;
 use tokio::fs::{create_dir_all, read};
 use tokio::sync::Mutex;
 use wasmtime::{Config, Engine, Instance, Linker, Module, Store};
 use wasmtime_wasi::p1::WasiP1Ctx;
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder};
 
-use crate::error::{PluginLoaderError, PluginManagerError};
+use crate::error::{PluginContractError, PluginError};
 use crate::linker::configure_all;
 use crate::plugin::{PluginExports, PluginMeta, PluginState, PluginStore};
 use crate::state::HostState;
@@ -36,7 +36,7 @@ impl WasmEngine {
     pub fn new(config: Config, data_folder: PathBuf) -> Result<Self, wasmtime::Error> {
         let engine = Engine::new(&config)?;
         let mut linker = Linker::new(&engine);
-        configure_all(&mut linker);
+        configure_all(&mut linker).expect("failed to configure linker");
         Ok(Self {
             engine,
             linker,
@@ -44,34 +44,56 @@ impl WasmEngine {
         })
     }
 
-    pub async fn preload_module(&self, file_path: &Path) -> Result<Module, wasmtime::Error> {
-        let bytes = read(file_path).await?;
-        let precompiled = self.engine.precompile_module(&bytes)?;
-        let module = unsafe { Module::deserialize(&self.engine, precompiled) }?;
+    pub async fn preload_module(&self, file_path: &Path) -> Result<Module, PluginError> {
+        let bytes = read(file_path).await.map_err(|err| match err.kind() {
+            ErrorKind::NotFound => PluginError::NotFound {
+                file_path: file_path.to_path_buf(),
+            },
+            _ => PluginError::Io(err),
+        })?;
+
+        let precompiled = self
+            .engine
+            .precompile_module(&bytes)
+            .map_err(PluginError::InvalidModule)?;
+
+        let module = unsafe { Module::deserialize(&self.engine, precompiled) }
+            .map_err(PluginError::InvalidModule)?;
+
         Ok(module)
     }
 
-    pub async fn prepare_wasi(&self, plugin_name: &str) -> Result<WasiP1Ctx, wasmtime::Error> {
+    pub async fn prepare_wasi(&self, plugin_name: &str) -> Result<WasiP1Ctx, PluginError> {
         let plugin_data_folder = self.data_folder.join(plugin_name);
-        create_dir_all(&plugin_data_folder).await?;
+        create_dir_all(&plugin_data_folder)
+            .await
+            .map_err(PluginError::Io)?;
 
         let wasi = WasiCtxBuilder::new()
-            .preopened_dir(&plugin_data_folder, "/", DirPerms::all(), FilePerms::all())?
+            .preopened_dir(&plugin_data_folder, "/", DirPerms::all(), FilePerms::all())
+            .map_err(|err| {
+                PluginError::Io(
+                    err.downcast::<io::Error>()
+                        .expect(".preopened_dir() can only return an io::Error"),
+                )
+            })?
             .build_p1();
+
         Ok(wasi)
     }
 
     async fn build_store(
         instance: Instance,
         mut store: Store<PluginState>,
-    ) -> Result<PluginStore, wasmtime::Error> {
+    ) -> Result<PluginStore, PluginError> {
         let exports = PluginExports::resolve(instance, &mut store)?;
 
         // preallocate scratch
-        let scratch_ptr = exports.alloc.call_async(&mut store, SCRATCH_SIZE).await?;
+        let scratch_ptr = exports.alloc(&mut store, SCRATCH_SIZE).await?;
 
         let data = store.data_mut();
-        data.scratch = FatPtr::new(scratch_ptr, SCRATCH_SIZE).unwrap();
+        data.scratch = scratch_ptr;
+
         data.exports
             .set(Arc::new(exports))
             .map_err(|_| ())
@@ -93,9 +115,14 @@ impl WasmEngine {
         &self,
         module: &Module,
         plugin_state: PluginState,
-    ) -> Result<PluginStore, wasmtime::Error> {
+    ) -> Result<PluginStore, PluginError> {
         let mut store = Store::new(&self.engine, plugin_state);
-        let instance = self.linker.instantiate_async(&mut store, module).await?;
+
+        let instance = self
+            .linker
+            .instantiate_async(&mut store, module)
+            .await
+            .map_err(PluginError::ModuleInstantiationError)?;
 
         let store = Self::build_store(instance, store).await?;
         Ok(store)
@@ -118,7 +145,7 @@ impl PluginHost {
     pub async fn prepare_plugin(
         &self,
         plugin_meta: PluginMeta,
-    ) -> Result<PluginStore, PluginLoaderError> {
+    ) -> Result<PluginStore, PluginError> {
         let module = self.wasm.preload_module(&plugin_meta.file_path).await?;
         let wasi = self.wasm.prepare_wasi(&plugin_meta.name).await?;
 
@@ -127,15 +154,15 @@ impl PluginHost {
         Ok(plugin)
     }
 
-    pub async fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginManagerError> {
+    pub async fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
         self.state.load_plugin(plugin).await
     }
 
-    pub async fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginManagerError> {
+    pub async fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginError> {
         self.state.enable_plugin(plugin).await
     }
 
-    pub async fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginManagerError> {
+    pub async fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginError> {
         self.state.disable_plugin(plugin).await
     }
 }

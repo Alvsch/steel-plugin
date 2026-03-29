@@ -1,16 +1,19 @@
 use crate::PluginMeta;
-use crate::error::PluginLoaderError;
 use crate::utils::read_custom_section;
 use crate::utils::sorting::sort_plugins;
+use anyhow::Context;
 use std::path::Path;
 use tokio::fs::{read, read_dir};
 use tracing::error;
 
 /// Discover plugins in the specified directory and return their `PluginMeta` in topological order.
-pub async fn discover_plugins(plugin_dir: &Path) -> Result<Vec<PluginMeta>, PluginLoaderError> {
+pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<PluginMeta>> {
     let mut plugins = Vec::new();
 
-    let mut dir = read_dir(plugin_dir).await?;
+    let mut dir = read_dir(plugin_dir)
+        .await
+        .context("failed to read plugin_dir")?;
+
     while let Some(entry) = dir.next_entry().await? {
         let file_type = entry.file_type().await?;
         let file_path = entry.path();
@@ -22,11 +25,12 @@ pub async fn discover_plugins(plugin_dir: &Path) -> Result<Vec<PluginMeta>, Plug
             {
                 continue;
             }
-            let bytes = read(&file_path).await?;
-            let meta_section = read_custom_section(&bytes, "plugin_meta")?
-                .ok_or(PluginLoaderError::MissingPluginMeta)?;
-            let mut plugin_meta: PluginMeta = rmp_serde::from_slice(meta_section)
-                .map_err(PluginLoaderError::InvalidPluginMeta)?;
+            let bytes = read(&file_path).await.context("failed to read file_path")?;
+            let meta_section =
+                read_custom_section(&bytes, "plugin_meta")?.context("missing plugin meta")?;
+
+            let mut plugin_meta: PluginMeta =
+                rmp_serde::from_slice(meta_section).context("invalid plugin meta")?;
 
             if plugin_meta.name == "steel" {
                 error!("Skipping plugin 'steel': this name is reserved and cannot be loaded.",);

@@ -10,7 +10,7 @@ pub async fn resolve_plugin(mut caller: Caller<'_, PluginState>, plugin_name: u6
     let plugin_name_ptr = FatPtr::unpack(plugin_name).unwrap();
     let exports = caller.data().exports().clone();
     let memory = PluginMemory::new(&mut caller, &exports.memory);
-    let plugin_name = memory.read_string(plugin_name_ptr);
+    let plugin_name = memory.read_string(plugin_name_ptr).unwrap();
 
     caller
         .data()
@@ -28,7 +28,7 @@ pub async fn resolve_method(
     let method_name_ptr = FatPtr::unpack(method_name).unwrap();
     let exports = caller.data().exports().clone();
     let memory = PluginMemory::new(&mut caller, &exports.memory);
-    let method_name = memory.read_string(method_name_ptr);
+    let method_name = memory.read_string(method_name_ptr).unwrap();
 
     let rpc = caller.data().host.rpc.read().await;
     rpc.resolve_method(plugin_id, &method_name).unwrap()
@@ -57,14 +57,14 @@ pub async fn dispatch(
     let fat_data = utils::write_scratch(
         &mut provider_store,
         provider_exports.memory,
-        &provider_exports.alloc,
+        &provider_exports,
         provider_scratch,
         &data,
     )
     .await
     .unwrap();
 
-    let result = method
+    let result = method.unwrap()
         .call_async(&mut *provider_store, fat_data.pack())
         .await
         .unwrap();

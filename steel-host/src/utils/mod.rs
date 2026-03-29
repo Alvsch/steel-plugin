@@ -1,6 +1,7 @@
 use crate::SCRATCH_SIZE;
-use crate::plugin::PluginState;
-use crate::plugin::{AllocFunc, DeallocFunc};
+use crate::error::PluginContractError;
+use crate::plugin::DeallocFunc;
+use crate::plugin::{PluginExports, PluginState};
 use steel_plugin_sdk::utils::fat::FatPtr;
 use wasmparser::{Parser, Payload};
 use wasmtime::{Instance, Memory, Store};
@@ -29,18 +30,20 @@ pub fn read_custom_section<'a>(
 pub async fn write_scratch(
     store: &mut Store<PluginState>,
     memory: Memory,
-    alloc: &AllocFunc,
+    exports: &PluginExports,
     scratch: FatPtr,
     data: &[u8],
-) -> Result<FatPtr, wasmtime::Error> {
+) -> Result<FatPtr, PluginContractError> {
     let len = data.len() as u32;
-    let ptr = if len > scratch.len() {
-        alloc.call_async(&mut *store, len).await?
+    let fat = if len > scratch.len() {
+        exports.alloc(store, len).await?
     } else {
-        scratch.ptr()
+        scratch
     };
-    memory.write(&mut *store, ptr as usize, data)?;
-    Ok(FatPtr::new(ptr, len).unwrap())
+    memory
+        .write(&mut *store, fat.ptr() as usize, data)
+        .map_err(|_| PluginContractError::OutOfBoundsPointer)?;
+    Ok(fat)
 }
 
 /// Frees a `FatPtr` produced by `write_scratch`.

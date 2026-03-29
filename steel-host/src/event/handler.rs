@@ -1,6 +1,7 @@
-use crate::plugin::PluginStore;
+use crate::{event::dispatch_event, plugin::PluginStore};
 use std::collections::HashMap;
 use steel_plugin_sdk::event::TopicId;
+use tracing::error;
 use wasmtime::TypedFunc;
 
 pub type HandlerFn = TypedFunc<u64, u64>;
@@ -46,8 +47,18 @@ impl HandlerRegistry {
         entries.insert(pos, entry);
     }
 
+    pub async fn dispatch_topic(&self, topic_id: TopicId, payload: &mut Vec<u8>) {
+        let handlers = self.get_handlers(topic_id);
+        for handler in handlers {
+            let mut store = handler.store.lock().await;
+            if let Err(err) = dispatch_event(&mut store, payload, &handler.handler_fn).await {
+                error!("plugin contract violation during event dispatch: {err}");
+            }
+        }
+    }
+
     #[must_use]
-    pub fn get_handlers(&self, topic_id: TopicId) -> &[HandlerEntry] {
+    fn get_handlers(&self, topic_id: TopicId) -> &[HandlerEntry] {
         self.handlers
             .get(&topic_id)
             .map(Vec::as_slice)

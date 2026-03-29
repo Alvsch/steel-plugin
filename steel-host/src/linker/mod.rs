@@ -10,13 +10,14 @@ type HostLinker = wasmtime::Linker<PluginState>;
 
 mod rpc;
 
-pub fn configure_all(linker: &mut HostLinker) {
-    wasi_snapshot_preview1::add_to_linker(linker, |data: &mut PluginState| &mut data.wasi).unwrap();
-    configure_base(linker);
-    configure_rpc(linker).unwrap();
+pub fn configure_all(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
+    wasi_snapshot_preview1::add_to_linker(linker, |data: &mut PluginState| &mut data.wasi)?;
+    configure_base(linker)?;
+    configure_rpc(linker)?;
+    Ok(())
 }
 
-fn configure_base(linker: &mut HostLinker) {
+fn configure_base(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
     linker
         .func_wrap(
             "host",
@@ -30,8 +31,8 @@ fn configure_base(linker: &mut HostLinker) {
                 let plugin_name = caller.data().meta.name.as_str();
                 info!("[{plugin_name}] {message}");
             },
-        )
-        .unwrap();
+        )?;
+    Ok(())
 }
 
 fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
