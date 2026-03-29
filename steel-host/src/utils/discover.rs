@@ -1,7 +1,7 @@
 use crate::PluginMeta;
 use crate::utils::read_custom_section;
 use crate::utils::sorting::sort_plugins;
-use anyhow::Context;
+use anyhow::{Context, bail};
 use std::path::Path;
 use steel_plugin_sdk::STEEL_API_VERSION;
 use tokio::fs::{read, read_dir};
@@ -26,28 +26,12 @@ pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<PluginMet
             {
                 continue;
             }
-            let bytes = read(&file_path).await.context("failed to read file_path")?;
-            let meta_section =
-                read_custom_section(&bytes, "plugin_meta")?.context("missing plugin meta")?;
-
-            let mut plugin_meta: PluginMeta =
-                rmp_serde::from_slice(meta_section).context("invalid plugin meta")?;
-
-            if plugin_meta.name == "steel" {
-                warn!("Skipping plugin 'steel': this name is reserved and cannot be loaded.",);
-                continue;
+            match discover(&file_path).await {
+                Ok(plugin_meta) => plugins.push(plugin_meta),
+                Err(err) => {
+                    warn!("{err}");
+                }
             }
-
-            if plugin_meta.api_version != STEEL_API_VERSION {
-                warn!(
-                    "Plugin '{}' targets API version {} but host is running {}; skipping load",
-                    plugin_meta.name, plugin_meta.api_version, STEEL_API_VERSION
-                );
-                continue;
-            }
-
-            plugin_meta.file_path = file_path.canonicalize()?;
-            plugins.push(plugin_meta);
         }
     }
     let (topology, invalid) = sort_plugins(plugins);
@@ -55,4 +39,29 @@ pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<PluginMet
         warn!("plugins with invalid dependencies: {:#?}", invalid);
     }
     Ok(topology)
+}
+
+async fn discover(file_path: &Path) -> anyhow::Result<PluginMeta> {
+    let bytes = read(&file_path).await.context("failed to read file_path")?;
+    let meta_section =
+        read_custom_section(&bytes, "plugin_meta")?.context("missing plugin meta")?;
+
+    let mut plugin_meta: PluginMeta =
+        rmp_serde::from_slice(meta_section).context("invalid plugin meta")?;
+
+    if plugin_meta.name == "steel" {
+        bail!("Skipping plugin 'steel': this name is reserved and cannot be loaded.");
+    }
+
+    if plugin_meta.api_version != STEEL_API_VERSION {
+        bail!(
+            "Plugin '{}' targets API version {} but host is running {}; skipping load",
+            plugin_meta.name,
+            plugin_meta.api_version,
+            STEEL_API_VERSION
+        );
+    }
+
+    plugin_meta.file_path = file_path.canonicalize()?;
+    Ok(plugin_meta)
 }
