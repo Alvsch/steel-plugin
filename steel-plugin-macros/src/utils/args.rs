@@ -1,19 +1,15 @@
-use std::path::PathBuf;
-
-use steel_plugin_core::{PluginMeta, STEEL_API_VERSION};
 use syn::{
     LitInt, LitStr, Token,
     parse::{Parse, ParseBuffer, ParseStream},
 };
 
 #[derive(Debug)]
-pub struct PluginMetaArgs(pub PluginMeta);
+pub struct PluginMetaArgs {
+    pub depends: Vec<String>,
+}
 
 impl Parse for PluginMetaArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let mut name = None;
-        let mut version = None;
-        let mut description = None;
         let mut depends = vec![];
 
         while !input.is_empty() {
@@ -21,15 +17,6 @@ impl Parse for PluginMetaArgs {
             input.parse::<Token![=]>()?;
 
             match ident.to_string().as_str() {
-                "name" => {
-                    name = Some(input.parse::<LitStr>()?.value());
-                }
-                "description" => {
-                    description = Some(input.parse::<LitStr>()?.value());
-                }
-                "version" => {
-                    version = Some(input.parse::<LitStr>()?.value());
-                }
                 "depends" => {
                     let content;
                     syn::bracketed!(content in input);
@@ -48,14 +35,7 @@ impl Parse for PluginMetaArgs {
             let _ = input.parse::<Token![,]>();
         }
 
-        Ok(PluginMetaArgs(PluginMeta {
-            name: name.ok_or_else(|| input.error("missing `name`"))?,
-            version: version.ok_or_else(|| input.error("missing `version`"))?,
-            description: description.ok_or_else(|| input.error("missing `description`"))?,
-            api_version: STEEL_API_VERSION,
-            depends,
-            file_path: PathBuf::new(),
-        }))
+        Ok(PluginMetaArgs { depends })
     }
 }
 

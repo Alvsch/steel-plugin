@@ -1,5 +1,6 @@
 [package]
 name = "listening-plugin"
+description = "A plugin that listens to an event"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true

@@ -1,11 +1,6 @@
 use steel_plugin_sdk::{info, on_disable, on_enable, plugin_meta, rpc_export};
 
-plugin_meta!(
-    name = "provider",
-    description = "A plugin that provides an RPC interface",
-    version = "0.1.0",
-    depends = [],
-);
+plugin_meta!();
 
 #[rpc_export]
 fn get_balance(data: &[u8]) -> Option<Vec<u8>> {

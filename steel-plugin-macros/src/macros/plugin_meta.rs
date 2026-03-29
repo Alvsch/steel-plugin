@@ -1,16 +1,30 @@
+use std::{env, path::PathBuf};
+
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
+use semver::Version;
+use steel_plugin_core::PluginMeta;
 use syn::Error;
 
 use crate::PluginMetaArgs;
 
-pub fn plugin_meta(PluginMetaArgs(input): PluginMetaArgs) -> TokenStream {
-    if input.name == "steel" {
+pub fn plugin_meta(input: PluginMetaArgs) -> TokenStream {
+    let meta = PluginMeta {
+        name: env::var("CARGO_PKG_NAME").expect("no name"),
+        description: env::var("CARGO_PKG_DESCRIPTION").unwrap_or_default(),
+        version: Version::parse(&env::var("CARGO_PKG_VERSION").unwrap_or_default())
+            .expect("invalid version"),
+        depends: input.depends,
+        api_version: steel_plugin_core::STEEL_API_VERSION,
+        file_path: PathBuf::new(),
+    };
+
+    if meta.name == "steel" {
         return Error::new(Span::call_site(), "The plugin name 'steel' is reserved")
             .to_compile_error();
     }
 
-    let bytes: Vec<u8> = input.serialize();
+    let bytes: Vec<u8> = meta.serialize();
     let len = bytes.len();
 
     quote! {

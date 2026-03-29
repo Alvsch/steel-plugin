@@ -1,18 +1,13 @@
 use steel_plugin_sdk::rpc::{rpc_dispatch, rpc_resolve_method, rpc_resolve_plugin};
 use steel_plugin_sdk::{info, on_disable, on_enable, plugin_meta};
 
-plugin_meta!(
-    name = "consumer",
-    description = "A plugin that consumes an RPC interface",
-    version = "0.1.0",
-    depends = ["provider"],
-);
+plugin_meta!(depends = ["provider-plugin"]);
 
 #[on_enable]
 pub fn on_enable() {
     info!("hello from the consumer!");
 
-    let plugin_id = rpc_resolve_plugin("provider");
+    let plugin_id = rpc_resolve_plugin("provider-plugin");
     let method_id = rpc_resolve_method(plugin_id, "get_balance");
     let result =
         rpc_dispatch(plugin_id, method_id, b"hello").and_then(|x| String::from_utf8(x).ok());

@@ -10,7 +10,7 @@ pub struct PluginMeta {
     pub name: String,
     #[serde(default)]
     pub description: String,
-    pub version: String,
+    pub version: Version,
     pub depends: Vec<String>,
     pub api_version: Version,
     #[serde(skip)]

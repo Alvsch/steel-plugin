@@ -9,6 +9,7 @@ proc-macro = true
 
 [dependencies]
 steel-plugin-core.workspace = true
+semver.workspace = true
 syn = { workspace = true, features = ["full"] }
 proc-macro2.workspace = true
 quote.workspace = true

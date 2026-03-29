@@ -1,5 +1,6 @@
 [package]
 name = "provider-plugin"
+description = "A plugin that provides an RPC interface"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
