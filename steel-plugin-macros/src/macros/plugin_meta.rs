@@ -14,6 +14,9 @@ pub fn plugin_meta(input: PluginMetaArgs) -> TokenStream {
         description: env::var("CARGO_PKG_DESCRIPTION").unwrap_or_default(),
         version: Version::parse(&env::var("CARGO_PKG_VERSION").unwrap_or_default())
             .expect("invalid version"),
+        authors: env::var("CARGO_PKG_AUTHORS")
+            .map(|authors| authors.split(':').map(ToString::to_string).collect())
+            .unwrap_or_default(),
         depends: input.depends,
         api_version: steel_plugin_core::STEEL_API_VERSION,
         file_path: PathBuf::new(),
