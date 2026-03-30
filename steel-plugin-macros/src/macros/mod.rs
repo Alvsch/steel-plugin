@@ -1,9 +1,11 @@
+mod derive_event;
 mod event_handler;
 mod on_disable;
 mod on_enable;
 mod plugin_meta;
 mod rpc_export;
 
+pub(crate) use derive_event::derive_event;
 pub(crate) use event_handler::event_handler;
 pub(crate) use on_disable::on_disable;
 pub(crate) use on_enable::on_enable;

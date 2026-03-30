@@ -2,7 +2,7 @@ use anyhow::Context;
 use std::path::PathBuf;
 use std::sync::Arc;
 use steel_host::{PluginHost, discover_plugins};
-use steel_plugin_sdk::event::{PlayerJoinEvent, hash_topic};
+use steel_plugin_sdk::event::PlayerJoinEvent;
 use tokio::fs::create_dir_all;
 use tracing::{Level, info};
 use uuid::Uuid;
@@ -61,21 +61,18 @@ async fn main() -> anyhow::Result<()> {
     }
 
     {
-        let mut payload = rmp_serde::to_vec(&PlayerJoinEvent {
+        let mut event = PlayerJoinEvent {
             player_id: Uuid::new_v4(),
             username: "Alvsch".to_string(),
-        })
-        .context("failed to serialize event")?;
+        };
 
         let handlers = host.state.handler_registry.read().await;
         handlers
-            .dispatch_topic(hash_topic(b"PlayerJoinEvent"), &mut payload)
-            .await;
+            .dispatch_topic(&mut event)
+            .await
+            .context("failed to dispatch topic")?;
 
-        let value: PlayerJoinEvent =
-            rmp_serde::from_slice(&payload).context("failed to deserialize event")?;
-
-        info!("{:?}", value);
+        info!("modified {:?}", event);
     }
 
     for plugin in enabled.drain(..).rev() {

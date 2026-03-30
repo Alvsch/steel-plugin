@@ -27,15 +27,11 @@ pub(crate) fn event_handler(item: ItemFn, priority: i8) -> TokenStream {
         return err.to_compile_error();
     }
 
-    let topic: TokenStream = format!("b\"{}\"", quote! { #arg_type })
-        .parse()
-        .expect("failed to parse");
-
     quote! {
         ::steel_plugin_sdk::export::submit! {
             ::steel_plugin_sdk::export::Exported {
                 kind: ::steel_plugin_sdk::export::ExportedKind::Event {
-                    topic_id: ::steel_plugin_sdk::event::hash_topic(#topic),
+                    topic_id: <#arg_type as ::steel_plugin_sdk::event::Event>::TOPIC_ID,
                     priority: #priority,
                 },
                 func: |packed| {

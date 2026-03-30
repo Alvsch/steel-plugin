@@ -1,23 +1,13 @@
 use serde::{Deserialize, Serialize};
+use steel_plugin_core::TopicId;
+use steel_plugin_macros::Event;
 use uuid::Uuid;
 
-pub type TopicId = u32;
-
-#[must_use]
-pub const fn hash_topic(bytes: &[u8]) -> TopicId {
-    let mut hash: u32 = 0x811C_9DC5;
-    let mut i = 0;
-
-    while i < bytes.len() {
-        hash ^= bytes[i] as u32;
-        hash = hash.wrapping_mul(0x0100_0193);
-        i += 1;
-    }
-
-    hash
+pub trait Event: Serialize + for<'a> Deserialize<'a> {
+    const TOPIC_ID: TopicId;
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Event, Serialize, Deserialize)]
 pub struct PlayerJoinEvent {
     pub player_id: Uuid,
     pub username: String,
