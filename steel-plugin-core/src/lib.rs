@@ -3,14 +3,17 @@ use std::path::PathBuf;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
-pub const STEEL_API_VERSION: Version = Version::new(0, 1, 0);
+pub const STEEL_API_VERSION: Version = Version::new(0, 2, 0);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PluginMeta {
     pub name: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub description: String,
     pub version: Version,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub authors: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub depends: Vec<String>,
     pub api_version: Version,
     #[serde(skip)]
@@ -20,7 +23,7 @@ pub struct PluginMeta {
 impl PluginMeta {
     #[must_use]
     pub fn serialize(&self) -> Vec<u8> {
-        rmp_serde::to_vec(self).expect("failed to serialize")
+        rmp_serde::to_vec_named(self).expect("failed to serialize")
     }
 }
 
