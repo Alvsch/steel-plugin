@@ -2,9 +2,8 @@ use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
 
-use crate::event::TopicId;
-
 pub use inventory::{iter, submit};
+use steel_plugin_core::TopicId;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum ExportedKind {
