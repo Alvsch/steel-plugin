@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, slice};
+use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
 use slotmap::{KeyData, new_key_type};
@@ -81,7 +81,7 @@ impl<E: Entity> Handle<E> {
     /// `Q` is a tuple of query marker types. The return type mirrors
     /// the tuple with each marker replaced by its concrete output type.
     #[must_use]
-    pub fn fetch<Q: QuerySet<E>>(&self) -> Q::Output {
+    pub fn fetch<Q: QuerySet<E>>(&self) -> Option<Q::Output> {
         let wire_queries = Q::to_wire();
         let query_payload =
             rmp_serde::to_vec(&wire_queries).expect("failed to serialize fetch queries");
@@ -92,13 +92,17 @@ impl<E: Entity> Handle<E> {
                 query_payload.as_ptr() as u32,
                 query_payload.len() as u32,
             ))
-        }
-        .expect("host returned a null pointer");
+        }?;
 
-        let response =
-            unsafe { slice::from_raw_parts(fat_ptr.ptr() as *const u8, fat_ptr.len() as usize) };
+        let response = unsafe {
+            Vec::from_raw_parts(
+                fat_ptr.ptr() as *mut u8,
+                fat_ptr.len() as usize,
+                fat_ptr.len() as usize,
+            )
+        };
 
-        Q::from_response(response)
+        Some(Q::from_response(&response))
     }
 
     /// Creates a [`BatchBuilder`] for sending commands to this entity.

@@ -15,10 +15,9 @@ pub enum PlayerQuery {
 pub enum PlayerCommand {
     SendMessage(String),
     SetGamemode(GameType),
-    SetPosition(DVec3),
     SetHealth(f32),
     Kick(String),
-    Teleport { x: f64, y: f64, z: f64 },
+    Teleport(DVec3),
 }
 
 #[derive(Debug)]
@@ -77,15 +76,15 @@ impl PlayerBatch {
         self.push(PlayerCommand::SetGamemode(gamemode))
     }
 
-    pub fn set_position(self, position: DVec3) -> Self {
-        self.push(PlayerCommand::SetPosition(position))
-    }
-
     pub fn set_health(self, health: f32) -> Self {
         self.push(PlayerCommand::SetHealth(health))
     }
 
     pub fn kick(self, reason: String) -> Self {
         self.push(PlayerCommand::Kick(reason))
+    }
+
+    pub fn teleport(self, position: DVec3) -> Self {
+        self.push(PlayerCommand::Teleport(position))
     }
 }

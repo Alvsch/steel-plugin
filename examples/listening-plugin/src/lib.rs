@@ -8,7 +8,7 @@ plugin_meta!();
 fn test_handler(event: PlayerJoinEvent) -> Option<PlayerJoinEvent> {
     info!("{:?}", event);
 
-    let (name, health) = event.player.fetch::<(Name, Health)>();
+    let (name, health) = event.player.fetch::<(Name, Health)>().unwrap();
     info!("before: name={name}, health={health}");
 
     event
@@ -18,7 +18,7 @@ fn test_handler(event: PlayerJoinEvent) -> Option<PlayerJoinEvent> {
         .set_health(17.0)
         .send();
 
-    let (_, new_health) = event.player.fetch::<(Name, Health)>();
+    let (new_health,) = event.player.fetch::<(Health,)>().unwrap();
     info!("after: health={new_health}");
 
     Some(event)
