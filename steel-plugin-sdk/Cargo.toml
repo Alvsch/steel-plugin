@@ -7,9 +7,13 @@ authors.workspace = true
 [dependencies]
 steel-plugin-macros.workspace = true
 steel-plugin-core.workspace = true
+
 serde.workspace = true
+rmp-serde.workspace = true
 uuid.workspace = true
 inventory.workspace = true
+glam.workspace = true
+slotmap.workspace = true
 
 [lints]
 workspace = true

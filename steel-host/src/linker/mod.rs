@@ -3,6 +3,7 @@ use std::num::NonZeroU32;
 use crate::PluginState;
 use crate::error::PluginContractError;
 use crate::utils::memory::PluginMemory;
+use steel_plugin_sdk::objects::HandleKey;
 use steel_plugin_sdk::utils::fat::FatPtr;
 use tracing::info;
 use wasmtime::Caller;
@@ -10,12 +11,14 @@ use wasmtime_wasi::p1::wasi_snapshot_preview1;
 
 type HostLinker = wasmtime::Linker<PluginState>;
 
+mod objects;
 mod rpc;
 
 pub fn configure_all(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
     wasi_snapshot_preview1::add_to_linker(linker, |data: &mut PluginState| &mut data.wasi)?;
     configure_base(linker)?;
     configure_rpc(linker)?;
+    configure_objects(linker)?;
     Ok(())
 }
 
@@ -77,5 +80,36 @@ fn configure_rpc(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
             })
         },
     )?;
+    Ok(())
+}
+
+fn configure_objects(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
+    linker.func_wrap_async(
+        "host",
+        "object_fetch",
+        |caller: Caller<PluginState>, (entity_key, queries_ptr, queries_len): (u64, u32, u32)| {
+            Box::new(async move {
+                let queries_fat = FatPtr::new(queries_ptr, queries_len)
+                    .ok_or(PluginContractError::NullPointer)?;
+                let entity_key = HandleKey::from_ffi(entity_key);
+                let result = objects::fetch(caller, entity_key, queries_fat).await?;
+                Ok(result)
+            })
+        },
+    )?;
+
+    linker.func_wrap_async(
+        "host",
+        "object_batch_dispatch",
+        |caller: Caller<PluginState>, (entity_key, ptr, len): (u64, u32, u32)| {
+            Box::new(async move {
+                let commands_fat = FatPtr::new(ptr, len).ok_or(PluginContractError::NullPointer)?;
+                let entity_key = HandleKey::from_ffi(entity_key);
+                objects::batch_dispatch(caller, entity_key, commands_fat).await?;
+                Ok(())
+            })
+        },
+    )?;
+
     Ok(())
 }

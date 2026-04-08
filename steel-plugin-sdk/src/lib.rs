@@ -2,8 +2,8 @@ pub use steel_plugin_macros::{event_handler, on_disable, on_enable, plugin_meta,
 
 pub mod event;
 pub mod export;
+pub mod objects;
 pub mod rpc;
-pub mod types;
 pub mod utils;
 
 pub use steel_plugin_core::STEEL_API_VERSION;
@@ -16,6 +16,9 @@ pub(crate) mod host {
         pub unsafe fn rpc_resolve_plugin(name: u64) -> u32;
         pub unsafe fn rpc_resolve_method(plugin_id: u32, name: u64) -> u32;
         pub unsafe fn rpc_dispatch(plugin_id: u32, method_id: u32, data: u64) -> u64;
+        // objects
+        pub unsafe fn object_fetch(entity_key: u64, queries_ptr: u32, queries_len: u32) -> u64;
+        pub unsafe fn object_batch_dispatch(entity_key: u64, ptr: u32, len: u32);
     }
 }
 
