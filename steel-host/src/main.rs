@@ -10,7 +10,8 @@ use steel_plugin_sdk::event::PlayerJoinEvent;
 use steel_plugin_sdk::objects::player::Player;
 use steel_plugin_sdk::objects::{GameType, Handle, HandleKey};
 use tokio::fs::create_dir_all;
-use tracing::{Level, info};
+use tracing::info;
+use tracing_subscriber::EnvFilter;
 use wasmtime::{Config, OptLevel};
 
 async fn register_demo_player(host: &PluginHost, player: DemoPlayer) -> HandleKey {
@@ -43,7 +44,13 @@ async fn unregister_demo_player(host: &PluginHost, key: HandleKey) {
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_ansi_sanitization(false)
-        .with_max_level(Level::INFO)
+        .with_env_filter(
+            EnvFilter::builder()
+                .with_default_directive("debug".parse()?)
+                .from_env_lossy()
+                .add_directive("cranelift_codegen=info".parse()?)
+                .add_directive("wasmtime_internal_cranelift::compiler=info".parse()?),
+        )
         .init();
 
     let mut config = Config::new();

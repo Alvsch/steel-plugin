@@ -5,7 +5,7 @@ use crate::error::PluginContractError;
 use crate::utils::memory::PluginMemory;
 use steel_plugin_sdk::objects::HandleKey;
 use steel_plugin_sdk::utils::fat::FatPtr;
-use tracing::info;
+use tracing::Level;
 use wasmtime::Caller;
 use wasmtime_wasi::p1::wasi_snapshot_preview1;
 
@@ -16,28 +16,46 @@ mod rpc;
 
 pub fn configure_all(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
     wasi_snapshot_preview1::add_to_linker(linker, |data: &mut PluginState| &mut data.wasi)?;
-    configure_base(linker)?;
+    configure_logging(linker)?;
     configure_rpc(linker)?;
     configure_objects(linker)?;
     Ok(())
 }
 
-fn configure_base(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
+fn register_log_import(
+    linker: &mut HostLinker,
+    import_name: &'static str,
+    level: Level,
+) -> Result<(), wasmtime::Error> {
     linker.func_wrap(
         "host",
-        "info",
-        |mut caller: Caller<PluginState>, ptr: u32, len: u32| -> Result<(), wasmtime::Error> {
+        import_name,
+        move |mut caller: Caller<PluginState>, ptr: u32, len: u32| -> Result<(), wasmtime::Error> {
             let exports = caller.data().exports().clone();
             let memory = PluginMemory::new(&mut caller, &exports.memory);
             let fat = FatPtr::new(ptr, len).ok_or(PluginContractError::NullPointer)?;
             let buf = memory.read(fat);
             let message = str::from_utf8(buf)?.to_string();
-
             let plugin_name = caller.data().meta.name.as_str();
-            info!("[{plugin_name}] {message}");
+            match level {
+                Level::ERROR => tracing::error!("[{plugin_name}] {message}"),
+                Level::WARN => tracing::warn!("[{plugin_name}] {message}"),
+                Level::INFO => tracing::info!("[{plugin_name}] {message}"),
+                Level::DEBUG => tracing::debug!("[{plugin_name}] {message}"),
+                Level::TRACE => tracing::trace!("[{plugin_name}] {message}"),
+            }
             Ok(())
         },
     )?;
+    Ok(())
+}
+
+fn configure_logging(linker: &mut HostLinker) -> Result<(), wasmtime::Error> {
+    register_log_import(linker, "error", Level::ERROR)?;
+    register_log_import(linker, "warn", Level::WARN)?;
+    register_log_import(linker, "info", Level::INFO)?;
+    register_log_import(linker, "debug", Level::DEBUG)?;
+    register_log_import(linker, "trace", Level::TRACE)?;
     Ok(())
 }
 
