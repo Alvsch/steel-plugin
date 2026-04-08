@@ -28,7 +28,10 @@ wasmparser = { workspace = true, features = ["std", "simd"] }
 
 serde.workspace = true
 rmp-serde.workspace = true
+rmp.workspace = true
 semver.workspace = true
+slotmap.workspace = true
+glam.workspace = true
 
 thiserror.workspace = true
 anyhow.workspace = true

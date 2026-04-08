@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use steel_plugin_core::TopicId;
 use steel_plugin_macros::Event;
-use uuid::Uuid;
+
+use crate::objects::{Handle, player::Player};
 
 pub trait Event: Serialize + for<'a> Deserialize<'a> {
     const TOPIC_ID: TopicId;
@@ -9,6 +10,5 @@ pub trait Event: Serialize + for<'a> Deserialize<'a> {
 
 #[derive(Debug, Event, Serialize, Deserialize)]
 pub struct PlayerJoinEvent {
-    pub player_id: Uuid,
-    pub username: String,
+    pub player: Handle<Player>,
 }
