@@ -56,13 +56,6 @@ fn apply_player_commands(state: &mut DemoPlayer, commands: Vec<PlayerCommand>) {
                     state.name, state.gamemode
                 );
             }
-            PlayerCommand::SetPosition(position) => {
-                state.position = position;
-                info!(
-                    "[demo-player:{}] position set to {:?}",
-                    state.name, state.position
-                );
-            }
             PlayerCommand::SetHealth(health) => {
                 state.health = health.clamp(0.0, 20.0);
                 info!(
@@ -73,8 +66,8 @@ fn apply_player_commands(state: &mut DemoPlayer, commands: Vec<PlayerCommand>) {
             PlayerCommand::Kick(reason) => {
                 info!("[demo-player:{}] kick requested: {reason}", state.name);
             }
-            PlayerCommand::Teleport { x, y, z } => {
-                state.position = DVec3::new(x, y, z);
+            PlayerCommand::Teleport(position) => {
+                state.position = position;
                 info!(
                     "[demo-player:{}] teleported to {:?}",
                     state.name, state.position
