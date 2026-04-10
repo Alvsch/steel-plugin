@@ -28,8 +28,9 @@ steel-plugin-sdk = { path = "steel-plugin-sdk" }
 steel-plugin-macros = { path = "steel-plugin-macros" }
 steel-plugin-core = { path = "steel-plugin-core" }
 
-steel-core = { git = "https://github.com/Steel-Foundation/SteelMC" }
-steel-utils = { git = "https://github.com/Steel-Foundation/SteelMC" }
+steel-core = { git = "https://github.com/Alvsch/SteelMC", branch = "plugin-api" }
+steel-utils = { git = "https://github.com/Alvsch/SteelMC", branch = "plugin-api" }
+text_components = { git = "https://github.com/Steel-Foundation/TextComponents", features = ["serde"] }
 
 tokio = { version = "1.51.1", features = ["macros", "rt", "rt-multi-thread", "fs"] }
 

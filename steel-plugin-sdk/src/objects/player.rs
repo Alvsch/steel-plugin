@@ -1,7 +1,8 @@
 use glam::DVec3;
 use serde::{Deserialize, Serialize};
+use text_components::TextComponent;
 
-use crate::objects::{Entity, GameType, batch::BatchBuilder, query::QueryItem};
+use crate::objects::{Entity, batch::BatchBuilder, query::QueryItem};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum PlayerQuery {
@@ -13,10 +14,10 @@ pub enum PlayerQuery {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum PlayerCommand {
-    SendMessage(String),
-    SetGamemode(GameType),
+    SendMessage(TextComponent),
+    SetGamemode(i8),
     SetHealth(f32),
-    Kick(String),
+    Kick(TextComponent),
     Teleport(DVec3),
 }
 
@@ -50,7 +51,7 @@ impl QueryItem<Player> for Position {
 }
 
 impl QueryItem<Player> for Gamemode {
-    type Output = GameType;
+    type Output = i8;
 
     fn to_wire() -> <Player as Entity>::WireQuery {
         PlayerQuery::Gamemode
@@ -68,11 +69,11 @@ impl QueryItem<Player> for Health {
 pub type PlayerBatch = BatchBuilder<Player>;
 
 impl PlayerBatch {
-    pub fn send_message(self, message: String) -> Self {
-        self.push(PlayerCommand::SendMessage(message))
+    pub fn send_message(self, message: impl Into<TextComponent>) -> Self {
+        self.push(PlayerCommand::SendMessage(message.into()))
     }
 
-    pub fn set_gamemode(self, gamemode: GameType) -> Self {
+    pub fn set_gamemode(self, gamemode: i8) -> Self {
         self.push(PlayerCommand::SetGamemode(gamemode))
     }
 
@@ -80,8 +81,8 @@ impl PlayerBatch {
         self.push(PlayerCommand::SetHealth(health))
     }
 
-    pub fn kick(self, reason: String) -> Self {
-        self.push(PlayerCommand::Kick(reason))
+    pub fn kick(self, reason: impl Into<TextComponent>) -> Self {
+        self.push(PlayerCommand::Kick(reason.into()))
     }
 
     pub fn teleport(self, position: DVec3) -> Self {

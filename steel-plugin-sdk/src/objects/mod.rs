@@ -13,15 +13,6 @@ pub mod batch;
 pub mod player;
 pub mod query;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash)]
-#[expect(missing_docs, reason = "variant names are self-explanatory")]
-pub enum GameType {
-    Survival = 0,
-    Creative = 1,
-    Adventure = 2,
-    Spectator = 3,
-}
-
 new_key_type! {
     pub struct HandleKey;
 }

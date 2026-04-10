@@ -8,7 +8,8 @@ use steel_host::{
 };
 use steel_plugin_sdk::event::PlayerJoinEvent;
 use steel_plugin_sdk::objects::player::Player;
-use steel_plugin_sdk::objects::{GameType, Handle, HandleKey};
+use steel_plugin_sdk::objects::{Handle, HandleKey};
+use steel_utils::types::GameType;
 use tokio::fs::create_dir_all;
 use tracing::info;
 use tracing_subscriber::EnvFilter;

@@ -4,6 +4,7 @@ use slotmap::SlotMap;
 use steel_plugin_sdk::objects::HandleKey;
 
 pub mod demo_player;
+pub mod player;
 
 type FetchHandler = dyn Fn(&[u8]) -> Result<Vec<u8>, String> + Send + Sync;
 type BatchHandler = dyn Fn(&[u8]) -> Result<(), String> + Send + Sync;
