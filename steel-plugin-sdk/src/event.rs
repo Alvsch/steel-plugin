@@ -12,3 +12,8 @@ pub trait Event: Serialize + for<'a> Deserialize<'a> {
 pub struct PlayerJoinEvent {
     pub player: Handle<Player>,
 }
+
+#[derive(Debug, Event, Serialize, Deserialize)]
+pub struct PlayerLeaveEvent {
+    pub player: Handle<Player>,
+}

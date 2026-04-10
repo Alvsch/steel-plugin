@@ -2,10 +2,8 @@ use glam::DVec3;
 use rmp::encode::write_array_len;
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
-use steel_plugin_sdk::objects::{
-    GameType,
-    player::{PlayerCommand, PlayerQuery},
-};
+use steel_plugin_sdk::objects::player::{PlayerCommand, PlayerQuery};
+use steel_utils::types::GameType;
 use tracing::info;
 
 use super::ObjectHandler;
@@ -50,7 +48,7 @@ fn apply_player_commands(state: &mut DemoPlayer, commands: Vec<PlayerCommand>) {
                 info!("[demo-player:{}] chat: {message}", state.name);
             }
             PlayerCommand::SetGamemode(gamemode) => {
-                state.gamemode = gamemode;
+                state.gamemode = GameType::from(gamemode);
                 info!(
                     "[demo-player:{}] gamemode set to {:?}",
                     state.name, state.gamemode

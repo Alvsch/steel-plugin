@@ -13,6 +13,8 @@ profiler = [
 [dependencies]
 steel-plugin-sdk.workspace = true
 steel-plugin-core.workspace = true
+steel-core.workspace = true
+steel-utils.workspace = true
 tokio.workspace = true
 
 wasmtime = { workspace = true, features = [
