@@ -10,5 +10,4 @@ A plugin system in WebAssembly
 ### Common commands
 
 - `just test` runs fast unit-oriented suites.
-- `just test-macros` runs full macro tests (including compile-fail cases).
 - `just test-integration` builds wasm plugins and runs host integration tests.
