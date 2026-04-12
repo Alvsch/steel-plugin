@@ -57,3 +57,68 @@ pub fn sort_plugins(plugins: Vec<PluginMeta>) -> (Vec<PluginMeta>, Vec<PluginMet
 
     (sorted, invalid)
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use semver::Version;
+    use steel_plugin_sdk::STEEL_API_VERSION;
+
+    use super::sort_plugins;
+    use crate::PluginMeta;
+
+    fn make_plugin(name: &str, depends: &[&str]) -> PluginMeta {
+        PluginMeta {
+            name: name.to_string(),
+            description: String::new(),
+            version: Version::new(0, 1, 0),
+            authors: Vec::new(),
+            depends: depends.iter().map(|dep| (*dep).to_string()).collect(),
+            api_version: STEEL_API_VERSION.clone(),
+            file_path: PathBuf::new(),
+        }
+    }
+
+    #[test]
+    fn sorts_dependency_graph_topologically() {
+        let plugins = vec![
+            make_plugin("consumer", &["provider"]),
+            make_plugin("provider", &[]),
+        ];
+
+        let (sorted, invalid) = sort_plugins(plugins);
+        let names: Vec<&str> = sorted.iter().map(|plugin| plugin.name.as_str()).collect();
+
+        assert_eq!(names, vec!["provider", "consumer"]);
+        assert!(invalid.is_empty());
+    }
+
+    #[test]
+    fn unresolved_dependencies_are_marked_invalid() {
+        let plugins = vec![
+            make_plugin("provider", &[]),
+            make_plugin("consumer", &["missing"]),
+        ];
+
+        let (sorted, invalid) = sort_plugins(plugins);
+        let sorted_names: Vec<&str> = sorted.iter().map(|plugin| plugin.name.as_str()).collect();
+        let invalid_names: Vec<&str> = invalid.iter().map(|plugin| plugin.name.as_str()).collect();
+
+        assert_eq!(sorted_names, vec!["provider"]);
+        assert_eq!(invalid_names, vec!["consumer"]);
+    }
+
+    #[test]
+    fn cyclic_dependencies_are_marked_invalid() {
+        let plugins = vec![make_plugin("a", &["b"]), make_plugin("b", &["a"])];
+
+        let (sorted, invalid) = sort_plugins(plugins);
+        let mut invalid_names: Vec<&str> =
+            invalid.iter().map(|plugin| plugin.name.as_str()).collect();
+        invalid_names.sort_unstable();
+
+        assert!(sorted.is_empty());
+        assert_eq!(invalid_names, vec!["a", "b"]);
+    }
+}

@@ -64,3 +64,44 @@ impl TryFrom<u64> for FatPtr {
         Self::unpack(packed).ok_or(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::FatPtr;
+
+    #[test]
+    fn rejects_all_zero_representation() {
+        assert!(FatPtr::new(0, 0).is_none());
+        assert!(FatPtr::unpack(0).is_none());
+    }
+
+    #[test]
+    fn round_trip_pack_and_unpack() {
+        let fat = FatPtr::new(0xDEAD_BEEF, 0x1234_5678).expect("non-zero fat pointer");
+        let packed = fat.pack();
+        let unpacked = FatPtr::unpack(packed).expect("packed value should unpack");
+
+        assert_eq!(unpacked.ptr(), 0xDEAD_BEEF);
+        assert_eq!(unpacked.len(), 0x1234_5678);
+    }
+
+    #[test]
+    fn supports_boundary_values() {
+        let from_ptr = FatPtr::new(u32::MAX, 0).expect("ptr alone keeps non-zero fat pointer");
+        assert_eq!(from_ptr.ptr(), u32::MAX);
+        assert_eq!(from_ptr.len(), 0);
+
+        let from_len = FatPtr::new(0, u32::MAX).expect("len alone keeps non-zero fat pointer");
+        assert_eq!(from_len.ptr(), 0);
+        assert_eq!(from_len.len(), u32::MAX);
+    }
+
+    #[test]
+    fn try_from_u64_matches_unpack() {
+        let fat = FatPtr::new(5, 9).expect("non-zero fat pointer");
+        let packed = fat.pack();
+
+        assert_eq!(FatPtr::try_from(packed), Ok(fat));
+        assert_eq!(FatPtr::try_from(0), Err(()));
+    }
+}

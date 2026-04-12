@@ -63,3 +63,66 @@ impl_query_set!(Q0, Q1, Q2, Q3, Q4, Q5, Q6, Q7, Q8);
 impl_query_set!(Q0, Q1, Q2, Q3, Q4, Q5, Q6, Q7, Q8, Q9);
 impl_query_set!(Q0, Q1, Q2, Q3, Q4, Q5, Q6, Q7, Q8, Q9, Q10);
 impl_query_set!(Q0, Q1, Q2, Q3, Q4, Q5, Q6, Q7, Q8, Q9, Q10, Q11);
+
+#[cfg(test)]
+mod tests {
+    use serde::{Deserialize, Serialize};
+
+    use super::{QueryItem, QuerySet};
+    use crate::objects::Entity;
+
+    struct TestEntity;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    enum TestQuery {
+        Id,
+        Name,
+    }
+
+    impl Entity for TestEntity {
+        type WireQuery = TestQuery;
+        type WireCommand = ();
+    }
+
+    struct Id;
+    struct Name;
+
+    impl QueryItem<TestEntity> for Id {
+        type Output = u32;
+
+        fn to_wire() -> TestQuery {
+            TestQuery::Id
+        }
+    }
+
+    impl QueryItem<TestEntity> for Name {
+        type Output = String;
+
+        fn to_wire() -> TestQuery {
+            TestQuery::Name
+        }
+    }
+
+    #[test]
+    fn tuple_query_set_serializes_expected_wire_queries() {
+        let wire = <(Id, Name) as QuerySet<TestEntity>>::to_wire();
+        assert_eq!(wire, vec![TestQuery::Id, TestQuery::Name]);
+    }
+
+    #[test]
+    fn tuple_query_set_deserializes_response_payload() {
+        let payload = rmp_serde::to_vec(&(42_u32, String::from("steel")))
+            .expect("response payload should serialize");
+
+        let (id, name): (u32, String) =
+            <(Id, Name) as QuerySet<TestEntity>>::from_response(&payload);
+        assert_eq!(id, 42);
+        assert_eq!(name, "steel");
+    }
+
+    #[test]
+    #[should_panic(expected = "host returned malformed fetch response")]
+    fn malformed_response_panics() {
+        let _decoded: (u32, String) = <(Id, Name) as QuerySet<TestEntity>>::from_response(&[0xC0]);
+    }
+}

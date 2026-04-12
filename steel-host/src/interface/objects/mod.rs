@@ -139,3 +139,75 @@ impl ObjectRegistry {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{BatchDispatchOutcome, FetchOutcome, ObjectHandler, ObjectRegistry};
+
+    #[test]
+    fn register_and_unregister_handler() {
+        let mut registry = ObjectRegistry::new();
+        let key = registry.register(ObjectHandler::from_fns(|_| Ok(vec![]), |_| Ok(())));
+
+        assert!(registry.contains(key));
+        assert!(registry.unregister(key).is_some());
+        assert!(!registry.contains(key));
+    }
+
+    #[test]
+    fn fetch_reports_expected_outcomes() {
+        let mut registry = ObjectRegistry::new();
+
+        let missing_key = registry.register(ObjectHandler::from_fns(|_| Ok(vec![]), |_| Ok(())));
+        let _ = registry.unregister(missing_key);
+        assert!(matches!(
+            registry.fetch(missing_key, b"payload"),
+            FetchOutcome::MissingKey
+        ));
+
+        let success_key = registry.register(ObjectHandler::from_fns(
+            |payload| Ok(payload.to_vec()),
+            |_| Ok(()),
+        ));
+        assert!(matches!(
+            registry.fetch(success_key, b"abc"),
+            FetchOutcome::Response(response) if response == b"abc"
+        ));
+
+        let error_key = registry.register(ObjectHandler::from_fns(
+            |_| Err("fetch failed".to_string()),
+            |_| Ok(()),
+        ));
+        assert!(matches!(
+            registry.fetch(error_key, b"x"),
+            FetchOutcome::HandlerError(err) if err == "fetch failed"
+        ));
+    }
+
+    #[test]
+    fn batch_dispatch_reports_expected_outcomes() {
+        let mut registry = ObjectRegistry::new();
+
+        let missing_key = registry.register(ObjectHandler::from_fns(|_| Ok(vec![]), |_| Ok(())));
+        let _ = registry.unregister(missing_key);
+        assert!(matches!(
+            registry.batch_dispatch(missing_key, b"payload"),
+            BatchDispatchOutcome::MissingKey
+        ));
+
+        let success_key = registry.register(ObjectHandler::from_fns(|_| Ok(vec![]), |_| Ok(())));
+        assert!(matches!(
+            registry.batch_dispatch(success_key, b"command"),
+            BatchDispatchOutcome::Dispatched
+        ));
+
+        let error_key = registry.register(ObjectHandler::from_fns(
+            |_| Ok(vec![]),
+            |_| Err("dispatch failed".to_string()),
+        ));
+        assert!(matches!(
+            registry.batch_dispatch(error_key, b"command"),
+            BatchDispatchOutcome::HandlerError(err) if err == "dispatch failed"
+        ));
+    }
+}

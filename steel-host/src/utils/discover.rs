@@ -70,3 +70,31 @@ async fn discover(file_path: &Path) -> anyhow::Result<PluginMeta> {
 pub fn is_compatible_api_version(version: &Version) -> bool {
     version.major == STEEL_API_VERSION.major && version.minor <= STEEL_API_VERSION.minor
 }
+
+#[cfg(test)]
+mod tests {
+    use semver::Version;
+    use steel_plugin_sdk::STEEL_API_VERSION;
+
+    use super::is_compatible_api_version;
+
+    #[test]
+    fn accepts_same_major_with_equal_or_lower_minor() {
+        let lower_minor = Version::new(STEEL_API_VERSION.major, 0, 999);
+
+        assert!(is_compatible_api_version(&STEEL_API_VERSION));
+        assert!(is_compatible_api_version(&lower_minor));
+    }
+
+    #[test]
+    fn rejects_same_major_with_higher_minor() {
+        let higher_minor = Version::new(STEEL_API_VERSION.major, STEEL_API_VERSION.minor + 1, 0);
+        assert!(!is_compatible_api_version(&higher_minor));
+    }
+
+    #[test]
+    fn rejects_different_major() {
+        let different_major = Version::new(STEEL_API_VERSION.major + 1, 0, 0);
+        assert!(!is_compatible_api_version(&different_major));
+    }
+}

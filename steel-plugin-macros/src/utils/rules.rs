@@ -109,3 +109,80 @@ pub(crate) fn validate(rules: &FnRules, item: &ItemFn) -> Result<(), Error> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use syn::parse_quote;
+
+    use super::{FnRules, validate};
+
+    #[test]
+    fn accepts_matching_signature() {
+        let item: syn::ItemFn = parse_quote! {
+            pub fn on_enable() {}
+        };
+
+        let rules = FnRules {
+            name: Some("on_enable"),
+            params: Some(&[]),
+            ret: None,
+            require_pub: true,
+        };
+
+        assert!(validate(&rules, &item).is_ok());
+    }
+
+    #[test]
+    fn rejects_async_function() {
+        let item: syn::ItemFn = parse_quote! {
+            pub async fn on_enable() {}
+        };
+
+        let rules = FnRules {
+            name: Some("on_enable"),
+            params: Some(&[]),
+            ret: None,
+            require_pub: true,
+        };
+
+        let err = validate(&rules, &item).expect_err("async fn should be rejected");
+        assert!(err.to_string().contains("must not be async"));
+    }
+
+    #[test]
+    fn rejects_non_public_function_when_required() {
+        let item: syn::ItemFn = parse_quote! {
+            fn on_disable() {}
+        };
+
+        let rules = FnRules {
+            name: Some("on_disable"),
+            params: Some(&[]),
+            ret: None,
+            require_pub: true,
+        };
+
+        let err = validate(&rules, &item).expect_err("private fn should be rejected");
+        assert!(err.to_string().contains("must be public"));
+    }
+
+    #[test]
+    fn rejects_wrong_parameter_type() {
+        let item: syn::ItemFn = parse_quote! {
+            fn rpc_handler(data: &str) -> Option<Vec<u8>> {
+                let _ = data;
+                None
+            }
+        };
+
+        let rules = FnRules {
+            name: None,
+            params: Some(&["& [u8]"]),
+            ret: Some("Option < Vec < u8 > >"),
+            require_pub: false,
+        };
+
+        let err = validate(&rules, &item).expect_err("wrong param type should be rejected");
+        assert!(err.to_string().contains("expected parameter type"));
+    }
+}

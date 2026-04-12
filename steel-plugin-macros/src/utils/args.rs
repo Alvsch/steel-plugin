@@ -39,6 +39,7 @@ impl Parse for PluginMetaArgs {
     }
 }
 
+#[derive(Debug)]
 pub struct EventPriority(pub i8);
 
 impl Parse for EventPriority {
@@ -60,5 +61,39 @@ impl Parse for EventPriority {
         }
 
         Ok(Self(priority))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use syn::parse_str;
+
+    use super::{EventPriority, PluginMetaArgs};
+
+    #[test]
+    fn parses_depends_list() {
+        let args: PluginMetaArgs =
+            parse_str("depends = [\"a\", \"b\"]").expect("depends list should parse");
+        assert_eq!(args.depends, vec!["a", "b"]);
+    }
+
+    #[test]
+    fn rejects_unknown_plugin_meta_key() {
+        let err = parse_str::<PluginMetaArgs>("unknown = []")
+            .expect_err("unknown key should be rejected");
+        assert!(err.to_string().contains("unknown key"));
+    }
+
+    #[test]
+    fn parses_event_priority() {
+        let priority: EventPriority = parse_str("priority = -1").expect("priority should parse");
+        assert_eq!(priority.0, -1);
+    }
+
+    #[test]
+    fn rejects_out_of_range_priority() {
+        let err = parse_str::<EventPriority>("priority = 128")
+            .expect_err("out of range priority should fail");
+        assert!(err.to_string().contains("priority must be a valid i8"));
     }
 }

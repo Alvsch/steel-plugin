@@ -17,3 +17,12 @@ clippy:
 
 check:
     cargo check
+
+test:
+    cargo test -p steel-plugin-core
+    cargo test -p steel-plugin-sdk
+    cargo test -p steel-plugin-macros --lib
+    cargo test -p steel-host --lib
+
+test-integration: build-plugin
+    cargo test -p steel-host --tests
