@@ -6,7 +6,7 @@ use steel_plugin_sdk::event::Event;
 use tracing::error;
 use wasmtime::TypedFunc;
 
-pub type HandlerFn = TypedFunc<u64, u64>;
+pub type HandlerFn = TypedFunc<u64, ()>;
 
 struct HandlerEntry {
     pub store: PluginStore,
@@ -49,18 +49,16 @@ impl HandlerRegistry {
         entries.insert(pos, entry);
     }
 
-    pub async fn dispatch_topic<E: Event>(&self, event: &mut E) -> anyhow::Result<()> {
-        let mut payload = rmp_serde::to_vec(event).context("failed to serialize event")?;
+    pub async fn dispatch_topic<E: Event>(&self, event: &E) -> anyhow::Result<()> {
+        let payload = rmp_serde::to_vec(event).context("failed to serialize event")?;
 
         let handlers = self.get_handlers(E::TOPIC_ID);
         for handler in handlers {
             let mut store = handler.store.lock().await;
-            if let Err(err) = dispatch_event(&mut store, &mut payload, &handler.handler_fn).await {
+            if let Err(err) = dispatch_event(&mut store, &payload, &handler.handler_fn).await {
                 error!("plugin contract violation during event dispatch: {err}");
             }
         }
-
-        *event = rmp_serde::from_slice(&payload).context("failed to deserialize event")?;
         Ok(())
     }
 

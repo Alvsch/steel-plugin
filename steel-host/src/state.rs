@@ -111,10 +111,10 @@ impl HostState {
                 .ok_or_else(|| PluginContractError::Other("export not a function".to_string()))?
                 .ok_or_else(|| PluginContractError::Other("null function export".to_string()))?;
 
-            let typed_func: HandlerFn = func.typed(&mut *store)?;
-
             match exported.kind {
                 ExportedKind::Rpc { export_name } => {
+                    let typed_func = func.typed(&mut *store)?;
+
                     let data = store.data();
                     let plugin_id = data.plugin_id;
                     let method_id = data.host.next_id();
@@ -127,6 +127,8 @@ impl HostState {
                         .register_method(method_id, export_name.to_string(), typed_func);
                 }
                 ExportedKind::Event { topic_id, priority } => {
+                    let typed_func: HandlerFn = func.typed(&mut *store)?;
+
                     self.handler_registry.write().await.subscribe(
                         topic_id,
                         plugin.clone(),

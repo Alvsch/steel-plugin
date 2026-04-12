@@ -19,7 +19,7 @@ pub(crate) fn event_handler(item: ItemFn, priority: i8) -> TokenStream {
     if let Err(err) = validate(
         &FnRules {
             require_pub: false,
-            ret: Some(&format!("Option < {} >", quote! { #arg_type })),
+            ret: None,
             ..Default::default()
         },
         &item,
@@ -29,14 +29,12 @@ pub(crate) fn event_handler(item: ItemFn, priority: i8) -> TokenStream {
 
     quote! {
         ::steel_plugin_sdk::export::submit! {
-            ::steel_plugin_sdk::export::Exported {
-                kind: ::steel_plugin_sdk::export::ExportedKind::Event {
-                    topic_id: <#arg_type as ::steel_plugin_sdk::event::Event>::TOPIC_ID,
-                    priority: #priority,
-                },
+            ::steel_plugin_sdk::export::Exported::Event {
+                topic_id: <#arg_type as ::steel_plugin_sdk::event::Event>::TOPIC_ID,
+                priority: #priority,
                 func: |packed| {
                     #[inline(always)]
-                    fn __impl(#arg) -> Option<#arg_type> {
+                    fn __impl(#arg) {
                         #(#stmts)*
                     }
                     let fat = ::steel_plugin_sdk::utils::fat::FatPtr::unpack(packed).unwrap();
@@ -45,13 +43,7 @@ pub(crate) fn event_handler(item: ItemFn, priority: i8) -> TokenStream {
                     };
 
                     let event = ::rmp_serde::from_slice(data).unwrap();
-                    let Some(result) = __impl(event) else {
-                        return 0;
-                    };
-                    let result = ::rmp_serde::to_vec(&result).unwrap();
-                    let fat = ::steel_plugin_sdk::utils::fat::FatPtr::new(result.as_ptr() as u32, result.len() as u32).unwrap();
-                    std::mem::forget(result);
-                    fat.pack()
+                    __impl(event);
                 },
             }
         }

@@ -5,7 +5,7 @@ use steel_plugin_sdk::{event_handler, info, on_disable, on_enable, plugin_meta};
 plugin_meta!();
 
 #[event_handler(priority = -1)]
-fn test_handler(event: PlayerJoinEvent) -> Option<PlayerJoinEvent> {
+fn test_handler(event: PlayerJoinEvent) {
     let (name, position) = event.player.fetch::<(Name, Position)>().unwrap();
     info!("name={name}, position={position}");
 
@@ -14,14 +14,11 @@ fn test_handler(event: PlayerJoinEvent) -> Option<PlayerJoinEvent> {
         .batch()
         .send_message(format!("Welcome {name}!"))
         .send();
-
-    None
 }
 
 #[event_handler]
-fn test_handler(_event: PlayerLeaveEvent) -> Option<PlayerLeaveEvent> {
+fn test_handler(_event: PlayerLeaveEvent) {
     info!("goodbye");
-    None
 }
 
 #[on_enable]

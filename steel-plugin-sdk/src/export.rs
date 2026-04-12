@@ -20,17 +20,41 @@ pub struct ExportedId {
 
 impl From<Exported> for ExportedId {
     fn from(value: Exported) -> Self {
-        Self {
-            kind: value.kind,
-            id: value.func as usize as u32,
+        match value {
+            Exported::Rpc { export_name, func } => Self {
+                kind: ExportedKind::Rpc { export_name },
+                id: func as usize as u32,
+            },
+            Exported::Event {
+                topic_id,
+                priority,
+                func,
+            } => Self {
+                kind: ExportedKind::Event { topic_id, priority },
+                id: func as usize as u32,
+            },
+            Exported::Command { func } => Self {
+                kind: ExportedKind::Command,
+                id: func as usize as u32,
+            },
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Exported {
-    pub kind: ExportedKind,
-    pub func: fn(u64) -> u64,
+pub enum Exported {
+    Rpc {
+        export_name: Cow<'static, str>,
+        func: fn(u64) -> u64,
+    },
+    Event {
+        topic_id: TopicId,
+        priority: i8,
+        func: fn(u64),
+    },
+    Command {
+        func: fn(u64) -> u64,
+    },
 }
 
 inventory::collect!(Exported);
