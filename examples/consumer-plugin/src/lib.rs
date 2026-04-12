@@ -1,5 +1,5 @@
 use steel_plugin_sdk::rpc::{rpc_dispatch, rpc_resolve_method, rpc_resolve_plugin};
-use steel_plugin_sdk::{info, on_disable, on_enable, plugin_meta};
+use steel_plugin_sdk::{info, on_enable, plugin_meta};
 
 plugin_meta!(depends = ["provider-plugin"]);
 
@@ -14,6 +14,3 @@ pub fn on_enable() {
 
     info!("{result:?}");
 }
-
-#[on_disable]
-pub fn on_disable() {}

@@ -12,8 +12,8 @@ pub struct PluginExports {
     /// (`ptr`, `len`)
     pub dealloc: DeallocFunc,
     on_load: TypedFunc<(), u64>,
-    on_enable: TypedFunc<(), ()>,
-    on_disable: TypedFunc<(), ()>,
+    on_enable: Option<TypedFunc<(), ()>>,
+    on_disable: Option<TypedFunc<(), ()>>,
     pub memory: Memory,
     pub instance: Instance,
 }
@@ -43,17 +43,25 @@ impl PluginExports {
                     reason: err.to_string().into(),
                 })?,
             on_enable: instance
-                .get_typed_func(&mut *store, "on_enable")
-                .map_err(|err| PluginContractError::InvalidExport {
-                    name: "on_enable",
-                    reason: err.to_string().into(),
-                })?,
+                .get_func(&mut *store, "on_enable")
+                .map(|func| {
+                    func.typed(&mut *store)
+                        .map_err(|err| PluginContractError::InvalidExport {
+                            name: "on_enable",
+                            reason: err.to_string().into(),
+                        })
+                })
+                .transpose()?,
             on_disable: instance
-                .get_typed_func(&mut *store, "on_disable")
-                .map_err(|err| PluginContractError::InvalidExport {
-                    name: "on_disable",
-                    reason: err.to_string().into(),
-                })?,
+                .get_func(&mut *store, "on_disable")
+                .map(|func| {
+                    func.typed(&mut *store)
+                        .map_err(|err| PluginContractError::InvalidExport {
+                            name: "on_disable",
+                            reason: err.to_string().into(),
+                        })
+                })
+                .transpose()?,
             memory: instance.get_memory(&mut *store, "memory").ok_or(
                 PluginContractError::InvalidExport {
                     name: "memory",
@@ -98,7 +106,9 @@ impl PluginExports {
         &self,
         store: &mut Store<PluginState>,
     ) -> Result<(), PluginContractError> {
-        self.on_enable.call_async(store, ()).await?;
+        if let Some(on_enable) = &self.on_enable {
+            on_enable.call_async(store, ()).await?;
+        }
         Ok(())
     }
 
@@ -106,7 +116,9 @@ impl PluginExports {
         &self,
         store: &mut Store<PluginState>,
     ) -> Result<(), PluginContractError> {
-        self.on_disable.call_async(store, ()).await?;
+        if let Some(on_disable) = &self.on_disable {
+            on_disable.call_async(store, ()).await?;
+        }
         Ok(())
     }
 }
