@@ -1,6 +1,7 @@
-use crate::rpc::PluginRpc;
 use std::collections::BTreeMap;
 use steel_plugin_sdk::rpc::{MethodId, PluginId};
+
+use crate::interface::rpc::PluginRpc;
 
 pub struct HostRpc {
     pub plugins: BTreeMap<PluginId, PluginRpc>,

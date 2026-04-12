@@ -1,8 +1,8 @@
 use crate::error::{PluginContractError, PluginError};
-use crate::event::handler::{HandlerFn, HandlerRegistry};
-use crate::objects::{ObjectHandler, ObjectRegistry};
+use crate::interface::event::{HandlerFn, HandlerRegistry};
+use crate::interface::objects::{ObjectHandler, ObjectRegistry};
+use crate::interface::rpc::{HostRpc, PluginRpc};
 use crate::plugin::{PluginStatus, PluginStore};
-use crate::rpc::{HostRpc, PluginRpc};
 use crate::utils::memory::PluginMemory;
 use std::collections::HashMap;
 use std::num::NonZeroU32;

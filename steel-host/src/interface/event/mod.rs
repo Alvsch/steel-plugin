@@ -1,12 +1,12 @@
 use crate::error::PluginContractError;
-use crate::event::handler::HandlerFn;
 use crate::plugin::PluginState;
 use crate::utils;
 use crate::utils::memory::PluginMemory;
 use steel_plugin_sdk::utils::fat::FatPtr;
 use wasmtime::Store;
 
-pub mod handler;
+mod handler;
+pub use handler::{HandlerFn, HandlerRegistry};
 
 async fn dispatch_event(
     store: &mut Store<PluginState>,

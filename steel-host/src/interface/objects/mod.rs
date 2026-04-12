@@ -4,7 +4,8 @@ use rmp::encode::write_array_len;
 use slotmap::SlotMap;
 use steel_plugin_sdk::objects::{Entity, HandleKey};
 
-pub mod player;
+mod player;
+pub use player::make_player_handler;
 
 type FetchHandler = dyn Fn(&[u8]) -> Result<Vec<u8>, String> + Send + Sync;
 type BatchHandler = dyn Fn(&[u8]) -> Result<(), String> + Send + Sync;

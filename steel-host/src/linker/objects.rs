@@ -4,7 +4,7 @@ use wasmtime::Caller;
 
 use crate::{
     error::PluginContractError,
-    objects::{BatchDispatchOutcome, FetchOutcome},
+    interface::objects::{BatchDispatchOutcome, FetchOutcome},
     plugin::PluginState,
     utils::memory::PluginMemory,
 };

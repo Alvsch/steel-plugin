@@ -1,5 +1,4 @@
-use crate::plugin::PluginStore;
-use crate::rpc::RpcMethod;
+use crate::{interface::rpc::RpcMethod, plugin::PluginStore};
 use std::collections::{BTreeMap, HashMap};
 use steel_plugin_sdk::rpc::MethodId;
 

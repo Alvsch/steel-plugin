@@ -18,11 +18,9 @@ pub use utils::discover::discover_plugins;
 pub use wasmtime;
 
 pub mod error;
-pub mod event;
+pub mod interface;
 pub mod linker;
-pub mod objects;
 pub mod plugin;
-pub mod rpc;
 mod state;
 mod utils;
 

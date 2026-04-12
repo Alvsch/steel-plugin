@@ -1,4 +1,4 @@
-use crate::{event::dispatch_event, plugin::PluginStore};
+use crate::{interface::event::dispatch_event, plugin::PluginStore};
 use anyhow::Context;
 use std::collections::HashMap;
 use steel_plugin_core::TopicId;
@@ -8,7 +8,7 @@ use wasmtime::TypedFunc;
 
 pub type HandlerFn = TypedFunc<u64, u64>;
 
-pub struct HandlerEntry {
+struct HandlerEntry {
     pub store: PluginStore,
     pub handler_fn: HandlerFn,
     pub priority: i8,
