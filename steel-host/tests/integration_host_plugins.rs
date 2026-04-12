@@ -4,6 +4,7 @@ use anyhow::{Context, bail};
 use steel_host::wasmtime::{Config, OptLevel};
 use steel_host::{PluginHost, discover_plugins};
 use tempfile::TempDir;
+use tokio::fs::{copy, create_dir_all};
 
 const FIXTURE_WASM_FILES: [&str; 3] = [
     "provider_plugin.wasm",
@@ -12,9 +13,9 @@ const FIXTURE_WASM_FILES: [&str; 3] = [
 ];
 
 struct FixtureLayout {
-    _temp_dir: TempDir,
-    plugin_dir: PathBuf,
-    data_dir: PathBuf,
+    _temp: TempDir,
+    plugin: PathBuf,
+    data: PathBuf,
 }
 
 fn workspace_root() -> PathBuf {
@@ -30,10 +31,10 @@ async fn setup_fixture_layout() -> anyhow::Result<FixtureLayout> {
     let plugin_dir = root.join("plugins");
     let data_dir = root.join("data");
 
-    tokio::fs::create_dir_all(&plugin_dir)
+    create_dir_all(&plugin_dir)
         .await
         .context("failed to create plugin fixture directory")?;
-    tokio::fs::create_dir_all(&data_dir)
+    create_dir_all(&data_dir)
         .await
         .context("failed to create plugin data directory")?;
 
@@ -48,7 +49,7 @@ async fn setup_fixture_layout() -> anyhow::Result<FixtureLayout> {
         }
 
         let dst = plugin_dir.join(file_name);
-        tokio::fs::copy(&src, &dst).await.with_context(|| {
+        copy(&src, &dst).await.with_context(|| {
             format!(
                 "failed to copy wasm fixture from '{}' to '{}'",
                 src.display(),
@@ -58,9 +59,9 @@ async fn setup_fixture_layout() -> anyhow::Result<FixtureLayout> {
     }
 
     Ok(FixtureLayout {
-        _temp_dir: temp_dir,
-        plugin_dir,
-        data_dir,
+        _temp: temp_dir,
+        plugin: plugin_dir,
+        data: data_dir,
     })
 }
 
@@ -75,7 +76,7 @@ fn host_config() -> Config {
 async fn discover_orders_provider_before_consumer() -> anyhow::Result<()> {
     let fixture = setup_fixture_layout().await?;
 
-    let discovered = discover_plugins(&fixture.plugin_dir).await?;
+    let discovered = discover_plugins(&fixture.plugin).await?;
     let names: Vec<String> = discovered.into_iter().map(|meta| meta.name).collect();
 
     let provider_index = names
@@ -102,14 +103,14 @@ async fn discover_orders_provider_before_consumer() -> anyhow::Result<()> {
 #[tokio::test]
 async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
     let fixture = setup_fixture_layout().await?;
-    let discovered = discover_plugins(&fixture.plugin_dir).await?;
+    let discovered = discover_plugins(&fixture.plugin).await?;
 
     assert!(
         !discovered.is_empty(),
         "expected at least one plugin fixture to be discovered"
     );
 
-    let host = PluginHost::new(host_config(), fixture.data_dir.clone())
+    let host = PluginHost::new(host_config(), fixture.data.clone())
         .map_err(|err| anyhow::anyhow!("failed to construct PluginHost: {err}"))?;
 
     let plugin_names: Vec<String> = discovered.iter().map(|meta| meta.name.clone()).collect();

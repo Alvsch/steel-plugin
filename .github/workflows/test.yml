@@ -34,9 +34,9 @@ jobs:
 
       - name: Build wasm plugins
         run: |
-          cargo build -p listening-plugin --target wasm32-wasip1 --profile profiling
-          cargo build -p provider-plugin --target wasm32-wasip1 --profile profiling
-          cargo build -p consumer-plugin --target wasm32-wasip1 --profile profiling
+          RUSTFLAGS='-C link-args=--export-table' cargo build -p listening-plugin --target wasm32-wasip1 --profile profiling
+          RUSTFLAGS='-C link-args=--export-table' cargo build -p provider-plugin --target wasm32-wasip1 --profile profiling
+          RUSTFLAGS='-C link-args=--export-table' cargo build -p consumer-plugin --target wasm32-wasip1 --profile profiling
 
       - name: Run integration tests
         run: cargo test -p steel-host --tests

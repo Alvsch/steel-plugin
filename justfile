@@ -13,7 +13,7 @@ fmt:
     cargo fmt
 
 clippy:
-    cargo clippy
+    cargo clippy --workspace --all-targets
 
 check:
     cargo check
