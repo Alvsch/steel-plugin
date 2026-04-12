@@ -1,7 +1,6 @@
-use crate::error::PluginContractError;
 use crate::plugin::PluginState;
 use crate::utils;
-use crate::utils::memory::PluginMemory;
+use crate::{error::PluginContractError, utils::memory::MemoryExt};
 use steel_plugin_sdk::utils::fat::FatPtr;
 use wasmtime::Store;
 
@@ -27,8 +26,7 @@ async fn dispatch_event(
         return Ok(());
     };
 
-    let memory = PluginMemory::new(store, &exports.memory);
-    let value = memory.read(result).to_vec();
+    let value = exports.memory.read_memory(store, result).to_vec();
     exports.dealloc(store, result).await?;
 
     // TODO: validate returned event

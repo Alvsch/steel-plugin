@@ -3,7 +3,7 @@ use crate::interface::event::{HandlerFn, HandlerRegistry};
 use crate::interface::objects::{ObjectHandler, ObjectRegistry};
 use crate::interface::rpc::{HostRpc, PluginRpc};
 use crate::plugin::{PluginStatus, PluginStore};
-use crate::utils::memory::PluginMemory;
+use crate::utils::memory::MemoryExt;
 use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::sync::Arc;
@@ -87,8 +87,7 @@ impl HostState {
         // gather exported functions
         let exported_ids: Vec<ExportedId> = {
             let data_ptr = exports.on_load(&mut store).await?;
-            let memory = PluginMemory::new(&mut *store, &exports.memory);
-            let data = memory.read(data_ptr);
+            let data = exports.memory.read_memory(&*store, data_ptr);
 
             rmp_serde::from_slice(data)
                 .map_err(|_| PluginContractError::Other("invalid load data".to_string()))?

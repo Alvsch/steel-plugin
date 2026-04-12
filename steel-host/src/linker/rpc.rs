@@ -7,17 +7,17 @@ use wasmtime::Caller;
 use crate::{
     error::PluginContractError,
     plugin::PluginState,
-    utils::{self, memory::PluginMemory},
+    utils::{self, memory::MemoryExt},
 };
 
 pub async fn resolve_plugin(
-    mut caller: Caller<'_, PluginState>,
+    caller: Caller<'_, PluginState>,
     plugin_name: FatPtr,
 ) -> Result<Option<PluginId>, PluginContractError> {
     let exports = caller.data().exports().clone();
-    let memory = PluginMemory::new(&mut caller, &exports.memory);
-    let plugin_name = memory
-        .read_string(plugin_name)
+    let plugin_name = exports
+        .memory
+        .read_string(&caller, plugin_name)
         .map_err(|err| PluginContractError::Other(err.to_string()))?;
 
     let plugin_id = caller.data().host.resolve_plugin(&plugin_name).await;
@@ -26,14 +26,14 @@ pub async fn resolve_plugin(
 }
 
 pub async fn resolve_method(
-    mut caller: Caller<'_, PluginState>,
+    caller: Caller<'_, PluginState>,
     plugin_id: PluginId,
     method_name: FatPtr,
 ) -> Result<Option<MethodId>, PluginContractError> {
     let exports = caller.data().exports().clone();
-    let memory = PluginMemory::new(&mut caller, &exports.memory);
-    let method_name = memory
-        .read_string(method_name)
+    let method_name = exports
+        .memory
+        .read_string(&caller, method_name)
         .map_err(|err| PluginContractError::Other(err.to_string()))?;
 
     let rpc = caller.data().host.rpc.read().await;
@@ -48,8 +48,10 @@ pub async fn dispatch(
     data_ptr: FatPtr,
 ) -> Result<Option<FatPtr>, PluginContractError> {
     let caller_exports = caller.data().exports().clone();
-    let caller_memory = PluginMemory::new(&mut caller, &caller_exports.memory);
-    let data = caller_memory.read(data_ptr).to_vec();
+    let data = caller_exports
+        .memory
+        .read_memory(&caller, data_ptr)
+        .to_vec();
 
     let rpc = caller.data().host.rpc.read().await;
     let provider = rpc
@@ -84,17 +86,19 @@ pub async fn dispatch(
     };
 
     // Read result from provider
-    let provider_memory = PluginMemory::new(&mut *provider_store, &provider_exports.memory);
-    let data = provider_memory.read(fat_result).to_vec();
+    let data = provider_exports
+        .memory
+        .read_memory(&*provider_store, fat_result)
+        .to_vec();
 
     drop(provider_store);
     drop(rpc);
 
     // Allocate result into caller
     let fat = caller_exports.alloc(&mut caller, fat_result.len()).await?;
-
-    let mut caller_memory = PluginMemory::new(&mut caller, &caller_exports.memory);
-    caller_memory.write(fat.ptr(), &data);
+    caller_exports
+        .memory
+        .write_memory(&mut caller, fat.ptr(), &data);
 
     Ok(Some(fat))
 }

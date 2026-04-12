@@ -2,7 +2,7 @@ use std::num::NonZeroU32;
 
 use crate::PluginState;
 use crate::error::PluginContractError;
-use crate::utils::memory::PluginMemory;
+use crate::utils::memory::MemoryExt;
 use steel_plugin_sdk::objects::HandleKey;
 use steel_plugin_sdk::utils::fat::FatPtr;
 use tracing::Level;
@@ -30,12 +30,10 @@ fn register_log_import(
     linker.func_wrap(
         "host",
         import_name,
-        move |mut caller: Caller<PluginState>, ptr: u32, len: u32| -> Result<(), wasmtime::Error> {
-            let exports = caller.data().exports().clone();
-            let memory = PluginMemory::new(&mut caller, &exports.memory);
+        move |caller: Caller<PluginState>, ptr: u32, len: u32| -> Result<(), wasmtime::Error> {
             let fat = FatPtr::new(ptr, len).ok_or(PluginContractError::NullPointer)?;
-            let buf = memory.read(fat);
-            let message = str::from_utf8(buf)?.to_string();
+            let exports = caller.data().exports().clone();
+            let message = exports.memory.read_string(&caller, fat)?;
             let plugin_name = caller.data().meta.name.as_str();
             match level {
                 Level::ERROR => tracing::error!("[{plugin_name}] {message}"),

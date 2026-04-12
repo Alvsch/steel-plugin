@@ -5,31 +5,36 @@ use wasmtime::{AsContext, AsContextMut, Memory};
 
 use crate::PluginState;
 
-pub struct PluginMemory<'a, S> {
-    store: &'a mut S,
-    memory: &'a Memory,
-}
+pub trait MemoryExt {
+    fn read_memory<'a, S>(&'a self, store: &'a S, fat: FatPtr) -> &'a [u8]
+    where
+        S: AsContext<Data = PluginState>;
 
-impl<'a, S> PluginMemory<'a, S>
-where
-    S: AsContext<Data = PluginState> + AsContextMut<Data = PluginState>,
-{
-    #[inline]
-    pub const fn new(store: &'a mut S, memory: &'a Memory) -> Self {
-        Self { store, memory }
-    }
+    fn write_memory<S>(&self, store: &mut S, ptr: u32, src: &[u8])
+    where
+        S: AsContextMut<Data = PluginState>;
 
-    pub fn read(&self, fat: FatPtr) -> &[u8] {
-        &self.memory.data(&self.store)[fat.ptr() as usize..(fat.ptr() + fat.len()) as usize]
-    }
-
-    pub fn read_string(&self, fat: FatPtr) -> Result<String, Utf8Error> {
-        let slice = self.read(fat);
+    fn read_string<S>(&self, store: &S, fat: FatPtr) -> Result<String, Utf8Error>
+    where
+        S: AsContext<Data = PluginState>,
+    {
+        let slice = self.read_memory(store, fat);
         str::from_utf8(slice).map(ToString::to_string)
     }
+}
 
-    pub fn write(&mut self, ptr: u32, src: &[u8]) {
-        self.memory.data_mut(&mut self.store)[ptr as usize..ptr as usize + src.len()]
-            .copy_from_slice(src);
+impl MemoryExt for Memory {
+    fn read_memory<'a, S>(&'a self, store: &'a S, fat: FatPtr) -> &'a [u8]
+    where
+        S: AsContext<Data = PluginState>,
+    {
+        &self.data(store)[fat.ptr() as usize..(fat.ptr() + fat.len()) as usize]
+    }
+
+    fn write_memory<S>(&self, store: &mut S, ptr: u32, src: &[u8])
+    where
+        S: AsContextMut<Data = PluginState>,
+    {
+        self.data_mut(store)[ptr as usize..ptr as usize + src.len()].copy_from_slice(src);
     }
 }

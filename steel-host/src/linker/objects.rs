@@ -6,7 +6,7 @@ use crate::{
     error::PluginContractError,
     interface::objects::{BatchDispatchOutcome, FetchOutcome},
     plugin::PluginState,
-    utils::memory::PluginMemory,
+    utils::memory::MemoryExt,
 };
 
 pub async fn fetch(
@@ -15,9 +15,7 @@ pub async fn fetch(
     queries_fat: FatPtr,
 ) -> Result<u64, PluginContractError> {
     let exports = caller.data().exports().clone();
-
-    let memory = PluginMemory::new(&mut caller, &exports.memory);
-    let query_payload = memory.read(queries_fat).to_vec();
+    let query_payload = exports.memory.read_memory(&caller, queries_fat).to_vec();
 
     let outcome = {
         let host = caller.data().host.clone();
@@ -43,21 +41,21 @@ pub async fn fetch(
             })?;
 
             let response_fat = exports.alloc(&mut caller, response_len).await?;
-            let mut memory = PluginMemory::new(&mut caller, &exports.memory);
-            memory.write(response_fat.ptr(), &response);
+            exports
+                .memory
+                .write_memory(&mut caller, response_fat.ptr(), &response);
             Ok(response_fat.pack())
         }
     }
 }
 
 pub async fn batch_dispatch(
-    mut caller: Caller<'_, PluginState>,
+    caller: Caller<'_, PluginState>,
     entity_key: HandleKey,
     commands_fat: FatPtr,
 ) -> Result<(), PluginContractError> {
     let exports = caller.data().exports().clone();
-    let memory = PluginMemory::new(&mut caller, &exports.memory);
-    let command_payload = memory.read(commands_fat).to_vec();
+    let command_payload = exports.memory.read_memory(&caller, commands_fat).to_vec();
 
     let outcome = {
         let host = caller.data().host.clone();
