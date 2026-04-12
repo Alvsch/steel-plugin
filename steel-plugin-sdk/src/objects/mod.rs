@@ -36,8 +36,8 @@ impl HandleKey {
 /// Each implementor defines the wire representations for its queries and
 /// commands. These enums are what actually cross the WASM boundary.
 pub trait Entity: 'static {
-    type WireQuery: Serialize;
-    type WireCommand: Serialize;
+    type WireQuery: Serialize + for<'a> Deserialize<'a>;
+    type WireCommand: Serialize + for<'a> Deserialize<'a>;
 }
 
 /// A typed handle to a specific entity instance.

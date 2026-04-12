@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
+use rmp::encode::write_array_len;
 use slotmap::SlotMap;
-use steel_plugin_sdk::objects::HandleKey;
+use steel_plugin_sdk::objects::{Entity, HandleKey};
 
-pub mod demo_player;
 pub mod player;
 
 type FetchHandler = dyn Fn(&[u8]) -> Result<Vec<u8>, String> + Send + Sync;
@@ -26,6 +26,48 @@ impl ObjectHandler {
             fetch: Arc::new(fetch),
             batch_dispatch: Arc::new(batch_dispatch),
         }
+    }
+
+    #[must_use]
+    pub fn make<E, F, B>(handle_query: F, handle_command: B) -> Self
+    where
+        E: Entity,
+        F: Fn(&mut rmp_serde::Serializer<&mut Vec<u8>>, E::WireQuery) -> Result<(), String>
+            + Send
+            + Sync
+            + 'static,
+        B: Fn(E::WireCommand) -> Result<(), String> + Send + Sync + 'static,
+    {
+        Self::from_fns(
+            move |payload| {
+                let queries: Vec<E::WireQuery> = rmp_serde::from_slice(payload)
+                    .map_err(|err| format!("failed to decode queries: {err}"))?;
+
+                let query_count = u32::try_from(queries.len())
+                    .map_err(|_| "too many queries in a single fetch".to_string())?;
+
+                let mut payload = Vec::new();
+                write_array_len(&mut payload, query_count)
+                    .map_err(|err| format!("failed to encode response array header: {err}"))?;
+
+                let mut serializer = rmp_serde::Serializer::new(&mut payload);
+                for query in queries {
+                    (handle_query)(&mut serializer, query).map_err(|err| {
+                        format!("failed to serialize fetch response value: {err}")
+                    })?;
+                }
+                Ok(payload)
+            },
+            move |payload| {
+                let commands: Vec<E::WireCommand> = rmp_serde::from_slice(payload)
+                    .map_err(|err| format!("failed to decode player commands: {err}"))?;
+
+                for command in commands {
+                    (handle_command)(command)?;
+                }
+                Ok(())
+            },
+        )
     }
 }
 

@@ -1,45 +1,10 @@
 use anyhow::Context;
-use glam::DVec3;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use steel_host::{
-    PluginHost, discover_plugins,
-    objects::demo_player::{DemoPlayer, make_player_handler},
-};
-use steel_plugin_sdk::event::PlayerJoinEvent;
-use steel_plugin_sdk::objects::player::Player;
-use steel_plugin_sdk::objects::{Handle, HandleKey};
-use steel_utils::types::GameType;
+use std::sync::Arc;
+use steel_host::{PluginHost, discover_plugins};
 use tokio::fs::create_dir_all;
-use tracing::info;
 use tracing_subscriber::EnvFilter;
 use wasmtime::{Config, OptLevel};
-
-async fn register_demo_player(host: &PluginHost, player: DemoPlayer) -> HandleKey {
-    let player = Arc::new(Mutex::new(player));
-    host.state
-        .register_object_handler(make_player_handler(player))
-        .await
-}
-
-async fn dispatch_demo_join_event(host: &PluginHost, key: HandleKey) -> anyhow::Result<()> {
-    let mut event = PlayerJoinEvent {
-        player: Handle::<Player>::from_raw(key),
-    };
-
-    let handlers = host.state.handler_registry.read().await;
-    handlers
-        .dispatch_topic(&mut event)
-        .await
-        .context("failed to dispatch topic")?;
-
-    info!("modified {:?}", event);
-    Ok(())
-}
-
-async fn unregister_demo_player(host: &PluginHost, key: HandleKey) {
-    host.state.unregister_object_handler(key).await;
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -68,17 +33,6 @@ async fn main() -> anyhow::Result<()> {
     let host = Arc::new(
         PluginHost::new(config, plugins_folder.clone()).expect("failed to create PluginHost"),
     );
-
-    let player_key = register_demo_player(
-        host.as_ref(),
-        DemoPlayer {
-            name: "Steve".to_string(),
-            health: 20.0,
-            position: DVec3::ZERO,
-            gamemode: GameType::Survival,
-        },
-    )
-    .await;
 
     let discovered_plugins = discover_plugins(&plugins_folder)
         .await
@@ -110,16 +64,12 @@ async fn main() -> anyhow::Result<()> {
         enabled.push(plugin);
     }
 
-    dispatch_demo_join_event(host.as_ref(), player_key).await?;
-
     for plugin in enabled.drain(..).rev() {
         host.state
             .disable_plugin(&plugin)
             .await
             .context("failed to disable plugin")?;
     }
-
-    unregister_demo_player(host.as_ref(), player_key).await;
 
     Ok(())
 }
