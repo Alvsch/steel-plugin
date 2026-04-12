@@ -1,0 +1,42 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt, clippy
+          targets: wasm32-wasip1
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run unit tests
+        run: |
+          cargo test -p steel-plugin-core
+          cargo test -p steel-plugin-sdk
+          cargo test -p steel-plugin-macros --lib
+          cargo test -p steel-host --lib
+
+      - name: Build wasm plugins
+        run: |
+          cargo build -p listening-plugin --target wasm32-wasip1 --profile profiling
+          cargo build -p provider-plugin --target wasm32-wasip1 --profile profiling
+          cargo build -p consumer-plugin --target wasm32-wasip1 --profile profiling
+
+      - name: Run integration tests
+        run: cargo test -p steel-host --tests
