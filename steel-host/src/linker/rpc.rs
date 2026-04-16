@@ -10,37 +10,6 @@ use crate::{
     utils::{self, memory::MemoryExt},
 };
 
-pub async fn resolve_plugin(
-    caller: Caller<'_, PluginState>,
-    plugin_name: FatPtr,
-) -> Result<Option<PluginId>, PluginContractError> {
-    let exports = caller.data().exports().clone();
-    let plugin_name = exports
-        .memory
-        .read_string(&caller, plugin_name)
-        .map_err(|err| PluginContractError::Other(err.to_string()))?;
-
-    let plugin_id = caller.data().host.resolve_plugin(&plugin_name).await;
-
-    Ok(plugin_id)
-}
-
-pub async fn resolve_method(
-    caller: Caller<'_, PluginState>,
-    plugin_id: PluginId,
-    method_name: FatPtr,
-) -> Result<Option<MethodId>, PluginContractError> {
-    let exports = caller.data().exports().clone();
-    let method_name = exports
-        .memory
-        .read_string(&caller, method_name)
-        .map_err(|err| PluginContractError::Other(err.to_string()))?;
-
-    let rpc = caller.data().host.rpc.read().await;
-    let method_id = rpc.resolve_method(plugin_id, &method_name);
-    Ok(method_id)
-}
-
 pub async fn dispatch(
     mut caller: Caller<'_, PluginState>,
     plugin_id: PluginId,
@@ -53,7 +22,7 @@ pub async fn dispatch(
         .read_memory(&caller, data_ptr)
         .to_vec();
 
-    let rpc = caller.data().host.rpc.read().await;
+    let rpc = caller.data().host.rpc.read();
     let provider = rpc
         .get_plugin(plugin_id)
         .ok_or(PluginContractError::InvalidId)?;
@@ -61,7 +30,7 @@ pub async fn dispatch(
         .get_method(method_id)
         .ok_or(PluginContractError::InvalidId)?;
 
-    let mut provider_store = provider.store.lock().await;
+    let mut provider_store = provider.store.lock();
     let provider_data = provider_store.data();
     let provider_exports = provider_data.exports().clone();
     let provider_scratch = provider_data.scratch;

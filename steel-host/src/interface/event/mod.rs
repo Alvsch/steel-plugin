@@ -1,23 +1,18 @@
-use crate::error::PluginContractError;
-use crate::plugin::PluginState;
-use crate::utils;
-use wasmtime::Store;
+use crate::{Plugin, error::PluginContractError};
 
 mod handler;
 pub use handler::{HandlerFn, HandlerRegistry};
 
-async fn dispatch_event(
-    store: &mut Store<PluginState>,
+fn dispatch_event(
+    plugin: &Plugin,
     payload: &[u8],
-    handler: &HandlerFn,
+    handler: HandlerFn,
 ) -> Result<(), PluginContractError> {
-    let data = store.data();
-    let exports = data.exports().clone();
-    let scratch = data.scratch;
+    plugin
+        .bindings
+        .lock()
+        .host_plugin_sdk_plugin_api()
+        .call_event_handler(&mut *plugin.store.lock(), handler, payload)?;
 
-    let fat = utils::write_scratch(store, exports.memory, &exports, scratch, payload).await?;
-
-    handler.call_async(&mut *store, fat.pack()).await?;
-    utils::dealloc_scratch(store, &exports.instance, fat).await?;
     Ok(())
 }

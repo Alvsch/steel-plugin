@@ -6,7 +6,6 @@ use crate::{
     error::PluginContractError,
     interface::objects::{BatchDispatchOutcome, FetchOutcome},
     plugin::PluginState,
-    utils::memory::MemoryExt,
 };
 
 pub async fn fetch(
@@ -19,7 +18,7 @@ pub async fn fetch(
 
     let outcome = {
         let host = caller.data().host.clone();
-        let objects = host.objects.read().await;
+        let objects = host.objects.read();
         objects.fetch(entity_key, &query_payload)
     };
 

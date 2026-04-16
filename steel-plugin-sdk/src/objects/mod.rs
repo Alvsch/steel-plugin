@@ -4,9 +4,8 @@ use serde::{Deserialize, Serialize};
 use slotmap::{KeyData, new_key_type};
 
 use crate::{
-    host,
     objects::{batch::BatchBuilder, query::QuerySet},
-    utils::fat::FatPtr,
+    sdk::object::object_fetch,
 };
 
 pub mod batch;
@@ -42,10 +41,6 @@ pub trait Entity: 'static {
 
 /// A typed handle to a specific entity instance.
 #[derive(Debug, Serialize, Deserialize)]
-#[expect(
-    clippy::unsafe_derive_deserialize,
-    reason = "safety does not depend on any invariants"
-)]
 pub struct Handle<E: Entity> {
     key: HandleKey,
     _marker: PhantomData<E>,
@@ -77,22 +72,7 @@ impl<E: Entity> Handle<E> {
         let query_payload =
             rmp_serde::to_vec(&wire_queries).expect("failed to serialize fetch queries");
 
-        let fat_ptr = unsafe {
-            FatPtr::unpack(host::object_fetch(
-                self.key.as_ffi(),
-                query_payload.as_ptr() as u32,
-                query_payload.len() as u32,
-            ))
-        }?;
-
-        let response = unsafe {
-            Vec::from_raw_parts(
-                fat_ptr.ptr() as *mut u8,
-                fat_ptr.len() as usize,
-                fat_ptr.len() as usize,
-            )
-        };
-
+        let response = object_fetch(self.key.as_ffi(), &query_payload)?;
         Some(Q::from_response(&response))
     }
 

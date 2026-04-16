@@ -1,17 +1,18 @@
+use std::fs::{create_dir_all, read};
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use parking_lot::Mutex;
 use steel_plugin_core::PluginMeta;
-use tokio::fs::{create_dir_all, read};
-use tokio::sync::Mutex;
-use wasmtime::{Config, Engine, Instance, Linker, Module, Store};
-use wasmtime_wasi::p1::WasiP1Ctx;
-use wasmtime_wasi::{DirPerms, FilePerms, WasiCtxBuilder};
+use wasmtime::component::{Component, Linker};
+use wasmtime::{Config, Engine, Store};
+use wasmtime_wasi::p2::add_to_linker_async;
+use wasmtime_wasi::{DirPerms, FilePerms, WasiCtx, WasiCtxBuilder};
 
 use crate::error::{PluginContractError, PluginError};
-use crate::linker::configure_all;
-use crate::plugin::{PluginExports, PluginState, PluginStore};
+use crate::linker::HostLinker;
+use crate::plugin::{PluginState, PluginStore};
 use crate::state::HostState;
 
 pub use utils::discover::discover_plugins;
@@ -24,11 +25,18 @@ pub mod plugin;
 mod state;
 mod utils;
 
-pub const SCRATCH_SIZE: u32 = 4 * 1024;
+wasmtime::component::bindgen!({
+    path: "../wit",
+});
+
+pub struct Plugin {
+    pub store: Mutex<Store<PluginState>>,
+    pub bindings: Mutex<PluginWorld>,
+}
 
 pub struct WasmEngine {
     engine: Engine,
-    linker: Linker<PluginState>,
+    linker: HostLinker,
     data_folder: PathBuf,
 }
 
@@ -36,7 +44,7 @@ impl WasmEngine {
     pub fn new(config: Config, data_folder: PathBuf) -> Result<Self, wasmtime::Error> {
         let engine = Engine::new(&config)?;
         let mut linker = Linker::new(&engine);
-        configure_all(&mut linker).expect("failed to configure linker");
+        add_to_linker_async(&mut linker)?;
         Ok(Self {
             engine,
             linker,
@@ -44,8 +52,8 @@ impl WasmEngine {
         })
     }
 
-    pub async fn preload_module(&self, file_path: &Path) -> Result<Module, PluginError> {
-        let bytes = read(file_path).await.map_err(|err| match err.kind() {
+    pub fn preload_component(&self, file_path: &Path) -> Result<Component, PluginError> {
+        let bytes = read(file_path).map_err(|err| match err.kind() {
             ErrorKind::NotFound => PluginError::NotFound {
                 file_path: file_path.to_path_buf(),
             },
@@ -54,20 +62,18 @@ impl WasmEngine {
 
         let precompiled = self
             .engine
-            .precompile_module(&bytes)
+            .precompile_component(&bytes)
             .map_err(PluginError::InvalidModule)?;
 
-        let module = unsafe { Module::deserialize(&self.engine, precompiled) }
+        let component = unsafe { Component::deserialize(&self.engine, precompiled) }
             .map_err(PluginError::InvalidModule)?;
 
-        Ok(module)
+        Ok(component)
     }
 
-    pub async fn prepare_wasi(&self, plugin_name: &str) -> Result<WasiP1Ctx, PluginError> {
+    pub fn prepare_wasi(&self, plugin_name: &str) -> Result<WasiCtx, PluginError> {
         let plugin_data_folder = self.data_folder.join(plugin_name);
-        create_dir_all(&plugin_data_folder)
-            .await
-            .map_err(PluginError::Io)?;
+        create_dir_all(&plugin_data_folder).map_err(PluginError::Io)?;
 
         let wasi = WasiCtxBuilder::new()
             .preopened_dir(&plugin_data_folder, "/", DirPerms::all(), FilePerms::all())
@@ -77,55 +83,24 @@ impl WasmEngine {
                         .expect(".preopened_dir() can only return an io::Error"),
                 )
             })?
-            .build_p1();
+            .build();
 
         Ok(wasi)
     }
 
-    async fn build_store(
-        instance: Instance,
-        mut store: Store<PluginState>,
-    ) -> Result<PluginStore, PluginError> {
-        let exports = PluginExports::resolve(instance, &mut store)?;
-
-        // preallocate scratch
-        let scratch_ptr = exports.alloc(&mut store, SCRATCH_SIZE).await?;
-
-        let data = store.data_mut();
-        data.scratch = scratch_ptr;
-
-        data.exports
-            .set(Arc::new(exports))
-            .map_err(|_| ())
-            .expect("exports already initialized");
-
-        let store = Arc::new(Mutex::new(store));
-        {
-            let mut lock = store.lock().await;
-            let data = lock.data_mut();
-            data.store
-                .set(store.clone())
-                .map_err(|_| ())
-                .expect("store already initialized");
-        }
-        Ok(store)
-    }
-
-    pub async fn instantiate(
+    pub fn instantiate(
         &self,
-        module: &Module,
+        component: &Component,
         plugin_state: PluginState,
-    ) -> Result<PluginStore, PluginError> {
+    ) -> Result<PluginStore, PluginContractError> {
         let mut store = Store::new(&self.engine, plugin_state);
 
-        let instance = self
-            .linker
-            .instantiate_async(&mut store, module)
-            .await
-            .map_err(PluginError::ModuleInstantiationError)?;
+        let bindings = PluginWorld::instantiate(&mut store, component, &self.linker)?;
 
-        let store = Self::build_store(instance, store).await?;
-        Ok(store)
+        Ok(Arc::new(Plugin {
+            store: Mutex::new(store),
+            bindings: Mutex::new(bindings),
+        }))
     }
 }
 
@@ -142,27 +117,24 @@ impl PluginHost {
         })
     }
 
-    pub async fn prepare_plugin(
-        &self,
-        plugin_meta: PluginMeta,
-    ) -> Result<PluginStore, PluginError> {
-        let module = self.wasm.preload_module(&plugin_meta.file_path).await?;
-        let wasi = self.wasm.prepare_wasi(&plugin_meta.name).await?;
+    pub fn prepare_plugin(&self, plugin_meta: PluginMeta) -> Result<PluginStore, PluginError> {
+        let module = self.wasm.preload_component(&plugin_meta.file_path)?;
+        let wasi = self.wasm.prepare_wasi(&plugin_meta.name)?;
 
         let plugin_state = PluginState::new(self.state.clone(), wasi, plugin_meta);
-        let plugin: PluginStore = self.wasm.instantiate(&module, plugin_state).await?;
+        let plugin = self.wasm.instantiate(&module, plugin_state)?;
         Ok(plugin)
     }
 
-    pub async fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
-        self.state.load_plugin(plugin).await
+    pub fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+        self.state.load_plugin(plugin)
     }
 
-    pub async fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginError> {
-        self.state.enable_plugin(plugin).await
+    pub fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+        self.state.enable_plugin(plugin)
     }
 
-    pub async fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginError> {
-        self.state.disable_plugin(plugin).await
+    pub fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+        self.state.disable_plugin(plugin)
     }
 }

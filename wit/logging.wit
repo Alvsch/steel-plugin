@@ -1,0 +1,9 @@
+package host:plugin-sdk@0.1.0;
+
+interface logging {
+  error: func(message: string);
+  warn: func(message: string);
+  info: func(message: string);
+  debug: func(message: string);
+  trace: func(message: string);
+}

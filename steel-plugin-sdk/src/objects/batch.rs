@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
 use crate::{
-    host,
     objects::{Entity, HandleKey},
+    sdk::object::object_batch_dispatch,
 };
 
 /// A builder for batching commands to an entity.
@@ -36,12 +36,6 @@ impl<E: Entity> BatchBuilder<E> {
         let payload =
             rmp_serde::to_vec_named(&self.commands).expect("failed to serialize batch commands");
 
-        unsafe {
-            host::object_batch_dispatch(
-                self.key.as_ffi(),
-                payload.as_ptr() as u32,
-                payload.len() as u32,
-            );
-        }
+        object_batch_dispatch(self.key.as_ffi(), &payload);
     }
 }

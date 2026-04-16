@@ -1,7 +1,36 @@
 mod host;
-mod plugin;
 
-pub type RpcMethod = wasmtime::TypedFunc<u64, u64>;
+pub type RpcMethod = u32;
+
+use std::collections::{BTreeMap, HashMap};
 
 pub use host::HostRpc;
-pub use plugin::PluginRpc;
+use steel_plugin_sdk::rpc::MethodId;
+
+use crate::plugin::PluginStore;
+
+pub struct PluginRpc {
+    pub store: PluginStore,
+    pub methods: BTreeMap<MethodId, RpcMethod>,
+    pub method_name: HashMap<String, MethodId>,
+}
+
+impl PluginRpc {
+    pub(crate) fn new(store: PluginStore) -> Self {
+        Self {
+            store,
+            methods: BTreeMap::new(),
+            method_name: HashMap::new(),
+        }
+    }
+
+    pub fn register_method(&mut self, method_id: MethodId, method_name: String, method: RpcMethod) {
+        self.methods.insert(method_id, method);
+        self.method_name.insert(method_name, method_id);
+    }
+
+    #[must_use]
+    pub fn get_method(&self, method_id: MethodId) -> Option<&RpcMethod> {
+        self.methods.get(&method_id)
+    }
+}

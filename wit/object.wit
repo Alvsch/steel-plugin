@@ -1,0 +1,4 @@
+interface object {
+    object-fetch: func(entity-key: u64, queries: list<u8>) -> option<list<u8>>;
+    object-batch-dispatch: func(entity-key: u64, commands: list<u8>);
+}

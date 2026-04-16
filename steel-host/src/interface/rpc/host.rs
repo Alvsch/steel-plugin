@@ -45,21 +45,22 @@ mod tests {
     use std::path::PathBuf;
     use std::sync::Arc;
 
+    use parking_lot::Mutex;
     use semver::Version;
     use steel_plugin_core::PluginMeta;
-    use steel_plugin_sdk::rpc::{MethodId, PluginId};
-    use tokio::sync::Mutex;
+    use steel_plugin_sdk::rpc::MethodId;
     use wasmtime::{Engine, Func, Store};
     use wasmtime_wasi::WasiCtxBuilder;
 
     use super::HostRpc;
+    use crate::Plugin;
     use crate::interface::rpc::PluginRpc;
     use crate::plugin::PluginState;
     use crate::state::HostState;
 
     fn make_plugin_rpc_with_method(method_name: &str, method_id: MethodId) -> PluginRpc {
         let host = Arc::new(HostState::new());
-        let wasi = WasiCtxBuilder::new().build_p1();
+        let wasi = WasiCtxBuilder::new().build();
         let meta = PluginMeta {
             name: "plugin-under-test".to_string(),
             description: String::new(),
@@ -79,15 +80,18 @@ mod tests {
             .typed::<u64, u64>(&mut store)
             .expect("function should have expected signature");
 
-        let mut plugin_rpc = PluginRpc::new(Arc::new(Mutex::new(store)));
-        plugin_rpc.register_method(method_id, method_name.to_string(), typed);
-        plugin_rpc
+        let mut plugin_rpc = PluginRpc::new(Arc::new(Plugin {
+            store: Mutex::new(store),
+            bindings: todo!(),
+        }));
+        plugin_rpc.register_method(method_id, method_name.to_string(), 0);
+        todo!()
     }
 
     #[test]
     fn resolve_method_returns_registered_method_id() {
-        let plugin_id = PluginId::new(1).expect("plugin id should be non-zero");
-        let method_id = MethodId::new(7).expect("method id should be non-zero");
+        let plugin_id = 1;
+        let method_id = 7;
 
         let mut host_rpc = HostRpc::new();
         host_rpc
@@ -100,8 +104,8 @@ mod tests {
 
     #[test]
     fn get_plugin_and_get_plugin_mut_observe_registry_state() {
-        let plugin_id = PluginId::new(1).expect("plugin id should be non-zero");
-        let method_id = MethodId::new(1).expect("method id should be non-zero");
+        let plugin_id = 1;
+        let method_id = 1;
 
         let mut host_rpc = HostRpc::new();
         assert!(host_rpc.get_plugin(plugin_id).is_none());

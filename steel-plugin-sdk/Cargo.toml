@@ -15,6 +15,7 @@ uuid.workspace = true
 inventory.workspace = true
 glam.workspace = true
 slotmap.workspace = true
+wit-bindgen.workspace = true
 
 [lints]
 workspace = true

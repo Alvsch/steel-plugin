@@ -4,12 +4,11 @@ use std::collections::HashMap;
 use steel_plugin_core::TopicId;
 use steel_plugin_sdk::event::Event;
 use tracing::error;
-use wasmtime::TypedFunc;
 
-pub type HandlerFn = TypedFunc<u64, ()>;
+pub type HandlerFn = u32;
 
 struct HandlerEntry {
-    pub store: PluginStore,
+    pub plugin: PluginStore,
     pub handler_fn: HandlerFn,
     pub priority: i8,
 }
@@ -41,7 +40,7 @@ impl HandlerRegistry {
     ) {
         let entries = self.handlers.entry(topic_id).or_default();
         let entry = HandlerEntry {
-            store: plugin_store,
+            plugin: plugin_store,
             handler_fn,
             priority,
         };
@@ -49,13 +48,12 @@ impl HandlerRegistry {
         entries.insert(pos, entry);
     }
 
-    pub async fn dispatch_topic<E: Event>(&self, event: &E) -> anyhow::Result<()> {
+    pub fn dispatch_topic<E: Event>(&self, event: &E) -> anyhow::Result<()> {
         let payload = rmp_serde::to_vec(event).context("failed to serialize event")?;
 
         let handlers = self.get_handlers(E::TOPIC_ID);
         for handler in handlers {
-            let mut store = handler.store.lock().await;
-            if let Err(err) = dispatch_event(&mut store, &payload, &handler.handler_fn).await {
+            if let Err(err) = dispatch_event(&handler.plugin, &payload, handler.handler_fn) {
                 error!("plugin contract violation during event dispatch: {err}");
             }
         }

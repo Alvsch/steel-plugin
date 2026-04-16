@@ -1,18 +1,11 @@
-use crate::state::HostState;
-use std::cell::OnceCell;
-use std::sync::Arc;
+use crate::{Plugin, state::HostState};
+use parking_lot::Mutex;
+use std::{cell::OnceCell, sync::Arc};
 use steel_plugin_core::PluginMeta;
 use steel_plugin_sdk::rpc::PluginId;
-use steel_plugin_sdk::utils::fat::FatPtr;
-use tokio::sync::Mutex;
-use wasmtime::Store;
-use wasmtime_wasi::p1::WasiP1Ctx;
+use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxView, WasiView};
 
-pub use exports::{AllocFunc, DeallocFunc, PluginExports};
-
-mod exports;
-
-pub type PluginStore = Arc<Mutex<Store<PluginState>>>;
+pub type PluginStore = Arc<Plugin>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PluginStatus {
@@ -21,36 +14,39 @@ pub enum PluginStatus {
 }
 
 pub struct PluginState {
+    pub wasi: WasiCtx,
+    pub table: ResourceTable,
     pub host: Arc<HostState>,
     pub plugin_id: PluginId,
     pub meta: PluginMeta,
     pub status: PluginStatus,
-    pub wasi: WasiP1Ctx,
-    pub exports: OnceCell<Arc<PluginExports>>,
-    pub scratch: FatPtr,
-    pub store: OnceCell<PluginStore>,
+    pub plugin: OnceCell<Arc<Mutex<Plugin>>>,
 }
 
 impl PluginState {
-    pub fn new(host: Arc<HostState>, wasi: WasiP1Ctx, meta: PluginMeta) -> Self {
+    pub fn new(host: Arc<HostState>, wasi: WasiCtx, meta: PluginMeta) -> Self {
         let plugin_id = host.next_id();
         Self {
+            wasi,
+            table: ResourceTable::new(),
             host,
             plugin_id,
             meta,
             status: PluginStatus::Disabled,
-            wasi,
-            exports: OnceCell::new(),
-            scratch: FatPtr::new(1, 1).expect("neither ptr nor len is zero"),
-            store: OnceCell::new(),
+            plugin: OnceCell::new(),
         }
     }
 
-    pub fn exports(&self) -> &Arc<PluginExports> {
-        self.exports.get().expect("exports not yet initialized")
+    pub fn plugin(&self) -> Arc<Mutex<Plugin>> {
+        self.plugin.get().expect("plugin not initialized").clone()
     }
+}
 
-    pub fn store(&self) -> &PluginStore {
-        self.store.get().expect("store not yet initialized")
+impl WasiView for PluginState {
+    fn ctx(&mut self) -> WasiCtxView<'_> {
+        WasiCtxView {
+            ctx: &mut self.wasi,
+            table: &mut self.table,
+        }
     }
 }

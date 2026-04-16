@@ -119,33 +119,28 @@ async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
     for plugin_meta in discovered {
         let plugin = host
             .prepare_plugin(plugin_meta)
-            .await
             .context("failed to prepare plugin")?;
-        host.load_plugin(&plugin)
-            .await
-            .context("failed to load plugin")?;
+        host.load_plugin(&plugin).context("failed to load plugin")?;
         host.enable_plugin(&plugin)
-            .await
             .context("failed to enable plugin")?;
         enabled_plugins.push(plugin);
     }
 
     for plugin_name in &plugin_names {
         assert!(
-            host.state.resolve_plugin(plugin_name).await.is_some(),
+            host.state.resolve_plugin(plugin_name).is_some(),
             "plugin '{plugin_name}' should be registered after load/enable"
         );
     }
 
     while let Some(plugin) = enabled_plugins.pop() {
         host.disable_plugin(&plugin)
-            .await
             .context("failed to disable plugin")?;
     }
 
     for plugin_name in &plugin_names {
         assert!(
-            host.state.resolve_plugin(plugin_name).await.is_none(),
+            host.state.resolve_plugin(plugin_name).is_none(),
             "plugin '{plugin_name}' should be unregistered after disable"
         );
     }
