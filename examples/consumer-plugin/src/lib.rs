@@ -1,6 +1,4 @@
-use steel_plugin_sdk::{Plugin, info, plugin_meta};
-
-plugin_meta!(depends = ["provider-plugin"]);
+use steel_plugin_sdk::{Plugin, info};
 
 pub struct ConsumerPlugin;
 
@@ -14,4 +12,6 @@ impl Plugin for ConsumerPlugin {
     }
 }
 
-steel_plugin_sdk::plugin_export!(ConsumerPlugin);
+steel_plugin_sdk::plugin_export!(ConsumerPlugin, {
+    depends: ["provider-plugin"]
+});

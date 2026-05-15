@@ -1,6 +1,4 @@
-use steel_plugin_sdk::{Plugin, info, plugin_meta};
-
-plugin_meta!();
+use steel_plugin_sdk::{Plugin, info};
 
 pub struct ProviderPlugin;
 
