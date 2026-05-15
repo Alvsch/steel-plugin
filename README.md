@@ -1,6 +1,13 @@
 # steel-plugin
 A plugin system in WebAssembly
 
+## Plugin Stages
+- unloaded - host has no knowledge of the plugin.
+- discovered - wasm file path, name, api_version, etc. gathered statically.
+- loaded - wasm compiled and component initialized, early runtime data gathered.
+- enabled - on_enable called. plugin is alive and running.
+- disabled - on_disable called. plugin is ready to be cleaned up and unloaded.
+
 ## Testing
 
 - Unit tests for deterministic logic in core/sdk/host.
