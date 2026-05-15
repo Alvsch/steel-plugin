@@ -18,6 +18,7 @@ pub mod __export {
     pub use crate::sdk::logging::warn;
 }
 
+#[doc(hidden)]
 #[allow(clippy::all, clippy::pedantic)]
 pub mod component {
     wit_bindgen::generate!({
