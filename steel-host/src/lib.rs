@@ -3,7 +3,6 @@ use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use parking_lot::Mutex;
 use steel_plugin_core::PluginMeta;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine, Store};
@@ -11,7 +10,7 @@ use wasmtime_wasi::p2::add_to_linker_async;
 use wasmtime_wasi::{DirPerms, FilePerms, WasiCtx, WasiCtxBuilder};
 
 use crate::error::{PluginContractError, PluginError};
-use crate::linker::HostLinker;
+use crate::linker::{HostLinker, PluginWorld};
 use crate::plugin::{PluginState, PluginStore};
 use crate::state::HostState;
 
@@ -25,13 +24,12 @@ pub mod plugin;
 mod state;
 mod utils;
 
-wasmtime::component::bindgen!({
-    path: "../wit",
-});
+#[expect(clippy::absolute_paths)]
+pub type AsyncMutex<T> = tokio::sync::Mutex<T>;
 
 pub struct Plugin {
-    pub store: Mutex<Store<PluginState>>,
-    pub bindings: Mutex<PluginWorld>,
+    pub store: AsyncMutex<Store<PluginState>>,
+    pub bindings: AsyncMutex<PluginWorld>,
 }
 
 pub struct WasmEngine {
@@ -41,10 +39,11 @@ pub struct WasmEngine {
 }
 
 impl WasmEngine {
-    pub fn new(config: Config, data_folder: PathBuf) -> Result<Self, wasmtime::Error> {
+    pub fn new(config: Config, data_folder: PathBuf) -> wasmtime::Result<Self> {
         let engine = Engine::new(&config)?;
         let mut linker = Linker::new(&engine);
         add_to_linker_async(&mut linker)?;
+        linker::add_to_linker(&mut linker)?;
         Ok(Self {
             engine,
             linker,
@@ -88,18 +87,18 @@ impl WasmEngine {
         Ok(wasi)
     }
 
-    pub fn instantiate(
+    pub async fn instantiate(
         &self,
         component: &Component,
         plugin_state: PluginState,
     ) -> Result<PluginStore, PluginContractError> {
         let mut store = Store::new(&self.engine, plugin_state);
 
-        let bindings = PluginWorld::instantiate(&mut store, component, &self.linker)?;
+        let bindings = PluginWorld::instantiate_async(&mut store, component, &self.linker).await?;
 
         Ok(Arc::new(Plugin {
-            store: Mutex::new(store),
-            bindings: Mutex::new(bindings),
+            store: AsyncMutex::new(store),
+            bindings: AsyncMutex::new(bindings),
         }))
     }
 }
@@ -117,24 +116,27 @@ impl PluginHost {
         })
     }
 
-    pub fn prepare_plugin(&self, plugin_meta: PluginMeta) -> Result<PluginStore, PluginError> {
+    pub async fn prepare_plugin(
+        &self,
+        plugin_meta: PluginMeta,
+    ) -> Result<PluginStore, PluginError> {
         let module = self.wasm.preload_component(&plugin_meta.file_path)?;
         let wasi = self.wasm.prepare_wasi(&plugin_meta.name)?;
 
         let plugin_state = PluginState::new(self.state.clone(), wasi, plugin_meta);
-        let plugin = self.wasm.instantiate(&module, plugin_state)?;
+        let plugin = self.wasm.instantiate(&module, plugin_state).await?;
         Ok(plugin)
     }
 
-    pub fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
-        self.state.load_plugin(plugin)
+    pub async fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+        self.state.load_plugin(plugin).await
     }
 
-    pub fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
-        self.state.enable_plugin(plugin)
+    pub async fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+        self.state.enable_plugin(plugin).await
     }
 
-    pub fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
-        self.state.disable_plugin(plugin)
+    pub async fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+        self.state.disable_plugin(plugin).await
     }
 }

@@ -12,7 +12,7 @@ pub fn read_custom_section<'a>(
             Payload::CustomSection(reader) if reader.name() == name => {
                 return Ok(Some(reader.data()));
             }
-            _ => {}
+            _ => (),
         }
     }
     Ok(None)

@@ -1,8 +1,10 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, bail};
+use steel_host::interface::rpc::{HostRpc, PluginRpc};
 use steel_host::wasmtime::{Config, OptLevel};
 use steel_host::{PluginHost, discover_plugins};
+use steel_plugin_sdk::rpc::MethodId;
 use tempfile::TempDir;
 use tokio::fs::{copy, create_dir_all};
 
@@ -38,7 +40,7 @@ async fn setup_fixture_layout() -> anyhow::Result<FixtureLayout> {
         .await
         .context("failed to create plugin data directory")?;
 
-    let artifact_dir = workspace_root().join("target/wasm32-wasip1/profiling");
+    let artifact_dir = workspace_root().join("target/wasm32-wasip2/profiling");
     for file_name in FIXTURE_WASM_FILES {
         let src = artifact_dir.join(file_name);
         if !src.exists() {
@@ -49,6 +51,7 @@ async fn setup_fixture_layout() -> anyhow::Result<FixtureLayout> {
         }
 
         let dst = plugin_dir.join(file_name);
+        println!("{}", dst.display());
         copy(&src, &dst).await.with_context(|| {
             format!(
                 "failed to copy wasm fixture from '{}' to '{}'",
@@ -70,6 +73,30 @@ fn host_config() -> Config {
     config.cranelift_opt_level(OptLevel::Speed);
     config.wasm_multi_memory(false);
     config
+}
+
+async fn make_plugin_rpc_with_method(
+    method_name: &str,
+    method_id: MethodId,
+) -> anyhow::Result<PluginRpc> {
+    let fixture = setup_fixture_layout().await?;
+    let discovered = discover_plugins(&fixture.plugin).await?;
+    let plugin_meta = discovered
+        .into_iter()
+        .next()
+        .context("expected at least one plugin fixture to be discovered")?;
+
+    let host = PluginHost::new(host_config(), fixture.data.clone())
+        .map_err(|err| anyhow::anyhow!("failed to construct PluginHost: {err}"))?;
+
+    let plugin = host
+        .prepare_plugin(plugin_meta)
+        .await
+        .context("failed to prepare plugin for HostRpc integration tests")?;
+
+    let mut plugin_rpc = PluginRpc::new(plugin);
+    plugin_rpc.register_method(method_id, method_name.to_string(), 0);
+    Ok(plugin_rpc)
 }
 
 #[tokio::test]
@@ -107,7 +134,7 @@ async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
 
     assert!(
         !discovered.is_empty(),
-        "expected at least one plugin fixture to be discovered"
+        "expected at least one plugin fixture to be discovered",
     );
 
     let host = PluginHost::new(host_config(), fixture.data.clone())
@@ -119,9 +146,13 @@ async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
     for plugin_meta in discovered {
         let plugin = host
             .prepare_plugin(plugin_meta)
+            .await
             .context("failed to prepare plugin")?;
-        host.load_plugin(&plugin).context("failed to load plugin")?;
+        host.load_plugin(&plugin)
+            .await
+            .context("failed to load plugin")?;
         host.enable_plugin(&plugin)
+            .await
             .context("failed to enable plugin")?;
         enabled_plugins.push(plugin);
     }
@@ -135,6 +166,7 @@ async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
 
     while let Some(plugin) = enabled_plugins.pop() {
         host.disable_plugin(&plugin)
+            .await
             .context("failed to disable plugin")?;
     }
 
@@ -144,6 +176,40 @@ async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
             "plugin '{plugin_name}' should be unregistered after disable"
         );
     }
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn resolve_method_returns_registered_method_id() -> anyhow::Result<()> {
+    let plugin_id = 1;
+    let method_id: MethodId = 7;
+
+    let mut host_rpc = HostRpc::new();
+
+    let plugin_rpc = make_plugin_rpc_with_method("echo", method_id).await?;
+    host_rpc.plugins.insert(plugin_id, plugin_rpc);
+
+    assert_eq!(host_rpc.resolve_method(plugin_id, "echo"), Some(method_id));
+    assert_eq!(host_rpc.resolve_method(plugin_id, "missing"), None);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn get_plugin_and_get_plugin_mut_observe_registry_state() -> anyhow::Result<()> {
+    let plugin_id = 1;
+    let method_id: MethodId = 1;
+
+    let mut host_rpc = HostRpc::new();
+    assert!(host_rpc.get_plugin(plugin_id).is_none());
+    assert!(host_rpc.get_plugin_mut(plugin_id).is_none());
+
+    let plugin_rpc = make_plugin_rpc_with_method("echo", method_id).await?;
+    host_rpc.plugins.insert(plugin_id, plugin_rpc);
+
+    assert!(host_rpc.get_plugin(plugin_id).is_some());
+    assert!(host_rpc.get_plugin_mut(plugin_id).is_some());
 
     Ok(())
 }

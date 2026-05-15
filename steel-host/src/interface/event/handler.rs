@@ -48,12 +48,12 @@ impl HandlerRegistry {
         entries.insert(pos, entry);
     }
 
-    pub fn dispatch_topic<E: Event>(&self, event: &E) -> anyhow::Result<()> {
+    pub async fn dispatch_topic<E: Event>(&self, event: &E) -> anyhow::Result<()> {
         let payload = rmp_serde::to_vec(event).context("failed to serialize event")?;
 
         let handlers = self.get_handlers(E::TOPIC_ID);
         for handler in handlers {
-            if let Err(err) = dispatch_event(&handler.plugin, &payload, handler.handler_fn) {
+            if let Err(err) = dispatch_event(&handler.plugin, &payload, handler.handler_fn).await {
                 error!("plugin contract violation during event dispatch: {err}");
             }
         }

@@ -3,7 +3,7 @@ use crate::{Plugin, error::PluginContractError};
 mod handler;
 pub use handler::{HandlerFn, HandlerRegistry};
 
-fn dispatch_event(
+async fn dispatch_event(
     plugin: &Plugin,
     payload: &[u8],
     handler: HandlerFn,
@@ -11,8 +11,10 @@ fn dispatch_event(
     plugin
         .bindings
         .lock()
+        .await
         .host_plugin_sdk_plugin_api()
-        .call_event_handler(&mut *plugin.store.lock(), handler, payload)?;
+        .call_event_handler(&mut *plugin.store.lock().await, handler, payload)
+        .await?;
 
     Ok(())
 }

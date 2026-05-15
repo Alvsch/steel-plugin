@@ -16,7 +16,7 @@ pub struct PluginRpc {
 }
 
 impl PluginRpc {
-    pub(crate) fn new(store: PluginStore) -> Self {
+    pub fn new(store: PluginStore) -> Self {
         Self {
             store,
             methods: BTreeMap::new(),

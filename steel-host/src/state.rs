@@ -65,8 +65,8 @@ impl HostState {
         self.rpc.write().plugins.remove(&plugin_id);
     }
 
-    pub fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
-        let mut store = plugin.store.lock();
+    pub async fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+        let mut store = plugin.store.lock().await;
         let data = store.data();
 
         // register plugin
@@ -83,8 +83,10 @@ impl HostState {
             let data = plugin
                 .bindings
                 .lock()
+                .await
                 .host_plugin_sdk_plugin_api()
-                .call_on_load(&mut *store)?;
+                .call_on_load(&mut *store)
+                .await?;
 
             rmp_serde::from_slice(&data)
                 .map_err(|_| PluginContractError::Other("invalid load data".to_string()))?
@@ -119,13 +121,15 @@ impl HostState {
         Ok(())
     }
 
-    pub fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
-        let mut store = plugin.store.lock();
+    pub async fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+        let mut store = plugin.store.lock().await;
         plugin
             .bindings
             .lock()
+            .await
             .host_plugin_sdk_plugin_api()
-            .call_on_enable(&mut *store)?;
+            .call_on_enable(&mut *store)
+            .await?;
 
         store.data_mut().status = PluginStatus::Enabled;
 
@@ -133,14 +137,16 @@ impl HostState {
         Ok(())
     }
 
-    pub fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
-        let mut store = plugin.store.lock();
+    pub async fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+        let mut store = plugin.store.lock().await;
 
         plugin
             .bindings
             .lock()
+            .await
             .host_plugin_sdk_plugin_api()
-            .call_on_disable(&mut *store)?;
+            .call_on_disable(&mut *store)
+            .await?;
 
         store.data_mut().status = PluginStatus::Disabled;
 

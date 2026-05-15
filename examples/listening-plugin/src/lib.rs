@@ -1,27 +1,31 @@
-use steel_plugin_sdk::event::{PlayerJoinEvent, PlayerLeaveEvent};
-use steel_plugin_sdk::objects::player::{Name, Position};
-use steel_plugin_sdk::{event_handler, info, on_enable, plugin_meta};
+use steel_plugin_sdk::{Guest, info, plugin_meta};
 
 plugin_meta!();
 
-#[on_enable]
-pub fn on_enable() {
-    info!("hello from the listening!");
+pub struct ListeningPlugin;
+
+impl Guest for ListeningPlugin {
+    fn on_enable() {
+        info!("hello from the listening!");
+    }
+
+    fn on_disable() {
+        info!("goodbye from the listening!");
+    }
+
+    fn on_load() -> Vec<u8> {
+        let slice = ::steel_plugin_sdk::export::iter::<::steel_plugin_sdk::export::Exported>()
+            .cloned()
+            .map(::steel_plugin_sdk::export::ExportedId::from)
+            .collect::<Vec<_>>();
+        ::rmp_serde::to_vec(&slice).unwrap()
+    }
+
+    fn rpc(_method_id: u32, _data: Vec<u8>) -> Option<Vec<u8>> {
+        None
+    }
+
+    fn event_handler(_handler_id: u32, _data: Vec<u8>) {}
 }
 
-#[event_handler(priority = -1)]
-fn test_handler(event: PlayerJoinEvent) {
-    let (name, position) = event.player.fetch::<(Name, Position)>().unwrap();
-    info!("name={name}, position={position}");
-
-    event
-        .player
-        .batch()
-        .send_message(format!("Welcome {name}!"))
-        .send();
-}
-
-#[event_handler]
-fn test_handler(_event: PlayerLeaveEvent) {
-    info!("goodbye");
-}
+steel_plugin_sdk::plugin_export!(ListeningPlugin);

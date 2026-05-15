@@ -1,46 +1,31 @@
-use steel_plugin_sdk::{Guest, export, rpc};
-use steel_plugin_sdk::info;
+use steel_plugin_sdk::{Guest, info, plugin_meta};
+
+plugin_meta!(depends = ["provider-plugin"]);
 
 pub struct ConsumerPlugin;
 
 impl Guest for ConsumerPlugin {
     fn on_enable() {
         info!("hello from the consumer!");
-
-        let plugin_id = rpc::resolve_plugin("provider-plugin").unwrap();
-        let method_id = rpc::resolve_method(plugin_id, "get_balance").unwrap();
-        let result =
-            rpc::dispatch(plugin_id, method_id, b"hello").and_then(|x| String::from_utf8(x).ok());
-
-        info!("{result:?}");
     }
 
-    fn on_disable() {}
+    fn on_disable() {
+        info!("consumer disabled");
+    }
 
     fn on_load() -> Vec<u8> {
-        Vec::new()
+        let slice = ::steel_plugin_sdk::export::iter::<::steel_plugin_sdk::export::Exported>()
+            .cloned()
+            .map(::steel_plugin_sdk::export::ExportedId::from)
+            .collect::<Vec<_>>();
+        ::rmp_serde::to_vec(&slice).unwrap()
     }
 
-    fn rpc(method_id: u32, data: Vec<u8>) -> Option<Vec<u8>> {
-        info!("rpc");
+    fn rpc(_method_id: u32, _data: Vec<u8>) -> Option<Vec<u8>> {
         None
     }
 
-    fn event_handler(handler_id: u32, data: Vec<u8>) {
-        info!("event");
-    }
+    fn event_handler(_handler_id: u32, _data: Vec<u8>) {}
 }
 
-// #[on_enable]
-// pub fn on_enable() {
-//     info!("hello from the consumer!");
-
-//     let plugin_id = rpc::resolve_plugin("provider-plugin").unwrap();
-//     let method_id = rpc::resolve_method(plugin_id, "get_balance").unwrap();
-//     let result =
-//         rpc::dispatch(plugin_id, method_id, b"hello").and_then(|x| String::from_utf8(x).ok());
-
-//     info!("{result:?}");
-// }
-
-export!(ConsumerPlugin);
+steel_plugin_sdk::plugin_export!(ConsumerPlugin);
