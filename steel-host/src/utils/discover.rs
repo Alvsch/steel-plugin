@@ -44,8 +44,8 @@ pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<PluginMet
 
 async fn discover(file_path: &Path) -> anyhow::Result<PluginMeta> {
     let bytes = read(&file_path).await.context("failed to read file_path")?;
-    let meta_section =
-        read_custom_section(&bytes, "plugin_meta")?.context("missing plugin meta")?;
+    let meta_section = read_custom_section(&bytes, "steel-api::plugin::metadata")?
+        .context("missing plugin meta")?;
 
     let mut plugin_meta: PluginMeta =
         rmp_serde::from_slice(meta_section).context("invalid plugin meta")?;

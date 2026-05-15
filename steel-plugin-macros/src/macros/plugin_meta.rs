@@ -31,7 +31,7 @@ pub fn plugin_meta(input: PluginMetaArgs) -> TokenStream {
     let len = bytes.len();
 
     quote! {
-        #[unsafe(link_section = "plugin_meta")]
+        #[unsafe(link_section = "steel-api::plugin::metadata")]
         #[used]
         pub static __PLUGIN_META_SECTION: [u8; #len] = [#(#bytes),*];
 
