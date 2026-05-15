@@ -9,6 +9,5 @@ CLAUDE.md
 .env
 steel-flint/.cache
 /players
-Cargo.lock
 /plugins
 jit-*.dump
