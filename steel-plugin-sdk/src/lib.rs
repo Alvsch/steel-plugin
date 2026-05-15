@@ -10,12 +10,12 @@ pub mod component {
 pub mod event;
 pub mod export;
 pub mod objects;
+mod plugin;
 pub mod rpc;
 
-pub use crate::component::exports::host::plugin_sdk::plugin_api::Guest;
-pub use steel_plugin_core::STEEL_API_VERSION;
-
 pub(crate) use component::host::plugin_sdk as sdk;
+pub use plugin::Plugin;
+pub use steel_plugin_core::STEEL_API_VERSION;
 
 #[doc(hidden)]
 pub mod __export {
