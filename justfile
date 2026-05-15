@@ -26,3 +26,6 @@ test:
 
 test-integration: build-plugin
     cargo test -p steel-host --tests
+
+test-lifecycle: build-plugin
+    cargo test -p steel-host --test integration_plugin_lifecycle -- lifecycle_load_enable_disable_all_fixtures
