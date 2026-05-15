@@ -32,7 +32,7 @@ steel-core = { git = "https://github.com/Alvsch/SteelMC", branch = "plugin-api" 
 steel-utils = { git = "https://github.com/Alvsch/SteelMC", branch = "plugin-api" }
 text_components = { git = "https://github.com/Steel-Foundation/TextComponents", features = ["serde"] }
 
-tokio = { version = "1.51.1", features = ["macros", "rt", "rt-multi-thread", "fs"] }
+tokio = { version = "1.52.3", features = ["macros", "rt", "rt-multi-thread", "fs"] }
 
 wasmtime = { version = "44.0.1", default-features = false }
 wasmtime-wasi = { version = "44.0.1", default-features = false }
