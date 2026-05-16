@@ -1,7 +1,6 @@
 pub use steel_plugin_macros::{event_handler, plugin_export, rpc_export};
 
 pub mod event;
-pub mod export;
 pub mod objects;
 mod plugin;
 pub mod rpc;
@@ -16,17 +15,11 @@ pub mod __export {
     pub use crate::sdk::logging::info;
     pub use crate::sdk::logging::trace;
     pub use crate::sdk::logging::warn;
+
+    pub use crate::plugin::component::exports::host::plugin_sdk;
 }
 
-#[doc(hidden)]
-#[allow(clippy::all, clippy::pedantic)]
-pub mod component {
-    wit_bindgen::generate!({
-        path: "../wit",
-        world: "plugin-world",
-    });
-}
-pub(crate) use component::host::plugin_sdk as sdk;
+pub(crate) use crate::plugin::component::host::plugin_sdk as sdk;
 
 #[macro_export]
 macro_rules! error {

@@ -1,8 +1,19 @@
-use proc_macro2::TokenStream;
+use proc_macro_crate::{FoundCrate, crate_name};
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::ItemFn;
+use syn::{Ident, ItemFn};
 
 use crate::utils::rules::{FnRules, validate};
+
+fn import_rpc_export() -> TokenStream {
+    match crate_name("steel-plugin-sdk").expect("steel-plugin-sdk not found in Cargo.toml") {
+        FoundCrate::Itself => quote!(crate::rpc::export),
+        FoundCrate::Name(name) => {
+            let ident = Ident::new(&name, Span::call_site());
+            quote!( #ident::rpc::export )
+        }
+    }
+}
 
 pub(crate) fn rpc_export(item: ItemFn) -> TokenStream {
     if let Err(err) = validate(
@@ -18,32 +29,24 @@ pub(crate) fn rpc_export(item: ItemFn) -> TokenStream {
     }
 
     let fn_name = item.sig.ident;
-    let inputs = &item.sig.inputs;
-    let arg = inputs
+    let arg = match item
+        .sig
+        .inputs
         .first()
-        .expect("function needs exactly one parameter");
+        .expect("function needs one argument &[u8]")
+    {
+        syn::FnArg::Receiver(_) => panic!("function argument cant be self"),
+        syn::FnArg::Typed(pat_type) => &pat_type.pat,
+    };
     let stmts = &item.block.stmts;
 
+    let rpc = import_rpc_export();
     quote! {
-        ::steel_plugin_sdk::export::submit! {
-            ::steel_plugin_sdk::export::Exported::Rpc {
-                export_name: std::borrow::Cow::Borrowed(stringify!(#fn_name)),
-                func: |data_ptr| {
-                    #[inline(always)]
-                    fn __impl(#arg) -> Option<Vec<u8>> {
-                        #(#stmts)*
-                    }
-                    let data_ptr = ::steel_plugin_sdk::utils::fat::FatPtr::unpack(data_ptr).unwrap();
-                    let data = unsafe {
-                        std::slice::from_raw_parts(data_ptr.ptr() as *mut u8, data_ptr.len() as usize)
-                    };
-
-                    let Some(return_data) = __impl(data) else {
-                        return 0;
-                    };
-                    let fat = ::steel_plugin_sdk::utils::fat::FatPtr::new(return_data.as_ptr() as u32, return_data.len() as u32).unwrap();
-                    std::mem::forget(return_data);
-                    fat.pack()
+        #rpc::submit! {
+            #rpc::RpcMethod {
+                name: stringify!(#fn_name),
+                function: |#arg| {
+                    #(#stmts)*
                 },
             }
         }

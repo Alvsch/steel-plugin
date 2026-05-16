@@ -25,7 +25,7 @@ pub struct PluginState {
 
 impl PluginState {
     pub fn new(host: Arc<HostState>, wasi: WasiCtx, meta: PluginMeta) -> Self {
-        let plugin_id = host.next_id();
+        let plugin_id = PluginId(host.next_id());
         Self {
             wasi,
             table: ResourceTable::new(),

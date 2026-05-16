@@ -1,36 +1,28 @@
-mod host;
-
-pub type RpcMethod = u32;
-
-use std::collections::{BTreeMap, HashMap};
-
-pub use host::HostRpc;
-use steel_plugin_sdk::rpc::MethodId;
+use std::collections::BTreeMap;
+use steel_plugin_sdk::rpc::PluginId;
 
 use crate::plugin::PluginStore;
 
-pub struct PluginRpc {
-    pub store: PluginStore,
-    pub methods: BTreeMap<MethodId, RpcMethod>,
-    pub method_name: HashMap<String, MethodId>,
+pub struct HostRpc {
+    pub plugins: BTreeMap<PluginId, PluginStore>,
 }
 
-impl PluginRpc {
-    pub fn new(store: PluginStore) -> Self {
+impl Default for HostRpc {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl HostRpc {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
-            store,
-            methods: BTreeMap::new(),
-            method_name: HashMap::new(),
+            plugins: BTreeMap::new(),
         }
     }
 
-    pub fn register_method(&mut self, method_id: MethodId, method_name: String, method: RpcMethod) {
-        self.methods.insert(method_id, method);
-        self.method_name.insert(method_name, method_id);
-    }
-
     #[must_use]
-    pub fn get_method(&self, method_id: MethodId) -> Option<&RpcMethod> {
-        self.methods.get(&method_id)
+    pub fn get_plugin(&self, plugin_id: PluginId) -> Option<&PluginStore> {
+        self.plugins.get(&plugin_id)
     }
 }

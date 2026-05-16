@@ -1,4 +1,5 @@
 use steel_plugin_sdk::objects::HandleKey;
+use steel_plugin_sdk::rpc::PluginId;
 use tracing::warn;
 use wasmtime::component::{HasSelf, Linker};
 
@@ -45,18 +46,20 @@ impl plugin_sdk::logging::Host for PluginState {
 
 impl plugin_sdk::rpc::Host for PluginState {
     async fn resolve_plugin(&mut self, name: String) -> Option<u32> {
-        self.host.resolve_plugin(&name)
+        self.host.resolve_plugin(&name).map(|x| x.0)
     }
 
-    async fn resolve_method(&mut self, plugin_id: u32, method_name: String) -> Option<u32> {
-        self.host.rpc.read().resolve_method(plugin_id, &method_name)
-    }
-
-    async fn dispatch(&mut self, plugin_id: u32, method_id: u32, data: Vec<u8>) -> Option<Vec<u8>> {
+    async fn dispatch(
+        &mut self,
+        plugin_id: u32,
+        method_name: String,
+        data: Vec<u8>,
+    ) -> Option<Vec<u8>> {
         let plugin = {
             let rpc = self.host.rpc.read();
-            let plugin = rpc.get_plugin(plugin_id).expect("invalid plugin");
-            plugin.store.clone()
+            rpc.get_plugin(PluginId(plugin_id))
+                .expect("invalid plugin")
+                .clone()
         };
         let mut store = plugin.store.lock().await;
 
@@ -65,7 +68,7 @@ impl plugin_sdk::rpc::Host for PluginState {
             .lock()
             .await
             .host_plugin_sdk_plugin_api()
-            .call_rpc(&mut *store, method_id, &data)
+            .call_rpc(&mut *store, &method_name, &data)
             .await
             .expect("failed to call rpc")
     }

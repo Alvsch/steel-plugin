@@ -1,13 +1,12 @@
 use crate::error::PluginContractError;
 use crate::interface::event::HandlerRegistry;
 use crate::interface::objects::{ObjectHandler, ObjectRegistry};
-use crate::interface::rpc::{HostRpc, PluginRpc};
+use crate::interface::rpc::HostRpc;
 use crate::plugin::{PluginStatus, PluginStore};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
-use steel_plugin_sdk::export::{ExportedId, ExportedKind};
 use steel_plugin_sdk::objects::HandleKey;
 use steel_plugin_sdk::rpc::PluginId;
 use tracing::warn;
@@ -66,57 +65,17 @@ impl HostState {
     }
 
     pub async fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
-        let mut store = plugin.store.lock().await;
+        let store = plugin.store.lock().await;
         let data = store.data();
 
         // register plugin
         self.rpc
             .write()
             .plugins
-            .insert(data.plugin_id, PluginRpc::new(plugin.clone()));
+            .insert(data.plugin_id, plugin.clone());
         self.plugin_name
             .write()
             .insert(data.meta.name.clone(), data.plugin_id);
-
-        // gather exported functions
-        let exported_ids: Vec<ExportedId> = {
-            let data = plugin
-                .bindings
-                .lock()
-                .await
-                .host_plugin_sdk_plugin_api()
-                .call_on_load(&mut *store)
-                .await?;
-
-            rmp_serde::from_slice(&data)
-                .map_err(|_| PluginContractError::Other("invalid load data".to_string()))?
-        };
-
-        // resolve and register exported functions
-        for exported in exported_ids {
-            match exported.kind {
-                ExportedKind::Rpc { export_name } => {
-                    let data = store.data();
-                    let plugin_id = data.plugin_id;
-                    let method_id = data.host.next_id();
-                    data.host
-                        .rpc
-                        .write()
-                        .get_plugin_mut(plugin_id)
-                        .expect("plugin should be registered")
-                        .register_method(method_id, export_name.to_string(), exported.id);
-                }
-                ExportedKind::Event { topic_id, priority } => {
-                    self.handler_registry.write().subscribe(
-                        topic_id,
-                        plugin.clone(),
-                        exported.id,
-                        priority,
-                    );
-                }
-                ExportedKind::Command => todo!(),
-            }
-        }
 
         Ok(())
     }

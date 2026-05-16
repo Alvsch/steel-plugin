@@ -11,10 +11,10 @@ use crate::PluginExportInput;
 
 fn import_plugin_api() -> TokenStream {
     match crate_name("steel-plugin-sdk").expect("steel-plugin-sdk not found in Cargo.toml") {
-        FoundCrate::Itself => quote!(crate::component::exports::host::plugin_sdk::plugin_api),
+        FoundCrate::Itself => quote!(crate::__export::plugin_sdk::plugin_api),
         FoundCrate::Name(name) => {
             let ident = Ident::new(&name, Span::call_site());
-            quote!( #ident::component::exports::host::plugin_sdk::plugin_api )
+            quote!( #ident::__export::plugin_sdk::plugin_api )
         }
     }
 }
@@ -64,24 +64,10 @@ pub fn plugin_export(PluginExportInput { plugin, meta }: PluginExportInput) -> T
                 }
             }
 
-            #[unsafe(export_name = "host:plugin-sdk/plugin-api@0.1.0#on-load")]
-            unsafe extern "C" fn export_on_load() -> *mut u8 {
-                unsafe {
-                    #import::_export_on_load_cabi::<#plugin>()
-                }
-            }
-
-            #[unsafe(export_name = "cabi_post_host:plugin-sdk/plugin-api@0.1.0#on-load")]
-            unsafe extern "C" fn _post_return_on_load(arg0: *mut u8) {
-                unsafe {
-                    #import::__post_return_on_load::<#plugin>(arg0)
-                }
-            }
-
             #[unsafe(export_name = "host:plugin-sdk/plugin-api@0.1.0#rpc")]
-            unsafe extern "C" fn export_rpc(arg0: i32, arg1: *mut u8, arg2: usize) -> *mut u8 {
+            unsafe extern "C" fn export_rpc(arg0: *mut u8, arg1: usize, arg2: *mut u8, arg3: usize) -> *mut u8 {
                 unsafe {
-                    #import::_export_rpc_cabi::<#plugin>(arg0, arg1, arg2)
+                    #import::_export_rpc_cabi::<#plugin>(arg0, arg1, arg2, arg3)
                 }
             }
 

@@ -3,10 +3,8 @@ package host:plugin-sdk@0.1.0;
 interface plugin-api {
     on-enable: func();
     on-disable: func();
-    
-    on-load: func() -> list<u8>;
 
-    rpc: func(method-id: u32, data: list<u8>) -> option<list<u8>>;
+    rpc: func(method-name: string, data: list<u8>) -> option<list<u8>>;
     event-handler: func(handler-id: u32, data: list<u8>);
 }
 

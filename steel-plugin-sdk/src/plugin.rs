@@ -1,7 +1,15 @@
 use crate::{
-    component::exports::host::plugin_sdk::plugin_api::Guest,
-    export::{Exported, ExportedId},
+    plugin::component::exports::host::plugin_sdk::plugin_api::Guest, rpc::export::RpcMethod,
 };
+
+#[doc(hidden)]
+#[allow(clippy::all, clippy::pedantic)]
+pub mod component {
+    wit_bindgen::generate!({
+        path: "../wit",
+        world: "plugin-world",
+    });
+}
 
 pub trait Plugin {
     fn on_enable();
@@ -17,15 +25,12 @@ impl<T: Plugin> Guest for T {
         T::on_disable();
     }
 
-    fn on_load() -> Vec<u8> {
-        let slice = inventory::iter::<Exported>()
-            .cloned()
-            .map(ExportedId::from)
-            .collect::<Vec<_>>();
-        rmp_serde::to_vec(&slice).expect("invalid exports")
-    }
-
-    fn rpc(_method_id: u32, _data: Vec<u8>) -> Option<Vec<u8>> {
+    fn rpc(method_name: String, data: Vec<u8>) -> Option<Vec<u8>> {
+        for method in inventory::iter::<RpcMethod> {
+            if method.name == method_name {
+                return (method.function)(&data);
+            }
+        }
         None
     }
 
