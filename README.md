@@ -8,6 +8,11 @@ A plugin system in WebAssembly
 - enabled - on_enable called. plugin is alive and running.
 - disabled - on_disable called. plugin is ready to be cleaned up and unloaded.
 
+## Plugin Meta
+- define dependencies
+- restrict rpc resolve_plugin access to those dependencies
+- soft dependencies resolve_plugin return Option<u32>
+
 ## Testing
 
 - Unit tests for deterministic logic in core/sdk/host.
