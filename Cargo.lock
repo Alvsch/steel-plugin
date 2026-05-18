@@ -2868,6 +2868,7 @@ dependencies = [
  "anyhow",
  "glam",
  "parking_lot",
+ "replace_with",
  "rmp",
  "rmp-serde",
  "semver",

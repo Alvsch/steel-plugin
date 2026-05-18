@@ -79,7 +79,7 @@ pub fn plugin_export(PluginExportInput { plugin, meta }: PluginExportInput) -> T
             }
 
             #[unsafe(export_name = "host:plugin-sdk/plugin-api@0.1.0#event-handler")]
-            unsafe extern "C" fn export_event_handler(arg0: i32, arg1: *mut u8, arg2: usize) {
+            unsafe extern "C" fn export_event_handler(arg0: i32, arg1: i32, arg2: i32) -> *mut u8 {
                 unsafe {
                     #import::_export_event_handler_cabi::<#plugin>(arg0, arg1, arg2)
                 }

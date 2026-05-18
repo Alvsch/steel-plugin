@@ -1,5 +1,6 @@
 use crate::{
-    plugin::component::exports::host::plugin_sdk::plugin_api::Guest, rpc::export::RpcMethod,
+    event::EventHandler, plugin::component::exports::host::plugin_sdk::plugin_api::Guest,
+    rpc::export::RpcMethod, sdk::event::Event,
 };
 
 #[doc(hidden)]
@@ -34,5 +35,12 @@ impl<T: Plugin> Guest for T {
         None
     }
 
-    fn event_handler(_handler_id: u32, _data: Vec<u8>) {}
+    fn event_handler(handler_id: u32, mut event: Event) -> Event {
+        for handler in inventory::iter::<EventHandler> {
+            if handler.id == handler_id {
+                (handler.function)(&mut event);
+            }
+        }
+        event
+    }
 }

@@ -1,0 +1,18 @@
+package host:plugin-sdk@0.1.0;
+
+interface event {
+    use player.{player};
+
+    record player-join-event {
+        player: player,
+    }
+
+    record player-leave-event {
+        player: player,
+    }
+
+    variant event {
+        player-join-event(player-join-event),
+        player-leave-event(player-leave-event),
+    }
+}

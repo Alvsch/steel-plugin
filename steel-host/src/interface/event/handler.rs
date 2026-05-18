@@ -1,8 +1,8 @@
-use crate::{interface::event::dispatch_event, plugin::PluginStore};
-use anyhow::Context;
+use crate::{
+    interface::event::dispatch_event, linker::host::plugin_sdk::event::Event, plugin::PluginStore,
+};
 use std::collections::HashMap;
 use steel_plugin_core::TopicId;
-use steel_plugin_sdk::event::Event;
 use tracing::error;
 
 pub type HandlerFn = u32;
@@ -48,12 +48,10 @@ impl HandlerRegistry {
         entries.insert(pos, entry);
     }
 
-    pub async fn dispatch_topic<E: Event>(&self, event: &E) -> anyhow::Result<()> {
-        let payload = rmp_serde::to_vec(event).context("failed to serialize event")?;
-
-        let handlers = self.get_handlers(E::TOPIC_ID);
+    pub async fn dispatch_topic(&self, mut event: Event) -> anyhow::Result<()> {
+        let handlers = self.get_handlers(0);
         for handler in handlers {
-            if let Err(err) = dispatch_event(&handler.plugin, &payload, handler.handler_fn).await {
+            if let Err(err) = dispatch_event(&handler.plugin, &mut event, handler.handler_fn).await {
                 error!("plugin contract violation during event dispatch: {err}");
             }
         }

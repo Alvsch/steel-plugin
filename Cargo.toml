@@ -47,6 +47,7 @@ semver = { version = "1.0.28", features = ["serde"] }
 glam = { version = "0.32.1", features = ["serde"] }
 slotmap = { version = "1.1.1", features = ["serde"] }
 parking_lot = "0.12.5"
+replace_with = "0.1.8"
 
 # errors
 thiserror = "2.0.18"

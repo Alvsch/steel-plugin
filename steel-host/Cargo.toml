@@ -36,6 +36,7 @@ rmp.workspace = true
 semver.workspace = true
 slotmap.workspace = true
 glam.workspace = true
+replace_with.workspace = true
 
 thiserror.workspace = true
 anyhow.workspace = true

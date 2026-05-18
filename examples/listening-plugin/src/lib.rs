@@ -1,4 +1,7 @@
-use steel_plugin_sdk::{Plugin, info};
+use steel_plugin_sdk::{Plugin, event::PlayerJoinEvent, event_handler, info};
+
+#[event_handler]
+fn event_handler(event: &mut PlayerJoinEvent) {}
 
 pub struct ListeningPlugin;
 

@@ -1,17 +1,20 @@
 package host:plugin-sdk@0.1.0;
 
 interface plugin-api {
+    use event.{event};
+
     on-enable: func();
     on-disable: func();
 
     rpc: func(method-name: string, data: list<u8>) -> option<list<u8>>;
-    event-handler: func(handler-id: u32, data: list<u8>);
+    event-handler: func(handler-id: u32, event: event) -> event;
 }
 
 world plugin-world {
     import logging;
-    import object;
+    import player;
     import rpc;
+    import event;
 
     export plugin-api;
 }

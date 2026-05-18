@@ -1,18 +1,15 @@
 use crate::error::PluginContractError;
 use crate::interface::event::HandlerRegistry;
-use crate::interface::objects::{ObjectHandler, ObjectRegistry};
 use crate::interface::rpc::HostRpc;
 use crate::plugin::{PluginStatus, PluginStore};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
-use steel_plugin_sdk::objects::HandleKey;
 use steel_plugin_sdk::rpc::PluginId;
 use tracing::warn;
 
 pub struct HostState {
-    pub objects: RwLock<ObjectRegistry>,
     pub rpc: RwLock<HostRpc>,
     pub handler_registry: RwLock<HandlerRegistry>,
     enabled_plugins: RwLock<Vec<PluginStore>>,
@@ -30,7 +27,6 @@ impl HostState {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            objects: RwLock::new(ObjectRegistry::new()),
             rpc: RwLock::new(HostRpc::new()),
             handler_registry: RwLock::new(HandlerRegistry::new()),
             enabled_plugins: RwLock::new(Vec::new()),
@@ -41,14 +37,6 @@ impl HostState {
 
     pub fn next_id(&self) -> u32 {
         self.next_id.fetch_add(1, Ordering::Relaxed)
-    }
-
-    pub fn register_object_handler(&self, handler: ObjectHandler) -> HandleKey {
-        self.objects.write().register(handler)
-    }
-
-    pub fn unregister_object_handler(&self, key: HandleKey) -> Option<ObjectHandler> {
-        self.objects.write().unregister(key)
     }
 
     #[must_use]

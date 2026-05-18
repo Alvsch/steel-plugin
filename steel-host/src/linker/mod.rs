@@ -1,11 +1,7 @@
-use steel_plugin_sdk::objects::HandleKey;
 use steel_plugin_sdk::rpc::PluginId;
-use tracing::warn;
-use wasmtime::component::{HasSelf, Linker};
+use wasmtime::component::{HasSelf, Linker, Resource};
 
-use crate::interface::objects::{BatchDispatchOutcome, FetchOutcome};
-use crate::linker::host::plugin_sdk;
-use crate::plugin::PluginState;
+use crate::{linker::host::plugin_sdk::{self, player::Player}, plugin::PluginState};
 
 pub type HostLinker = Linker<PluginState>;
 
@@ -17,7 +13,7 @@ wasmtime::component::bindgen!({
 
 pub fn add_to_linker(linker: &mut HostLinker) -> wasmtime::Result<()> {
     plugin_sdk::logging::add_to_linker::<_, HasSelf<_>>(linker, |state| state)?;
-    plugin_sdk::object::add_to_linker::<_, HasSelf<_>>(linker, |state| state)?;
+    plugin_sdk::player::add_to_linker::<_, HasSelf<_>>(linker, |state| state)?;
     plugin_sdk::rpc::add_to_linker::<_, HasSelf<_>>(linker, |state| state)?;
     Ok(())
 }
@@ -74,47 +70,14 @@ impl plugin_sdk::rpc::Host for PluginState {
     }
 }
 
-impl plugin_sdk::object::Host for PluginState {
-    async fn object_fetch(&mut self, entity_key: u64, queries: Vec<u8>) -> Option<Vec<u8>> {
-        let outcome = {
-            let objects = self.host.objects.read();
-            objects.fetch(HandleKey::from_ffi(entity_key), &queries)
-        };
+impl plugin_sdk::player::Host for PluginState {}
 
-        match outcome {
-            FetchOutcome::MissingKey => {
-                warn!(
-                    entity_key = entity_key,
-                    "object_fetch called with unknown handle key"
-                );
-                None
-            }
-            FetchOutcome::HandlerError(err) => {
-                warn!(entity_key = entity_key, error = %err, "object_fetch handler failed");
-                None
-            }
-            FetchOutcome::Response(response) => Some(response),
-        }
+impl plugin_sdk::player::HostPlayer for PluginState {
+    async fn get_health(&mut self, _player: Resource<Player>) -> u32 {
+        20
     }
 
-    async fn object_batch_dispatch(&mut self, entity_key: u64, commands: Vec<u8>) {
-        let outcome = {
-            let host = self.host.clone();
-            let objects = host.objects.read();
-            objects.batch_dispatch(HandleKey::from_ffi(entity_key), &commands)
-        };
-
-        match outcome {
-            BatchDispatchOutcome::Dispatched => (),
-            BatchDispatchOutcome::MissingKey => {
-                warn!(
-                    entity_key = entity_key,
-                    "object_batch_dispatch called with unknown handle key"
-                );
-            }
-            BatchDispatchOutcome::HandlerError(err) => {
-                warn!(entity_key = entity_key, error = %err, "object_batch_dispatch handler failed");
-            }
-        }
+    async fn drop(&mut self, _player: Resource<Player>) -> wasmtime::Result<()> {
+        Ok(())
     }
 }
