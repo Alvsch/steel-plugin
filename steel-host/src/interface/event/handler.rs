@@ -1,7 +1,9 @@
 use crate::{
-    interface::event::dispatch_event, linker::host::plugin_sdk::event::Event, plugin::PluginStore,
+    interface::event::{api_to_wasm_event, dispatch_event},
+    plugin::PluginStore,
 };
 use std::collections::HashMap;
+use steel_core::PluginApi;
 use steel_plugin_core::TopicId;
 use tracing::error;
 
@@ -48,10 +50,12 @@ impl HandlerRegistry {
         entries.insert(pos, entry);
     }
 
-    pub async fn dispatch_topic(&self, mut event: Event) -> anyhow::Result<()> {
+    pub async fn dispatch_topic(&self, event: PluginApi) -> wasmtime::Result<()> {
         let handlers = self.get_handlers(0);
         for handler in handlers {
-            if let Err(err) = dispatch_event(&handler.plugin, &mut event, handler.handler_fn).await {
+            let wasm_event = api_to_wasm_event(event.clone(), &handler.plugin).await?;
+            if let Err(err) = dispatch_event(&handler.plugin, wasm_event, handler.handler_fn).await
+            {
                 error!("plugin contract violation during event dispatch: {err}");
             }
         }

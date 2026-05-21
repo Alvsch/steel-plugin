@@ -35,12 +35,11 @@ impl<T: Plugin> Guest for T {
         None
     }
 
-    fn event_handler(handler_id: u32, mut event: Event) -> Event {
+    fn event_handler(handler_id: u32, mut event: Event) {
         for handler in inventory::iter::<EventHandler> {
             if handler.id == handler_id {
                 (handler.function)(&mut event);
             }
         }
-        event
     }
 }

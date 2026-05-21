@@ -1,7 +1,9 @@
 use steel_plugin_sdk::{Plugin, event::PlayerJoinEvent, event_handler, info};
 
 #[event_handler]
-fn event_handler(event: &mut PlayerJoinEvent) {}
+fn event_handler(event: &mut PlayerJoinEvent) {
+    info!("event {}", event.player.get_health());
+}
 
 pub struct ListeningPlugin;
 

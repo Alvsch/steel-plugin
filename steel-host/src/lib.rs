@@ -21,6 +21,7 @@ pub mod error;
 pub mod interface;
 pub mod linker;
 pub mod plugin;
+pub mod resource;
 mod state;
 mod utils;
 

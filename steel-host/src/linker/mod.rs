@@ -1,7 +1,12 @@
+use steel_core::entity::LivingEntity;
 use steel_plugin_sdk::rpc::PluginId;
 use wasmtime::component::{HasSelf, Linker, Resource};
 
-use crate::{linker::host::plugin_sdk::{self, player::Player}, plugin::PluginState};
+use crate::{
+    linker::host::plugin_sdk::{self, player::Player},
+    plugin::PluginState,
+    resource::PlayerResource,
+};
 
 pub type HostLinker = Linker<PluginState>;
 
@@ -73,11 +78,19 @@ impl plugin_sdk::rpc::Host for PluginState {
 impl plugin_sdk::player::Host for PluginState {}
 
 impl plugin_sdk::player::HostPlayer for PluginState {
-    async fn get_health(&mut self, _player: Resource<Player>) -> u32 {
-        20
+    async fn get_health(&mut self, res: Resource<Player>) -> f32 {
+        let player = self
+            .table
+            .get::<PlayerResource>(&Resource::new_borrow(res.rep()))
+            .expect("failed to access resource");
+        player.provider.get_health()
     }
 
-    async fn drop(&mut self, _player: Resource<Player>) -> wasmtime::Result<()> {
+    async fn drop(&mut self, res: Resource<Player>) -> wasmtime::Result<()> {
+        if res.owned() {
+            self.table
+                .delete::<PlayerResource>(Resource::new_own(res.rep()))?;
+        }
         Ok(())
     }
 }

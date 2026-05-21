@@ -7,7 +7,7 @@ interface plugin-api {
     on-disable: func();
 
     rpc: func(method-name: string, data: list<u8>) -> option<list<u8>>;
-    event-handler: func(handler-id: u32, event: event) -> event;
+    event-handler: func(handler-id: u32, event: event);
 }
 
 world plugin-world {
