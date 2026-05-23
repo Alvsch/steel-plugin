@@ -27,9 +27,7 @@ pub(crate) use crate::plugin::component::host::plugin_sdk as sdk;
 macro_rules! error {
     ($($arg:tt)*) => {
         let message = format!($($arg)*);
-        unsafe {
-            $crate::__export::error(&message);
-        }
+        $crate::__export::error(&message);
     };
 }
 
@@ -37,9 +35,7 @@ macro_rules! error {
 macro_rules! warn {
     ($($arg:tt)*) => {
         let message = format!($($arg)*);
-        unsafe {
-            $crate::__export::warn(&message);
-        }
+        $crate::__export::warn(&message);
     };
 }
 
@@ -47,9 +43,7 @@ macro_rules! warn {
 macro_rules! info {
     ($($arg:tt)*) => {
         let message = format!($($arg)*);
-        unsafe {
-            $crate::__export::info(&message);
-        }
+        $crate::__export::info(&message);
     };
 }
 
@@ -57,9 +51,7 @@ macro_rules! info {
 macro_rules! debug {
     ($($arg:tt)*) => {
         let message = format!($($arg)*);
-        unsafe {
-            $crate::__export::debug(&message);
-        }
+        $crate::__export::debug(&message);
     };
 }
 
@@ -67,8 +59,6 @@ macro_rules! debug {
 macro_rules! trace {
     ($($arg:tt)*) => {
         let message = format!($($arg)*);
-        unsafe {
-            $crate::__export::trace(&message);
-        }
+        $crate::__export::trace(&message);
     };
 }
