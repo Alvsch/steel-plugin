@@ -1,14 +1,10 @@
 use crate::{
     error::PluginContractError,
-    linker::{
-        host::plugin_sdk::event::{Event as WasmEvent, PlayerJoinEvent, PlayerLeaveEvent},
-        player::PlayerResource,
-    },
+    linker::host::plugin_sdk::event::{Event as WasmEvent, PlayerJoinEvent, PlayerLeaveEvent},
     plugin::Plugin,
 };
 
 use steel_core::PluginApi;
-use wasmtime::component::Resource;
 
 pub use handler::{HandlerFn, HandlerRegistry};
 mod handler;
@@ -21,15 +17,15 @@ pub(super) async fn api_to_wasm_event(
     let data = store.data_mut();
     match api {
         PluginApi::PlayerJoinEvent(player) => {
-            let wasm_player = data.table.push(PlayerResource { provider: player })?;
+            let wasm_player = data.resources.push_player(player)?;
             Ok(WasmEvent::PlayerJoinEvent(PlayerJoinEvent {
-                player: Resource::new_own(wasm_player.rep()),
+                player: wasm_player,
             }))
         }
         PluginApi::PlayerLeaveEvent(player) => {
-            let wasm_player = data.table.push(PlayerResource { provider: player })?;
+            let wasm_player = data.resources.push_player(player)?;
             Ok(WasmEvent::PlayerLeaveEvent(PlayerLeaveEvent {
-                player: Resource::new_own(wasm_player.rep()),
+                player: wasm_player,
             }))
         }
     }

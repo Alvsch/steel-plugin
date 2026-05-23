@@ -3,9 +3,12 @@ use std::{cell::OnceCell, sync::Arc};
 use steel_plugin_core::PluginMeta;
 use steel_plugin_sdk::rpc::PluginId;
 use steel_utils::locks::SyncMutex;
-use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxView, WasiView};
+use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
-use crate::{plugin::Plugin, state::HostState};
+use crate::{
+    plugin::{Plugin, resource::PluginResources},
+    state::HostState,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PluginStatus {
@@ -15,7 +18,7 @@ pub enum PluginStatus {
 
 pub struct PluginState {
     pub wasi: WasiCtx,
-    pub table: ResourceTable,
+    pub resources: PluginResources,
     pub host: Arc<HostState>,
     pub plugin_id: PluginId,
     pub meta: PluginMeta,
@@ -28,7 +31,7 @@ impl PluginState {
         let plugin_id = PluginId(host.next_id());
         Self {
             wasi,
-            table: ResourceTable::new(),
+            resources: PluginResources::new(),
             host,
             plugin_id,
             meta,
@@ -46,7 +49,7 @@ impl WasiView for PluginState {
     fn ctx(&mut self) -> WasiCtxView<'_> {
         WasiCtxView {
             ctx: &mut self.wasi,
-            table: &mut self.table,
+            table: &mut self.resources.table,
         }
     }
 }

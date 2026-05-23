@@ -4,8 +4,12 @@ use steel_utils::locks::AsyncMutex;
 use wasmtime::Store;
 
 use crate::linker::PluginWorld;
-pub use crate::plugin::state::{PluginState, PluginStatus};
+pub use crate::plugin::{
+    resource::PluginResources,
+    state::{PluginState, PluginStatus},
+};
 
+mod resource;
 mod state;
 
 pub type PluginInstance = Arc<Plugin>;
