@@ -9,7 +9,7 @@ use crate::{
     plugin::{PluginResources, PluginState},
 };
 
-pub struct PlayerResource {
+struct PlayerResource {
     pub provider: Arc<Player>,
 }
 
@@ -35,12 +35,14 @@ impl PluginResources {
     pub fn delete_player(
         &mut self,
         resource: Resource<player::Player>,
-    ) -> Result<PlayerResource, ResourceTableError> {
+    ) -> Result<Arc<Player>, ResourceTableError> {
         if !resource.owned() {
             tracing::warn!("deleting a borrowed resource");
         }
-        self.table
-            .delete::<PlayerResource>(Resource::new_borrow(resource.rep()))
+        let resource = self
+            .table
+            .delete::<PlayerResource>(Resource::new_borrow(resource.rep()))?;
+        Ok(resource.provider)
     }
 }
 
