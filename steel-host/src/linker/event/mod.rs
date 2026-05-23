@@ -1,10 +1,10 @@
 use crate::{
-    Plugin,
     error::PluginContractError,
     linker::{
         host::plugin_sdk::event::{Event as WasmEvent, PlayerJoinEvent, PlayerLeaveEvent},
         player::PlayerResource,
     },
+    plugin::Plugin,
 };
 
 use steel_core::PluginApi;

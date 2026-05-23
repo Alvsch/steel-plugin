@@ -1,52 +1,17 @@
-use crate::{Plugin, state::HostState};
-use parking_lot::Mutex;
-use std::{cell::OnceCell, sync::Arc};
-use steel_plugin_core::PluginMeta;
-use steel_plugin_sdk::rpc::PluginId;
-use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxView, WasiView};
+use std::sync::Arc;
 
-pub type PluginStore = Arc<Plugin>;
+use steel_utils::locks::AsyncMutex;
+use wasmtime::Store;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PluginStatus {
-    Enabled,
-    Disabled,
-}
+use crate::linker::PluginWorld;
+pub use crate::plugin::state::{PluginState, PluginStatus};
 
-pub struct PluginState {
-    pub wasi: WasiCtx,
-    pub table: ResourceTable,
-    pub host: Arc<HostState>,
-    pub plugin_id: PluginId,
-    pub meta: PluginMeta,
-    pub status: PluginStatus,
-    pub plugin: OnceCell<Arc<Mutex<Plugin>>>,
-}
+mod state;
 
-impl PluginState {
-    pub fn new(host: Arc<HostState>, wasi: WasiCtx, meta: PluginMeta) -> Self {
-        let plugin_id = PluginId(host.next_id());
-        Self {
-            wasi,
-            table: ResourceTable::new(),
-            host,
-            plugin_id,
-            meta,
-            status: PluginStatus::Disabled,
-            plugin: OnceCell::new(),
-        }
-    }
+pub type PluginInstance = Arc<Plugin>;
+pub type PluginStore = Store<PluginState>;
 
-    pub fn plugin(&self) -> Arc<Mutex<Plugin>> {
-        self.plugin.get().expect("plugin not initialized").clone()
-    }
-}
-
-impl WasiView for PluginState {
-    fn ctx(&mut self) -> WasiCtxView<'_> {
-        WasiCtxView {
-            ctx: &mut self.wasi,
-            table: &mut self.table,
-        }
-    }
+pub struct Plugin {
+    pub store: AsyncMutex<PluginStore>,
+    pub bindings: AsyncMutex<PluginWorld>,
 }

@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use steel_plugin_core::PluginMeta;
+use steel_utils::locks::AsyncMutex;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::p2::add_to_linker_async;
@@ -11,7 +12,7 @@ use wasmtime_wasi::{DirPerms, FilePerms, WasiCtx, WasiCtxBuilder};
 
 use crate::error::{PluginContractError, PluginError};
 use crate::linker::{HostLinker, PluginWorld};
-use crate::plugin::{PluginState, PluginStore};
+use crate::plugin::{Plugin, PluginInstance, PluginState};
 use crate::state::HostState;
 
 pub use utils::discover::discover_plugins;
@@ -22,14 +23,6 @@ pub mod linker;
 pub mod plugin;
 mod state;
 mod utils;
-
-#[expect(clippy::absolute_paths)]
-pub type AsyncMutex<T> = tokio::sync::Mutex<T>;
-
-pub struct Plugin {
-    pub store: AsyncMutex<Store<PluginState>>,
-    pub bindings: AsyncMutex<PluginWorld>,
-}
 
 pub struct WasmEngine {
     engine: Engine,
@@ -90,7 +83,7 @@ impl WasmEngine {
         &self,
         component: &Component,
         plugin_state: PluginState,
-    ) -> Result<PluginStore, PluginContractError> {
+    ) -> Result<PluginInstance, PluginContractError> {
         let mut store = Store::new(&self.engine, plugin_state);
 
         let bindings = PluginWorld::instantiate_async(&mut store, component, &self.linker).await?;
@@ -118,7 +111,7 @@ impl PluginHost {
     pub async fn prepare_plugin(
         &self,
         plugin_meta: PluginMeta,
-    ) -> Result<PluginStore, PluginError> {
+    ) -> Result<PluginInstance, PluginError> {
         let module = self.wasm.preload_component(&plugin_meta.file_path)?;
         let wasi = self.wasm.prepare_wasi(&plugin_meta.name)?;
 
@@ -127,15 +120,15 @@ impl PluginHost {
         Ok(plugin)
     }
 
-    pub async fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+    pub async fn load_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
         self.state.load_plugin(plugin).await
     }
 
-    pub async fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+    pub async fn enable_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
         self.state.enable_plugin(plugin).await
     }
 
-    pub async fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+    pub async fn disable_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
         self.state.disable_plugin(plugin).await
     }
 }

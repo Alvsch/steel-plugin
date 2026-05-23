@@ -1,7 +1,7 @@
 use crate::error::PluginContractError;
 use crate::linker::event::HandlerRegistry;
 use crate::linker::rpc::RpcRegistry;
-use crate::plugin::{PluginStatus, PluginStore};
+use crate::plugin::{PluginInstance, PluginStatus};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -12,7 +12,7 @@ use tracing::warn;
 pub struct HostState {
     pub rpc: RwLock<RpcRegistry>,
     pub handler_registry: RwLock<HandlerRegistry>,
-    enabled_plugins: RwLock<Vec<PluginStore>>,
+    enabled_plugins: RwLock<Vec<PluginInstance>>,
     plugin_name: RwLock<HashMap<String, PluginId>>,
     next_id: AtomicU32,
 }
@@ -52,7 +52,7 @@ impl HostState {
         self.rpc.write().plugins.remove(&plugin_id);
     }
 
-    pub async fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+    pub async fn load_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
         let store = plugin.store.lock().await;
         let data = store.data();
 
@@ -68,7 +68,7 @@ impl HostState {
         Ok(())
     }
 
-    pub async fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+    pub async fn enable_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
         let mut store = plugin.store.lock().await;
         plugin
             .bindings
@@ -84,7 +84,7 @@ impl HostState {
         Ok(())
     }
 
-    pub async fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
+    pub async fn disable_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
         let mut store = plugin.store.lock().await;
 
         plugin

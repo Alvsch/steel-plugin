@@ -1,6 +1,6 @@
 use crate::{
     linker::event::{api_to_wasm_event, dispatch_event},
-    plugin::PluginStore,
+    plugin::PluginInstance,
 };
 use std::collections::HashMap;
 use steel_core::PluginApi;
@@ -10,7 +10,7 @@ use tracing::error;
 pub type HandlerFn = u32;
 
 struct HandlerEntry {
-    pub plugin: PluginStore,
+    pub plugin: PluginInstance,
     pub handler_fn: HandlerFn,
     pub priority: i8,
 }
@@ -36,7 +36,7 @@ impl HandlerRegistry {
     pub fn subscribe(
         &mut self,
         topic_id: TopicId,
-        plugin_store: PluginStore,
+        plugin_store: PluginInstance,
         handler_fn: HandlerFn,
         priority: i8,
     ) {
