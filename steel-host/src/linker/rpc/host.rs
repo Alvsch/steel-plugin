@@ -3,17 +3,17 @@ use steel_plugin_sdk::rpc::PluginId;
 
 use crate::plugin::PluginStore;
 
-pub struct HostRpc {
+pub struct RpcRegistry {
     pub plugins: BTreeMap<PluginId, PluginStore>,
 }
 
-impl Default for HostRpc {
+impl Default for RpcRegistry {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl HostRpc {
+impl RpcRegistry {
     #[must_use]
     pub const fn new() -> Self {
         Self {

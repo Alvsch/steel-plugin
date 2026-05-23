@@ -1,5 +1,5 @@
 use crate::{
-    interface::event::{api_to_wasm_event, dispatch_event},
+    linker::event::{api_to_wasm_event, dispatch_event},
     plugin::PluginStore,
 };
 use std::collections::HashMap;

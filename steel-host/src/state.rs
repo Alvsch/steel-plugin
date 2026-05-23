@@ -1,6 +1,6 @@
 use crate::error::PluginContractError;
-use crate::interface::event::HandlerRegistry;
-use crate::interface::rpc::HostRpc;
+use crate::linker::event::HandlerRegistry;
+use crate::linker::rpc::RpcRegistry;
 use crate::plugin::{PluginStatus, PluginStore};
 use parking_lot::RwLock;
 use std::collections::HashMap;
@@ -10,7 +10,7 @@ use steel_plugin_sdk::rpc::PluginId;
 use tracing::warn;
 
 pub struct HostState {
-    pub rpc: RwLock<HostRpc>,
+    pub rpc: RwLock<RpcRegistry>,
     pub handler_registry: RwLock<HandlerRegistry>,
     enabled_plugins: RwLock<Vec<PluginStore>>,
     plugin_name: RwLock<HashMap<String, PluginId>>,
@@ -27,7 +27,7 @@ impl HostState {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            rpc: RwLock::new(HostRpc::new()),
+            rpc: RwLock::new(RpcRegistry::new()),
             handler_registry: RwLock::new(HandlerRegistry::new()),
             enabled_plugins: RwLock::new(Vec::new()),
             plugin_name: RwLock::new(HashMap::new()),

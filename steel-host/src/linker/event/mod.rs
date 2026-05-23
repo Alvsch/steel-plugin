@@ -1,14 +1,17 @@
 use crate::{
     Plugin,
     error::PluginContractError,
-    linker::host::plugin_sdk::event::{Event as WasmEvent, PlayerJoinEvent, PlayerLeaveEvent},
-    resource::PlayerResource,
+    linker::{
+        host::plugin_sdk::event::{Event as WasmEvent, PlayerJoinEvent, PlayerLeaveEvent},
+        player::PlayerResource,
+    },
 };
 
-mod handler;
-pub use handler::{HandlerFn, HandlerRegistry};
 use steel_core::PluginApi;
 use wasmtime::component::Resource;
+
+pub use handler::{HandlerFn, HandlerRegistry};
+mod handler;
 
 pub(super) async fn api_to_wasm_event(
     api: PluginApi,
