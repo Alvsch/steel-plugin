@@ -1,10 +1,9 @@
 use std::collections::BTreeMap;
-use steel_plugin_sdk::rpc::PluginId;
 
-use crate::plugin::PluginInstance;
+use crate::{linker::host::plugin_sdk::rpc::PluginId, plugin::PluginInstance};
 
 pub struct RpcRegistry {
-    pub plugins: BTreeMap<PluginId, PluginInstance>,
+    pub plugins: BTreeMap<u32, PluginInstance>,
 }
 
 impl Default for RpcRegistry {
@@ -23,6 +22,6 @@ impl RpcRegistry {
 
     #[must_use]
     pub fn get_plugin(&self, plugin_id: PluginId) -> Option<&PluginInstance> {
-        self.plugins.get(&plugin_id)
+        self.plugins.get(&plugin_id.id)
     }
 }

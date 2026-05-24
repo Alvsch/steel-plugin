@@ -1,9 +1,6 @@
 use wasmtime::component::{HasSelf, Linker};
 
-use crate::{
-    linker::host::plugin_sdk::{self},
-    plugin::PluginState,
-};
+use crate::{linker::host::plugin_sdk, plugin::PluginState};
 
 pub mod event;
 pub mod logging;

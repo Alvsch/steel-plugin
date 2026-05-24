@@ -1,12 +1,12 @@
 use crate::error::PluginContractError;
 use crate::linker::event::HandlerRegistry;
+use crate::linker::host::plugin_sdk::rpc::PluginId;
 use crate::linker::rpc::RpcRegistry;
 use crate::plugin::{PluginInstance, PluginStatus};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
-use steel_plugin_sdk::rpc::PluginId;
 use tracing::warn;
 
 pub struct HostState {
@@ -49,7 +49,7 @@ impl HostState {
             warn!("attempted to unregister plugin '{plugin_name}' but it was not registered");
             return;
         };
-        self.rpc.write().plugins.remove(&plugin_id);
+        self.rpc.write().plugins.remove(&plugin_id.id);
     }
 
     pub async fn load_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
@@ -60,7 +60,7 @@ impl HostState {
         self.rpc
             .write()
             .plugins
-            .insert(data.plugin_id, plugin.clone());
+            .insert(data.plugin_id.id, plugin.clone());
         self.plugin_name
             .write()
             .insert(data.meta.name.clone(), data.plugin_id);

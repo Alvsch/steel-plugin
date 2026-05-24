@@ -1,6 +1,6 @@
 use crate::{
     event::EventHandler, plugin::component::exports::host::plugin_sdk::plugin_api::Guest,
-    rpc::export::RpcMethod, sdk::event::Event,
+    rpc::export::RpcMethod, sdk::event::Event, warn,
 };
 
 #[doc(hidden)]
@@ -39,7 +39,9 @@ impl<T: Plugin> Guest for T {
         for handler in inventory::iter::<EventHandler> {
             if handler.id == handler_id {
                 (handler.function)(&mut event);
+                return;
             }
         }
+        warn!("host called for unknown handler id: {handler_id}");
     }
 }

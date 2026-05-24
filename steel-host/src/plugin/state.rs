@@ -1,11 +1,11 @@
 use std::{cell::OnceCell, sync::Arc};
 
 use steel_plugin_core::PluginMeta;
-use steel_plugin_sdk::rpc::PluginId;
 use steel_utils::locks::SyncMutex;
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
 use crate::{
+    linker::host::plugin_sdk::rpc::PluginId,
     plugin::{Plugin, resource::PluginResources},
     state::HostState,
 };
@@ -28,7 +28,7 @@ pub struct PluginState {
 
 impl PluginState {
     pub fn new(host: Arc<HostState>, wasi: WasiCtx, meta: PluginMeta) -> Self {
-        let plugin_id = PluginId(host.next_id());
+        let plugin_id = PluginId { id: host.next_id() };
         Self {
             wasi,
             resources: PluginResources::new(),
