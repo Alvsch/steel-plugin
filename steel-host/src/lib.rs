@@ -111,8 +111,9 @@ impl PluginHost {
     pub async fn prepare_plugin(
         &self,
         plugin_meta: PluginMeta,
+        file_path: &Path,
     ) -> Result<PluginInstance, PluginError> {
-        let module = self.wasm.preload_component(&plugin_meta.file_path)?;
+        let module = self.wasm.preload_component(file_path)?;
         let wasi = self.wasm.prepare_wasi(&plugin_meta.name)?;
 
         let plugin_state = PluginState::new(self.state.clone(), wasi, plugin_meta);

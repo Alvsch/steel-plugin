@@ -8,7 +8,7 @@ async fn discover_orders_provider_before_consumer() -> anyhow::Result<()> {
     let fixture = fixtures::setup_layout().await?;
 
     let discovered = discover_plugins(&fixture.plugin).await?;
-    let names: Vec<String> = discovered.into_iter().map(|meta| meta.name).collect();
+    let names: Vec<String> = discovered.into_iter().map(|(meta, _)| meta.name).collect();
 
     let provider_index = names
         .iter()
@@ -46,13 +46,16 @@ async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
     let host = PluginHost::new(fixtures::host_config(), fixture.data.clone())
         .map_err(|err| anyhow::anyhow!("failed to construct PluginHost: {err}"))?;
 
-    let plugin_names: Vec<String> = discovered.iter().map(|meta| meta.name.clone()).collect();
+    let plugin_names: Vec<String> = discovered
+        .iter()
+        .map(|(meta, _)| meta.name.clone())
+        .collect();
     let mut enabled_plugins = Vec::new();
 
-    for plugin_meta in discovered {
+    for (plugin_meta, file_path) in discovered {
         let name = plugin_meta.name.clone();
         let plugin = host
-            .prepare_plugin(plugin_meta)
+            .prepare_plugin(plugin_meta, &file_path)
             .await
             .context("failed to prepare plugin")?;
         host.load_plugin(&plugin)

@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
@@ -16,8 +14,6 @@ pub struct PluginMeta {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub depends: Vec<String>,
     pub api_version: Version,
-    #[serde(skip)]
-    pub file_path: PathBuf,
 }
 
 impl PluginMeta {

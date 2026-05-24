@@ -1,4 +1,4 @@
-use std::{env, path::PathBuf};
+use std::env;
 
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Span, TokenStream};
@@ -32,7 +32,6 @@ pub fn plugin_export(PluginExportInput { plugin, meta }: PluginExportInput) -> T
             .unwrap_or_default(),
         depends: meta.depends,
         api_version: steel_plugin_core::STEEL_API_VERSION,
-        file_path: PathBuf::new(),
     };
 
     if meta.name == "steel" {
