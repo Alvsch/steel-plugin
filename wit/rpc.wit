@@ -1,10 +1,9 @@
 package host:plugin-sdk@0.1.0;
 
 interface rpc {
-    record plugin-id {
-        id: u32,
+    resource method {
+        dispatch: func(data: list<u8>) -> option<list<u8>>;
     }
 
-    resolve-plugin: func(name: string) -> option<plugin-id>;
-    dispatch: func(plugin-id: plugin-id, method-name: string, data: list<u8>) -> option<list<u8>>;
+    resolve-method: func(plugin-name: string, method-name: string) -> option<method>;
 }

@@ -5,7 +5,6 @@ use steel_utils::locks::SyncMutex;
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
 use crate::{
-    linker::host::plugin_sdk::rpc::PluginId,
     plugin::{Plugin, resource::PluginResources},
     state::HostState,
 };
@@ -20,7 +19,6 @@ pub struct PluginState {
     pub wasi: WasiCtx,
     pub resources: PluginResources,
     pub host: Arc<HostState>,
-    pub plugin_id: PluginId,
     pub meta: PluginMeta,
     pub status: PluginStatus,
     pub plugin: OnceCell<Arc<SyncMutex<Plugin>>>,
@@ -28,12 +26,10 @@ pub struct PluginState {
 
 impl PluginState {
     pub fn new(host: Arc<HostState>, wasi: WasiCtx, meta: PluginMeta) -> Self {
-        let plugin_id = PluginId { id: host.next_id() };
         Self {
             wasi,
             resources: PluginResources::new(),
             host,
-            plugin_id,
             meta,
             status: PluginStatus::Disabled,
             plugin: OnceCell::new(),

@@ -33,6 +33,8 @@ async fn discover_orders_provider_before_consumer() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
+    tracing_subscriber::fmt().init();
+
     let fixture = fixtures::setup_layout().await?;
     let discovered = discover_plugins(&fixture.plugin).await?;
 
@@ -48,6 +50,7 @@ async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
     let mut enabled_plugins = Vec::new();
 
     for plugin_meta in discovered {
+        let name = plugin_meta.name.clone();
         let plugin = host
             .prepare_plugin(plugin_meta)
             .await
@@ -57,7 +60,7 @@ async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
             .context("failed to load plugin")?;
         host.enable_plugin(&plugin)
             .await
-            .context("failed to enable plugin")?;
+            .with_context(|| format!("failed to enable {name}"))?;
         enabled_plugins.push(plugin);
     }
 

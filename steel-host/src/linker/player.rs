@@ -41,7 +41,7 @@ impl PluginResources {
         }
         let resource = self
             .table
-            .delete::<PlayerResource>(Resource::new_borrow(resource.rep()))?;
+            .delete::<PlayerResource>(Resource::new_own(resource.rep()))?;
         Ok(resource.provider)
     }
 }

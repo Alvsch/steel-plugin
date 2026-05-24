@@ -5,8 +5,9 @@ pub struct ConsumerPlugin;
 impl Plugin for ConsumerPlugin {
     fn on_enable() {
         info!("hello from the consumer!");
-        let plugin_id = rpc::resolve_plugin("provider-plugin").unwrap();
-        rpc::dispatch(plugin_id, "greet", b"Steve");
+        let method =
+            rpc::resolve_method("provider-plugin", "greet").expect("failed to resolve method");
+        method.dispatch(b"Steve");
     }
 
     fn on_disable() {

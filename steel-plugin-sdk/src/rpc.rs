@@ -1,4 +1,4 @@
-pub use crate::sdk::rpc::{dispatch, resolve_plugin};
+pub use crate::sdk::rpc::{Method, resolve_method};
 
 #[doc(hidden)]
 pub mod export {
