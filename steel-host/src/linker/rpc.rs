@@ -38,9 +38,7 @@ impl PluginResources {
         &mut self,
         resource: Resource<rpc::Method>,
     ) -> Result<MethodResource, ResourceTableError> {
-        if !resource.owned() {
-            tracing::warn!("deleting a borrowed resource");
-        }
+        debug_assert!(resource.owned());
         let resource = self
             .table
             .delete::<MethodResource>(Resource::new_own(resource.rep()))?;
