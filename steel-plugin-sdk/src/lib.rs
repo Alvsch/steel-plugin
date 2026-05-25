@@ -5,7 +5,7 @@ mod plugin;
 pub mod rpc;
 
 pub use plugin::Plugin;
-pub use steel_plugin_core::STEEL_API_VERSION;
+pub use steel_plugin_core::{STEEL_API_VERSION, TopicId};
 
 #[doc(hidden)]
 pub mod __export {

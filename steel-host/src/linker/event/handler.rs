@@ -51,7 +51,7 @@ impl HandlerRegistry {
     }
 
     pub async fn dispatch_topic(&self, event: PluginApi) -> wasmtime::Result<()> {
-        let handlers = self.get_handlers(0);
+        let handlers = self.get_handlers(TopicId(0));
         for handler in handlers {
             let wasm_event = api_to_wasm_event(event.clone(), &handler.plugin).await?;
             if let Err(err) = dispatch_event(&handler.plugin, wasm_event, handler.handler_fn).await

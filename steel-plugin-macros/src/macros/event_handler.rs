@@ -1,6 +1,7 @@
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Span, TokenStream};
-use quote::quote;
+use quote::{ToTokens, quote};
+use steel_plugin_core::fnv1a_32;
 use syn::{Ident, ItemFn, Type};
 
 use crate::utils::rules::{FnRules, validate};
@@ -29,7 +30,6 @@ pub(crate) fn event_handler(item: ItemFn, priority: i8) -> TokenStream {
         panic!("no ref");
     };
     let elem = &type_ref.elem;
-
     let stmts = &item.block.stmts;
 
     if let Err(err) = validate(
@@ -44,10 +44,12 @@ pub(crate) fn event_handler(item: ItemFn, priority: i8) -> TokenStream {
     }
 
     let event_module = import_export();
+    let topic_id = fnv1a_32(elem.to_token_stream().to_string().as_bytes());
     quote! {
-        ::steel_plugin_sdk::__export::submit! {
+        #event_module::submit! {
             ::steel_plugin_sdk::event::EventHandler {
                 id: 0,
+                topic_id: ::steel_plugin_sdk::TopicId(#topic_id),
                 priority: #priority,
                 function: |event: &mut #event_module::Event| {
                     #[inline(always)]
