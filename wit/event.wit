@@ -16,4 +16,6 @@ interface event {
         player-join-event(player-join-event),
         player-leave-event(player-leave-event),
     }
+
+    register-event: func(handler-id: u32, topic-id: u32, priority: s32);
 }

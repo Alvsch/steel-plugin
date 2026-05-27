@@ -1,16 +1,16 @@
 use crate::error::PluginContractError;
 use crate::linker::event::HandlerRegistry;
 use crate::plugin::{PluginInstance, PluginStatus};
-use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use steel_utils::locks::{AsyncRwLock, SyncRwLock};
 use tracing::warn;
 
 pub struct HostState {
-    pub handler_registry: RwLock<HandlerRegistry>,
-    enabled_plugins: RwLock<Vec<PluginInstance>>,
-    plugin_name: RwLock<HashMap<String, PluginInstance>>,
+    pub handler_registry: AsyncRwLock<HandlerRegistry>,
+    enabled_plugins: SyncRwLock<Vec<PluginInstance>>,
+    plugin_name: SyncRwLock<HashMap<String, PluginInstance>>,
     next_id: AtomicU32,
 }
 
@@ -24,9 +24,9 @@ impl HostState {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            handler_registry: RwLock::new(HandlerRegistry::new()),
-            enabled_plugins: RwLock::new(Vec::new()),
-            plugin_name: RwLock::new(HashMap::new()),
+            handler_registry: AsyncRwLock::new(HandlerRegistry::new()),
+            enabled_plugins: SyncRwLock::new(Vec::new()),
+            plugin_name: SyncRwLock::new(HashMap::new()),
             next_id: AtomicU32::new(1),
         }
     }
@@ -50,6 +50,11 @@ impl HostState {
     pub async fn load_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
         let store = plugin.store.lock().await;
         let data = store.data();
+
+        data.plugin
+            .set(plugin.clone())
+            .map_err(|_| ())
+            .expect("plugin already loaded");
 
         // TODO: load information such as exposed rpc methods etc.
         self.plugin_name

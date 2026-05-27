@@ -74,6 +74,14 @@ async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
         );
     }
 
+    // host.state
+    //     .handler_registry
+    //     .write()
+    //     .await
+    //     .dispatch_topic(FakeEvent)
+    //     .await
+    //     .expect("failed to dispatch event");
+
     while let Some(plugin) = enabled_plugins.pop() {
         host.disable_plugin(&plugin)
             .await

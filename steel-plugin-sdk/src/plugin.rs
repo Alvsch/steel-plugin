@@ -1,6 +1,9 @@
 use crate::{
-    event::EventHandler, plugin::component::exports::host::plugin_sdk::plugin_api::Guest,
-    rpc::export::RpcMethod, sdk::event::Event, warn,
+    event::EventHandler,
+    plugin::component::exports::host::plugin_sdk::plugin_api::Guest,
+    rpc::export::RpcMethod,
+    sdk::{self, event::Event},
+    warn,
 };
 
 #[doc(hidden)]
@@ -19,6 +22,10 @@ pub trait Plugin {
 
 impl<T: Plugin> Guest for T {
     fn on_enable() {
+        for handler in inventory::iter::<EventHandler> {
+            sdk::event::register_event(handler.id, handler.topic_id.0, i32::from(handler.priority));
+        }
+
         T::on_enable();
     }
 

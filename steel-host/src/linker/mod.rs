@@ -19,5 +19,6 @@ pub fn add_to_linker(linker: &mut HostLinker) -> wasmtime::Result<()> {
     plugin_sdk::logging::add_to_linker::<_, HasSelf<_>>(linker, |state| state)?;
     plugin_sdk::player::add_to_linker::<_, HasSelf<_>>(linker, |state| state)?;
     plugin_sdk::rpc::add_to_linker::<_, HasSelf<_>>(linker, |state| state)?;
+    plugin_sdk::event::add_to_linker::<_, HasSelf<_>>(linker, |state| state)?;
     Ok(())
 }

@@ -1,11 +1,10 @@
 use std::{cell::OnceCell, sync::Arc};
 
 use steel_plugin_core::PluginMeta;
-use steel_utils::locks::SyncMutex;
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
 use crate::{
-    plugin::{Plugin, resource::PluginResources},
+    plugin::{PluginInstance, resource::PluginResources},
     state::HostState,
 };
 
@@ -21,7 +20,7 @@ pub struct PluginState {
     pub host: Arc<HostState>,
     pub meta: PluginMeta,
     pub status: PluginStatus,
-    pub plugin: OnceCell<Arc<SyncMutex<Plugin>>>,
+    pub plugin: OnceCell<PluginInstance>,
 }
 
 impl PluginState {
@@ -36,7 +35,7 @@ impl PluginState {
         }
     }
 
-    pub fn plugin(&self) -> Arc<SyncMutex<Plugin>> {
+    pub fn plugin(&self) -> PluginInstance {
         self.plugin.get().expect("plugin not initialized").clone()
     }
 }
