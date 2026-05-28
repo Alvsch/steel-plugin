@@ -1,8 +1,20 @@
-use proc_macro2::TokenStream;
-use quote::quote;
-use syn::ItemFn;
+use proc_macro_crate::{FoundCrate, crate_name};
+use proc_macro2::{Span, TokenStream};
+use quote::{ToTokens, quote};
+use steel_plugin_core::fnv1a_32;
+use syn::{Ident, ItemFn, Type};
 
 use crate::utils::rules::{FnRules, validate};
+
+fn import_export() -> TokenStream {
+    match crate_name("steel-plugin-sdk").expect("steel-plugin-sdk not found in Cargo.toml") {
+        FoundCrate::Itself => quote!(crate::__export),
+        FoundCrate::Name(name) => {
+            let ident = Ident::new(&name, Span::call_site());
+            quote!( #ident::__export )
+        }
+    }
+}
 
 pub(crate) fn event_handler(item: ItemFn, priority: i8) -> TokenStream {
     let arg = &item
@@ -14,6 +26,10 @@ pub(crate) fn event_handler(item: ItemFn, priority: i8) -> TokenStream {
         panic!("self parameters not supported");
     };
     let arg_type = &pat_type.ty;
+    let Type::Reference(type_ref) = &**arg_type else {
+        panic!("no ref");
+    };
+    let elem = &type_ref.elem;
     let stmts = &item.block.stmts;
 
     if let Err(err) = validate(
@@ -27,23 +43,23 @@ pub(crate) fn event_handler(item: ItemFn, priority: i8) -> TokenStream {
         return err.to_compile_error();
     }
 
+    let event_module = import_export();
+    let topic_id = fnv1a_32(elem.to_token_stream().to_string().as_bytes());
     quote! {
-        ::steel_plugin_sdk::export::submit! {
-            ::steel_plugin_sdk::export::Exported::Event {
-                topic_id: <#arg_type as ::steel_plugin_sdk::event::Event>::TOPIC_ID,
+        #event_module::submit! {
+            ::steel_plugin_sdk::event::EventHandler {
+                id: 0,
+                topic_id: ::steel_plugin_sdk::TopicId(#topic_id),
                 priority: #priority,
-                func: |packed| {
+                function: |event: &mut #event_module::Event| {
                     #[inline(always)]
-                    fn __impl(#arg) {
+                    fn __impl(event: #arg_type) {
                         #(#stmts)*
                     }
-                    let fat = ::steel_plugin_sdk::utils::fat::FatPtr::unpack(packed).unwrap();
-                    let data = unsafe {
-                        std::slice::from_raw_parts(fat.ptr() as *mut u8, fat.len() as usize)
-                    };
 
-                    let event = ::rmp_serde::from_slice(data).unwrap();
-                    __impl(event);
+                    if let #event_module::Event::#elem(event) = event {
+                        __impl(event);
+                    }
                 },
             }
         }

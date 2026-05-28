@@ -1,27 +1,15 @@
 use proc_macro::TokenStream;
-use syn::{DeriveInput, ItemFn, parse_macro_input};
+use syn::{ItemFn, parse_macro_input};
 
-use crate::utils::args::{EventPriority, PluginMetaArgs};
+use crate::utils::{event_priority::EventPriority, export_input::PluginExportInput};
 
 mod macros;
 pub(crate) mod utils;
 
 #[proc_macro]
-pub fn plugin_meta(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as PluginMetaArgs);
-    macros::plugin_meta(input).into()
-}
-
-#[proc_macro_attribute]
-pub fn on_enable(_args: TokenStream, input: TokenStream) -> TokenStream {
-    let item = parse_macro_input!(input as ItemFn);
-    macros::on_enable(item).into()
-}
-
-#[proc_macro_attribute]
-pub fn on_disable(_args: TokenStream, input: TokenStream) -> TokenStream {
-    let item = parse_macro_input!(input as ItemFn);
-    macros::on_disable(item).into()
+pub fn plugin_export(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input = parse_macro_input!(input as PluginExportInput);
+    macros::plugin_export(input).into()
 }
 
 #[proc_macro_attribute]
@@ -39,10 +27,4 @@ pub fn event_handler(args: TokenStream, input: TokenStream) -> TokenStream {
         parse_macro_input!(args as EventPriority).0
     };
     macros::event_handler(item, priority).into()
-}
-
-#[proc_macro_derive(Event)]
-pub fn derive_event(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    macros::derive_event(input).into()
 }

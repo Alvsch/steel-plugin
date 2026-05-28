@@ -20,7 +20,7 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt, clippy
-          targets: wasm32-wasip1
+          targets: wasm32-wasip2
 
       - name: Cache cargo artifacts
         uses: Swatinem/rust-cache@v2
@@ -34,9 +34,9 @@ jobs:
 
       - name: Build wasm plugins
         run: |
-          RUSTFLAGS='-C link-args=--export-table' cargo build -p listening-plugin --target wasm32-wasip1 --profile profiling
-          RUSTFLAGS='-C link-args=--export-table' cargo build -p provider-plugin --target wasm32-wasip1 --profile profiling
-          RUSTFLAGS='-C link-args=--export-table' cargo build -p consumer-plugin --target wasm32-wasip1 --profile profiling
+          cargo build -p listening-plugin --target wasm32-wasip2 --profile profiling
+          cargo build -p provider-plugin --target wasm32-wasip2 --profile profiling
+          cargo build -p consumer-plugin --target wasm32-wasip2 --profile profiling
 
       - name: Run integration tests
         run: cargo test -p steel-host --tests

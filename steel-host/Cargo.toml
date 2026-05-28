@@ -25,8 +25,10 @@ wasmtime = { workspace = true, features = [
     "runtime",
     "std",
 ] }
-wasmtime-wasi = { workspace = true, features = ["p1"] }
+wasmtime-wasi = { workspace = true, features = ["p2"] }
 wasmparser = { workspace = true, features = ["std", "simd"] }
+wit-bindgen.workspace = true
+parking_lot.workspace = true
 
 serde.workspace = true
 rmp-serde.workspace = true
@@ -34,6 +36,7 @@ rmp.workspace = true
 semver.workspace = true
 slotmap.workspace = true
 glam.workspace = true
+replace_with.workspace = true
 
 thiserror.workspace = true
 anyhow.workspace = true
@@ -43,7 +46,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 
 [dev-dependencies]
-tempfile = "3.10"
+tempfile.workspace = true
 
 [lints]
 workspace = true

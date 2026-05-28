@@ -3,13 +3,16 @@ use crate::utils::read_custom_section;
 use crate::utils::sorting::sort_plugins;
 use anyhow::{Context, bail};
 use semver::Version;
-use std::path::Path;
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 use steel_plugin_sdk::STEEL_API_VERSION;
 use tokio::fs::{read, read_dir};
 use tracing::warn;
 
 /// Discover plugins in the specified directory and return their `PluginMeta` in topological order.
-pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<PluginMeta>> {
+pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<(PluginMeta, PathBuf)>> {
     let mut plugins = Vec::new();
 
     let mut dir = read_dir(plugin_dir)
@@ -28,26 +31,43 @@ pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<PluginMet
                 continue;
             }
             match discover(&file_path).await {
-                Ok(plugin_meta) => plugins.push(plugin_meta),
+                Ok(plugin_meta) => plugins.push((plugin_meta, file_path.canonicalize()?)),
                 Err(err) => {
                     warn!("{err}");
                 }
             }
         }
     }
-    let (topology, invalid) = sort_plugins(plugins);
+
+    let mut plugins = plugins
+        .into_iter()
+        .map(|(meta, path)| (meta.name.clone(), (meta, path)))
+        .collect::<HashMap<String, (PluginMeta, PathBuf)>>();
+
+    let (topology, invalid) = sort_plugins(
+        plugins
+            .iter()
+            .map(|(name, (meta, _))| (name.clone(), meta.depends.clone()))
+            .collect(),
+    );
     if !invalid.is_empty() {
         warn!("plugins with invalid dependencies: {:#?}", invalid);
     }
+
+    let topology = topology
+        .into_iter()
+        .filter_map(|name| plugins.remove(&name))
+        .collect();
+
     Ok(topology)
 }
 
 async fn discover(file_path: &Path) -> anyhow::Result<PluginMeta> {
     let bytes = read(&file_path).await.context("failed to read file_path")?;
-    let meta_section =
-        read_custom_section(&bytes, "plugin_meta")?.context("missing plugin meta")?;
+    let meta_section = read_custom_section(&bytes, "steel-api::plugin::metadata")?
+        .context("missing plugin meta")?;
 
-    let mut plugin_meta: PluginMeta =
+    let plugin_meta: PluginMeta =
         rmp_serde::from_slice(meta_section).context("invalid plugin meta")?;
 
     if plugin_meta.name == "steel" {
@@ -63,7 +83,6 @@ async fn discover(file_path: &Path) -> anyhow::Result<PluginMeta> {
         );
     }
 
-    plugin_meta.file_path = file_path.canonicalize()?;
     Ok(plugin_meta)
 }
 

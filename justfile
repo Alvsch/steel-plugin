@@ -1,7 +1,7 @@
 build-plugin:
-    cargo build -p listening-plugin --target wasm32-wasip1 --profile profiling
-    cargo build -p provider-plugin --target wasm32-wasip1 --profile profiling
-    cargo build -p consumer-plugin --target wasm32-wasip1 --profile profiling
+    cargo build -p listening-plugin --target wasm32-wasip2 --profile profiling
+    cargo build -p provider-plugin --target wasm32-wasip2 --profile profiling
+    cargo build -p consumer-plugin --target wasm32-wasip2 --profile profiling
 
 build: build-plugin
     cargo build -p steel-host
@@ -23,3 +23,6 @@ test:
 
 test-integration: build-plugin
     cargo test -p steel-host --tests
+
+test-lifecycle: build-plugin
+    cargo test -p steel-host --test integration_plugin_lifecycle -- lifecycle_load_enable_disable_all_fixtures

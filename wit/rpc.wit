@@ -1,0 +1,9 @@
+package host:plugin-sdk@0.1.0;
+
+interface rpc {
+    resource method {
+        dispatch: func(data: list<u8>) -> option<list<u8>>;
+    }
+
+    resolve-method: func(plugin-name: string, method-name: string) -> option<method>;
+}

@@ -1,16 +1,20 @@
-use steel_plugin_sdk::rpc::{rpc_dispatch, rpc_resolve_method, rpc_resolve_plugin};
-use steel_plugin_sdk::{info, on_enable, plugin_meta};
+use steel_plugin_sdk::{Plugin, info, rpc};
 
-plugin_meta!(depends = ["provider-plugin"]);
+pub struct ConsumerPlugin;
 
-#[on_enable]
-pub fn on_enable() {
-    info!("hello from the consumer!");
+impl Plugin for ConsumerPlugin {
+    fn on_enable() {
+        info!("hello from the consumer!");
+        let method =
+            rpc::resolve_method("provider-plugin", "greet").expect("failed to resolve method");
+        method.dispatch(b"Steve");
+    }
 
-    let plugin_id = rpc_resolve_plugin("provider-plugin");
-    let method_id = rpc_resolve_method(plugin_id, "get_balance");
-    let result =
-        rpc_dispatch(plugin_id, method_id, b"hello").and_then(|x| String::from_utf8(x).ok());
-
-    info!("{result:?}");
+    fn on_disable() {
+        info!("consumer disabled");
+    }
 }
+
+steel_plugin_sdk::plugin_export!(ConsumerPlugin, {
+    depends: ["provider-plugin"]
+});

@@ -1,56 +1,21 @@
-use crate::state::HostState;
-use std::cell::OnceCell;
 use std::sync::Arc;
-use steel_plugin_core::PluginMeta;
-use steel_plugin_sdk::rpc::PluginId;
-use steel_plugin_sdk::utils::fat::FatPtr;
-use tokio::sync::Mutex;
+
+use steel_utils::locks::AsyncMutex;
 use wasmtime::Store;
-use wasmtime_wasi::p1::WasiP1Ctx;
 
-pub use exports::{AllocFunc, DeallocFunc, PluginExports};
+use crate::linker::PluginWorld;
+pub use crate::plugin::{
+    resource::PluginResources,
+    state::{PluginState, PluginStatus},
+};
 
-mod exports;
+mod resource;
+mod state;
 
-pub type PluginStore = Arc<Mutex<Store<PluginState>>>;
+pub type PluginInstance = Arc<Plugin>;
+pub type PluginStore = Store<PluginState>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PluginStatus {
-    Enabled,
-    Disabled,
-}
-
-pub struct PluginState {
-    pub host: Arc<HostState>,
-    pub plugin_id: PluginId,
-    pub meta: PluginMeta,
-    pub status: PluginStatus,
-    pub wasi: WasiP1Ctx,
-    pub exports: OnceCell<Arc<PluginExports>>,
-    pub scratch: FatPtr,
-    pub store: OnceCell<PluginStore>,
-}
-
-impl PluginState {
-    pub fn new(host: Arc<HostState>, wasi: WasiP1Ctx, meta: PluginMeta) -> Self {
-        let plugin_id = host.next_id();
-        Self {
-            host,
-            plugin_id,
-            meta,
-            status: PluginStatus::Disabled,
-            wasi,
-            exports: OnceCell::new(),
-            scratch: FatPtr::new(1, 1).expect("neither ptr nor len is zero"),
-            store: OnceCell::new(),
-        }
-    }
-
-    pub fn exports(&self) -> &Arc<PluginExports> {
-        self.exports.get().expect("exports not yet initialized")
-    }
-
-    pub fn store(&self) -> &PluginStore {
-        self.store.get().expect("store not yet initialized")
-    }
+pub struct Plugin {
+    pub store: AsyncMutex<PluginStore>,
+    pub bindings: AsyncMutex<PluginWorld>,
 }

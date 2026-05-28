@@ -1,25 +1,16 @@
-use crate::error::{PluginContractError, PluginError};
-use crate::interface::event::{HandlerFn, HandlerRegistry};
-use crate::interface::objects::{ObjectHandler, ObjectRegistry};
-use crate::interface::rpc::{HostRpc, PluginRpc};
-use crate::plugin::{PluginStatus, PluginStore};
-use crate::utils::memory::MemoryExt;
+use crate::error::PluginContractError;
+use crate::linker::event::HandlerRegistry;
+use crate::plugin::{PluginInstance, PluginStatus};
 use std::collections::HashMap;
-use std::num::NonZeroU32;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
-use steel_plugin_sdk::export::{ExportedId, ExportedKind};
-use steel_plugin_sdk::objects::HandleKey;
-use steel_plugin_sdk::rpc::PluginId;
-use tokio::sync::RwLock;
+use steel_utils::locks::{AsyncRwLock, SyncRwLock};
 use tracing::warn;
 
 pub struct HostState {
-    pub objects: RwLock<ObjectRegistry>,
-    pub rpc: RwLock<HostRpc>,
-    pub handler_registry: RwLock<HandlerRegistry>,
-    enabled_plugins: RwLock<Vec<PluginStore>>,
-    plugin_name: RwLock<HashMap<String, PluginId>>,
+    pub handler_registry: AsyncRwLock<HandlerRegistry>,
+    enabled_plugins: SyncRwLock<Vec<PluginInstance>>,
+    plugin_name: SyncRwLock<HashMap<String, PluginInstance>>,
     next_id: AtomicU32,
 }
 
@@ -33,141 +24,79 @@ impl HostState {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            objects: RwLock::new(ObjectRegistry::new()),
-            rpc: RwLock::new(HostRpc::new()),
-            handler_registry: RwLock::new(HandlerRegistry::new()),
-            enabled_plugins: RwLock::new(Vec::new()),
-            plugin_name: RwLock::new(HashMap::new()),
+            handler_registry: AsyncRwLock::new(HandlerRegistry::new()),
+            enabled_plugins: SyncRwLock::new(Vec::new()),
+            plugin_name: SyncRwLock::new(HashMap::new()),
             next_id: AtomicU32::new(1),
         }
     }
 
-    pub fn next_id(&self) -> NonZeroU32 {
-        let next_id = self.next_id.fetch_add(1, Ordering::Relaxed);
-        NonZeroU32::new(next_id).expect("next_id cant be zero")
-    }
-
-    pub async fn register_object_handler(&self, handler: ObjectHandler) -> HandleKey {
-        self.objects.write().await.register(handler)
-    }
-
-    pub async fn unregister_object_handler(&self, key: HandleKey) -> Option<ObjectHandler> {
-        self.objects.write().await.unregister(key)
+    pub fn next_id(&self) -> u32 {
+        self.next_id.fetch_add(1, Ordering::Relaxed)
     }
 
     #[must_use]
-    pub async fn resolve_plugin(&self, plugin_name: &str) -> Option<PluginId> {
-        self.plugin_name.read().await.get(plugin_name).copied()
+    pub fn resolve_plugin(&self, plugin_name: &str) -> Option<PluginInstance> {
+        self.plugin_name.read().get(plugin_name).cloned()
     }
 
-    pub async fn unregister_plugin(&self, plugin_name: &str) {
-        let Some(plugin_id) = self.plugin_name.write().await.remove(plugin_name) else {
+    pub fn unregister_plugin(&self, plugin_name: &str) {
+        let Some(_) = self.plugin_name.write().remove(plugin_name) else {
             warn!("attempted to unregister plugin '{plugin_name}' but it was not registered");
             return;
         };
-        self.rpc.write().await.plugins.remove(&plugin_id);
     }
 
-    pub async fn load_plugin(&self, plugin: &PluginStore) -> Result<(), PluginContractError> {
-        let mut store = plugin.lock().await;
+    pub async fn load_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
+        let store = plugin.store.lock().await;
         let data = store.data();
-        let exports = data.exports().clone();
 
-        // register plugin
-        self.rpc
-            .write()
-            .await
-            .plugins
-            .insert(data.plugin_id, PluginRpc::new(plugin.clone()));
+        data.plugin
+            .set(plugin.clone())
+            .map_err(|_| ())
+            .expect("plugin already loaded");
+
+        // TODO: load information such as exposed rpc methods etc.
         self.plugin_name
             .write()
-            .await
-            .insert(data.meta.name.clone(), data.plugin_id);
-
-        // gather exported functions
-        let exported_ids: Vec<ExportedId> = {
-            let data_ptr = exports.on_load(&mut store).await?;
-            let data = exports.memory.read_memory(&*store, data_ptr);
-
-            rmp_serde::from_slice(data)
-                .map_err(|_| PluginContractError::Other("invalid load data".to_string()))?
-        };
-
-        let table = exports
-            .instance
-            .get_table(&mut *store, "__indirect_function_table")
-            .ok_or(PluginContractError::Other(
-                "missing '__indirect_function_table'".to_string(),
-            ))?;
-
-        // resolve and register exported functions
-        for exported in exported_ids {
-            let func_ref = table
-                .get(&mut *store, u64::from(exported.id))
-                .ok_or_else(|| PluginContractError::Other("invalid export id".to_string()))?;
-
-            let func = func_ref
-                .as_func()
-                .ok_or_else(|| PluginContractError::Other("export not a function".to_string()))?
-                .ok_or_else(|| PluginContractError::Other("null function export".to_string()))?;
-
-            match exported.kind {
-                ExportedKind::Rpc { export_name } => {
-                    let typed_func = func.typed(&mut *store)?;
-
-                    let data = store.data();
-                    let plugin_id = data.plugin_id;
-                    let method_id = data.host.next_id();
-                    data.host
-                        .rpc
-                        .write()
-                        .await
-                        .get_plugin_mut(plugin_id)
-                        .expect("plugin should be registered")
-                        .register_method(method_id, export_name.to_string(), typed_func);
-                }
-                ExportedKind::Event { topic_id, priority } => {
-                    let typed_func: HandlerFn = func.typed(&mut *store)?;
-
-                    self.handler_registry.write().await.subscribe(
-                        topic_id,
-                        plugin.clone(),
-                        typed_func,
-                        priority,
-                    );
-                }
-                ExportedKind::Command => todo!(),
-            }
-        }
+            .insert(data.meta.name.clone(), plugin.clone());
 
         Ok(())
     }
 
-    pub async fn enable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginError> {
-        let store = &mut *plugin.lock().await;
-        let exports = store.data().exports().clone();
+    pub async fn enable_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
+        let mut store = plugin.store.lock().await;
+        plugin
+            .bindings
+            .lock()
+            .await
+            .host_plugin_sdk_plugin_api()
+            .call_on_enable(&mut *store)
+            .await?;
 
-        exports.on_enable(&mut *store).await?;
         store.data_mut().status = PluginStatus::Enabled;
 
-        let host = &store.data().host;
-        host.enabled_plugins.write().await.push(plugin.clone());
-
+        self.enabled_plugins.write().push(plugin.clone());
         Ok(())
     }
 
-    pub async fn disable_plugin(&self, plugin: &PluginStore) -> Result<(), PluginError> {
-        let store = &mut *plugin.lock().await;
-        let exports = store.data().exports().clone();
+    pub async fn disable_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
+        let mut store = plugin.store.lock().await;
 
-        exports.on_disable(&mut *store).await?;
+        plugin
+            .bindings
+            .lock()
+            .await
+            .host_plugin_sdk_plugin_api()
+            .call_on_disable(&mut *store)
+            .await?;
+
         store.data_mut().status = PluginStatus::Disabled;
 
-        let data = store.data();
-        let mut enabled = data.host.enabled_plugins.write().await;
+        let mut enabled = self.enabled_plugins.write();
         enabled.retain(|p| !Arc::ptr_eq(p, plugin));
 
-        data.host.unregister_plugin(&data.meta.name).await;
+        self.unregister_plugin(&store.data().meta.name);
         Ok(())
     }
 }

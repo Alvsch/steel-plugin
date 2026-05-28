@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
@@ -7,17 +5,21 @@ pub const STEEL_API_VERSION: Version = Version::new(0, 2, 0);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PluginMeta {
+    /// steel-plugin API version
+    pub api_version: Version,
+    /// plugin name
     pub name: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
+    /// plugin description
     pub description: String,
+    /// plugin version
     pub version: Version,
+    /// plugin authors
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub authors: Vec<String>,
+    /// list of plugin dependencies by name
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub depends: Vec<String>,
-    pub api_version: Version,
-    #[serde(skip)]
-    pub file_path: PathBuf,
 }
 
 impl PluginMeta {
@@ -27,10 +29,11 @@ impl PluginMeta {
     }
 }
 
-pub type TopicId = u32;
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TopicId(pub u32);
 
 #[must_use]
-pub const fn fnv1a_32(bytes: &[u8]) -> TopicId {
+pub const fn fnv1a_32(bytes: &[u8]) -> u32 {
     let mut hash: u32 = 0x811C_9DC5;
     let mut i = 0;
 

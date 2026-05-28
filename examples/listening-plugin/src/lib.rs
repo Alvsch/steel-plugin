@@ -1,27 +1,20 @@
-use steel_plugin_sdk::event::{PlayerJoinEvent, PlayerLeaveEvent};
-use steel_plugin_sdk::objects::player::{Name, Position};
-use steel_plugin_sdk::{event_handler, info, on_enable, plugin_meta};
-
-plugin_meta!();
-
-#[on_enable]
-pub fn on_enable() {
-    info!("hello from the listening!");
-}
-
-#[event_handler(priority = -1)]
-fn test_handler(event: PlayerJoinEvent) {
-    let (name, position) = event.player.fetch::<(Name, Position)>().unwrap();
-    info!("name={name}, position={position}");
-
-    event
-        .player
-        .batch()
-        .send_message(format!("Welcome {name}!"))
-        .send();
-}
+use steel_plugin_sdk::{Plugin, event::PlayerJoinEvent, event_handler, info};
 
 #[event_handler]
-fn test_handler(_event: PlayerLeaveEvent) {
-    info!("goodbye");
+fn event_handler(event: &mut PlayerJoinEvent) {
+    info!("event {}", event.player.get_health());
 }
+
+pub struct ListeningPlugin;
+
+impl Plugin for ListeningPlugin {
+    fn on_enable() {
+        info!("hello from the listening!");
+    }
+
+    fn on_disable() {
+        info!("goodbye from the listening!");
+    }
+}
+
+steel_plugin_sdk::plugin_export!(ListeningPlugin);

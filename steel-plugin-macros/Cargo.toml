@@ -9,11 +9,14 @@ proc-macro = true
 
 [dependencies]
 steel-plugin-core.workspace = true
+
 semver.workspace = true
-syn = { workspace = true, features = ["full"] }
-proc-macro2.workspace = true
-quote.workspace = true
 rmp.workspace = true
+
+syn = { workspace = true, features = ["full"] }
+quote.workspace = true
+proc-macro2.workspace = true
+proc-macro-crate.workspace = true
 
 [lints]
 workspace = true

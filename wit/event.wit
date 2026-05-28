@@ -1,0 +1,21 @@
+package host:plugin-sdk@0.1.0;
+
+interface event {
+    use player.{player};
+
+    record player-join-event {
+        player: borrow<player>,
+    }
+
+    record player-leave-event {
+        player: borrow<player>,
+    }
+
+    variant event {
+        ping,
+        player-join-event(player-join-event),
+        player-leave-event(player-leave-event),
+    }
+
+    register-event: func(handler-id: u32, topic-id: u32, priority: s32);
+}

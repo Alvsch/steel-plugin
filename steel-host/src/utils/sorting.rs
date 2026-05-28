@@ -1,7 +1,7 @@
-use crate::PluginMeta;
 use std::collections::{HashMap, HashSet, VecDeque};
 
-pub fn sort_plugins(plugins: Vec<PluginMeta>) -> (Vec<PluginMeta>, Vec<PluginMeta>) {
+// TODO: change signature to something like topo_sort_by_key
+pub fn sort_plugins(plugins: HashMap<String, Vec<String>>) -> (Vec<String>, Vec<String>) {
     let mut in_degree: Vec<usize> = vec![0; plugins.len()];
     let mut adj: Vec<Vec<usize>> = vec![vec![]; plugins.len()];
     let mut unresolved_indices: HashSet<usize> = HashSet::new();
@@ -10,11 +10,11 @@ pub fn sort_plugins(plugins: Vec<PluginMeta>) -> (Vec<PluginMeta>, Vec<PluginMet
         let name_to_idx: HashMap<&str, usize> = plugins
             .iter()
             .enumerate()
-            .map(|(i, p)| (&*p.name, i))
+            .map(|(i, (name, _))| (name.as_str(), i))
             .collect();
 
-        for (i, plugin) in plugins.iter().enumerate() {
-            for dep in &plugin.depends {
+        for (i, (_, depends)) in plugins.iter().enumerate() {
+            for dep in depends {
                 if let Some(&dep_idx) = name_to_idx.get(&**dep) {
                     in_degree[i] += 1;
                     adj[dep_idx].push(i);
@@ -43,14 +43,14 @@ pub fn sort_plugins(plugins: Vec<PluginMeta>) -> (Vec<PluginMeta>, Vec<PluginMet
     // TODO: maybe change
     cyclic_indices.extend(unresolved_indices);
 
-    let mut slots: Vec<Option<PluginMeta>> = plugins.into_iter().map(Some).collect();
+    let mut slots: Vec<Option<String>> = plugins.into_keys().map(Some).collect();
 
-    let invalid: Vec<PluginMeta> = cyclic_indices
+    let invalid: Vec<String> = cyclic_indices
         .iter()
         .filter_map(|&i| slots[i].take())
         .collect();
 
-    let sorted: Vec<PluginMeta> = sorted_indices
+    let sorted: Vec<String> = sorted_indices
         .iter()
         .filter_map(|&i| slots[i].take())
         .collect();
@@ -60,8 +60,6 @@ pub fn sort_plugins(plugins: Vec<PluginMeta>) -> (Vec<PluginMeta>, Vec<PluginMet
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use semver::Version;
     use steel_plugin_sdk::STEEL_API_VERSION;
 
@@ -76,7 +74,6 @@ mod tests {
             authors: Vec::new(),
             depends: depends.iter().map(|dep| (*dep).to_string()).collect(),
             api_version: STEEL_API_VERSION.clone(),
-            file_path: PathBuf::new(),
         }
     }
 
@@ -87,8 +84,13 @@ mod tests {
             make_plugin("provider", &[]),
         ];
 
+        let plugins = plugins
+            .into_iter()
+            .map(|meta| (meta.name, meta.depends))
+            .collect();
+
         let (sorted, invalid) = sort_plugins(plugins);
-        let names: Vec<&str> = sorted.iter().map(|plugin| plugin.name.as_str()).collect();
+        let names: Vec<&str> = sorted.iter().map(String::as_str).collect();
 
         assert_eq!(names, vec!["provider", "consumer"]);
         assert!(invalid.is_empty());
@@ -101,9 +103,14 @@ mod tests {
             make_plugin("consumer", &["missing"]),
         ];
 
+        let plugins = plugins
+            .into_iter()
+            .map(|meta| (meta.name, meta.depends))
+            .collect();
+
         let (sorted, invalid) = sort_plugins(plugins);
-        let sorted_names: Vec<&str> = sorted.iter().map(|plugin| plugin.name.as_str()).collect();
-        let invalid_names: Vec<&str> = invalid.iter().map(|plugin| plugin.name.as_str()).collect();
+        let sorted_names: Vec<&str> = sorted.iter().map(String::as_str).collect();
+        let invalid_names: Vec<&str> = invalid.iter().map(String::as_str).collect();
 
         assert_eq!(sorted_names, vec!["provider"]);
         assert_eq!(invalid_names, vec!["consumer"]);
@@ -113,9 +120,13 @@ mod tests {
     fn cyclic_dependencies_are_marked_invalid() {
         let plugins = vec![make_plugin("a", &["b"]), make_plugin("b", &["a"])];
 
+        let plugins = plugins
+            .into_iter()
+            .map(|meta| (meta.name, meta.depends))
+            .collect();
+
         let (sorted, invalid) = sort_plugins(plugins);
-        let mut invalid_names: Vec<&str> =
-            invalid.iter().map(|plugin| plugin.name.as_str()).collect();
+        let mut invalid_names: Vec<&str> = invalid.iter().map(String::as_str).collect();
         invalid_names.sort_unstable();
 
         assert!(sorted.is_empty());
