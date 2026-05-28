@@ -9,9 +9,7 @@ steel-plugin-macros.workspace = true
 steel-plugin-core.workspace = true
 text_components.workspace = true
 
-uuid.workspace = true
 inventory.workspace = true
-slotmap.workspace = true
 wit-bindgen.workspace = true
 
 [lints]
