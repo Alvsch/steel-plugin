@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use syn::{DeriveInput, ItemFn, parse_macro_input};
+use syn::{ItemFn, parse_macro_input};
 
 use crate::utils::{event_priority::EventPriority, export_input::PluginExportInput};
 
@@ -27,10 +27,4 @@ pub fn event_handler(args: TokenStream, input: TokenStream) -> TokenStream {
         parse_macro_input!(args as EventPriority).0
     };
     macros::event_handler(item, priority).into()
-}
-
-#[proc_macro_derive(Event)]
-pub fn derive_event(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    macros::derive_event(input).into()
 }
