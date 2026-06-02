@@ -77,7 +77,7 @@ cast_sign_loss = "allow"
 cast_possible_wrap = "allow"
 cast_possible_truncation = "allow"
 cast_precision_loss = "allow"
-absolute_paths = "warn"
+absolute_paths = "allow"
 missing_const_for_fn = "warn"
 # TOOD: remove
 missing_panics_doc = "allow"

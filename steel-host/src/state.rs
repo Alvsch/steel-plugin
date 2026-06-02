@@ -1,15 +1,13 @@
 use crate::error::PluginContractError;
 use crate::linker::event::HandlerRegistry;
-use crate::plugin::{PluginInstance, PluginStatus};
+use crate::plugin::PluginInstance;
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use steel_utils::locks::{AsyncRwLock, SyncRwLock};
 use tracing::warn;
 
 pub struct HostState {
     pub handler_registry: AsyncRwLock<HandlerRegistry>,
-    enabled_plugins: SyncRwLock<Vec<PluginInstance>>,
     plugin_name: SyncRwLock<HashMap<String, PluginInstance>>,
     next_id: AtomicU32,
 }
@@ -25,7 +23,6 @@ impl HostState {
     pub fn new() -> Self {
         Self {
             handler_registry: AsyncRwLock::new(HandlerRegistry::new()),
-            enabled_plugins: SyncRwLock::new(Vec::new()),
             plugin_name: SyncRwLock::new(HashMap::new()),
             next_id: AtomicU32::new(1),
         }
@@ -47,56 +44,15 @@ impl HostState {
         };
     }
 
-    pub async fn load_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
+    pub async fn register(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
         let store = plugin.store.lock().await;
         let data = store.data();
-
-        data.plugin
-            .set(plugin.clone())
-            .map_err(|_| ())
-            .expect("plugin already loaded");
 
         // TODO: load information such as exposed rpc methods etc.
         self.plugin_name
             .write()
             .insert(data.meta.name.clone(), plugin.clone());
 
-        Ok(())
-    }
-
-    pub async fn enable_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
-        let mut store = plugin.store.lock().await;
-        plugin
-            .bindings
-            .lock()
-            .await
-            .host_plugin_sdk_plugin_api()
-            .call_on_enable(&mut *store)
-            .await?;
-
-        store.data_mut().status = PluginStatus::Enabled;
-
-        self.enabled_plugins.write().push(plugin.clone());
-        Ok(())
-    }
-
-    pub async fn disable_plugin(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
-        let mut store = plugin.store.lock().await;
-
-        plugin
-            .bindings
-            .lock()
-            .await
-            .host_plugin_sdk_plugin_api()
-            .call_on_disable(&mut *store)
-            .await?;
-
-        store.data_mut().status = PluginStatus::Disabled;
-
-        let mut enabled = self.enabled_plugins.write();
-        enabled.retain(|p| !Arc::ptr_eq(p, plugin));
-
-        self.unregister_plugin(&store.data().meta.name);
         Ok(())
     }
 }

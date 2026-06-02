@@ -50,20 +50,14 @@ async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
         .iter()
         .map(|(meta, _)| meta.name.clone())
         .collect();
-    let mut enabled_plugins = Vec::new();
 
+    let mut enabled_plugins = Vec::new();
     for (plugin_meta, file_path) in discovered {
-        let name = plugin_meta.name.clone();
         let plugin = host
-            .prepare_plugin(plugin_meta, &file_path)
+            .load_plugin(plugin_meta, &file_path)
             .await
-            .context("failed to prepare plugin")?;
-        host.load_plugin(&plugin)
-            .await
-            .context("failed to load plugin")?;
-        host.enable_plugin(&plugin)
-            .await
-            .with_context(|| format!("failed to enable {name}"))?;
+            .expect("failed to load plugin");
+        plugin.enable().await.expect("failed to enable plugin");
         enabled_plugins.push(plugin);
     }
 
@@ -83,9 +77,7 @@ async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
     //     .expect("failed to dispatch event");
 
     while let Some(plugin) = enabled_plugins.pop() {
-        host.disable_plugin(&plugin)
-            .await
-            .context("failed to disable plugin")?;
+        plugin.disable().await.expect("failed to disable plugin");
     }
 
     for plugin_name in &plugin_names {
