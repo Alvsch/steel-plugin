@@ -10,6 +10,7 @@ tokio.workspace = true
 mlua.workspace = true
 
 slab.workspace = true
+anyhow.workspace = true
 
 tracing.workspace = true
 

@@ -1,105 +1,50 @@
-use std::{
-    collections::{HashMap, hash_map::Entry},
-    path::{Path, PathBuf},
-};
+use mlua::prelude::*;
 
-use mlua::{FromLua, prelude::*};
-use tokio::fs::{read_dir, read_to_string};
-
-pub use logger::Logger;
-pub use signal::{Connection, Signal};
-
+mod loader;
 mod logger;
+mod manifest;
 mod signal;
 
-#[derive(Debug)]
-pub struct PluginManifest {
-    pub name: String,
-    pub description: String,
-    pub version: String,
-    pub author: String,
-    pub on_enable: LuaFunction,
-    pub on_disable: LuaFunction,
-}
+pub use loader::PluginLoader;
+pub use logger::Logger;
+pub use manifest::PluginManifest;
+pub use signal::{Connection, Signal};
 
-impl FromLua for PluginManifest {
-    fn from_lua(value: LuaValue, lua: &Lua) -> LuaResult<Self> {
-        let table = LuaTable::from_lua(value, lua)?;
-        Ok(PluginManifest {
-            name: table.get("name")?,
-            description: table.get("description")?,
-            version: table.get("version")?,
-            author: table.get("author")?,
-            on_enable: table.get("on_enable")?,
-            on_disable: table.get("on_disable")?,
-        })
-    }
-}
-
-fn init_globals(lua: &Lua) -> LuaResult<()> {
+pub fn init_globals(lua: &Lua) -> LuaResult<()> {
     let globals = lua.globals();
     globals.set("log", Logger)?;
     Ok(())
 }
 
-pub struct PluginLoader {
-    lua: Lua,
-    plugins: HashMap<String, PluginManifest>,
-    _data_folder_path: PathBuf,
-}
+pub fn create_env(lua: &Lua) -> anyhow::Result<LuaTable> {
+    let env = lua.create_table()?;
+    let globals = lua.globals();
 
-impl PluginLoader {
-    pub fn new(data_folder_path: PathBuf) -> LuaResult<Self> {
-        let lua = Lua::new();
-        init_globals(&lua)?;
+    let env_ref = env.clone();
 
-        lua.sandbox(true)?;
-
-        Ok(Self {
-            lua,
-            plugins: HashMap::default(),
-            _data_folder_path: data_folder_path,
-        })
-    }
-
-    pub async fn load_all(&mut self, path: &Path) -> LuaResult<()> {
-        if path.is_file() {
-            return self.load_plugin(path).await;
-        }
-
-        let mut read = read_dir(path).await?;
-        while let Ok(Some(entry)) = read.next_entry().await {
-            let path = entry.path();
-            if !matches!(
-                path.extension().and_then(|x| x.to_str()),
-                Some("lua" | "luau")
-            ) {
-                continue;
+    let mt = lua.create_table()?;
+    mt.set(
+        "__index",
+        lua.create_function(move |_, (_, key): (LuaValue, LuaValue)| {
+            if let Ok(v) = env_ref.raw_get::<LuaValue>(key.clone())
+                && !matches!(v, LuaValue::Nil)
+            {
+                return Ok(v);
             }
-            self.load_plugin(&path).await?;
-        }
 
-        Ok(())
-    }
+            globals.get(key)
+        })?,
+    )?;
 
-    async fn load_plugin(&mut self, path: &Path) -> LuaResult<()> {
-        let source = read_to_string(path).await?;
-        let chunk = self.lua.load(source);
+    let env_ref = env.clone();
+    mt.set(
+        "__newindex",
+        lua.create_function(move |_, (_, key, val): (LuaValue, LuaValue, LuaValue)| {
+            env_ref.raw_set(key, val)
+        })?,
+    )?;
 
-        let manifest: PluginManifest = chunk.eval()?;
-        let manifest = match self.plugins.entry(manifest.name.clone()) {
-            Entry::Occupied(entry) => panic!("plugin with name {:?} already exists", entry.key()),
-            Entry::Vacant(entry) => entry.insert(manifest),
-        };
+    env.set_metatable(Some(mt))?;
 
-        manifest.on_enable.call_async::<()>(()).await?;
-        Ok(())
-    }
-
-    pub async fn unload_all(&mut self) -> LuaResult<()> {
-        for (_name, manifest) in self.plugins.drain() {
-            manifest.on_disable.call_async::<()>(()).await?;
-        }
-        Ok(())
-    }
+    Ok(env)
 }

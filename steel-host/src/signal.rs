@@ -8,13 +8,17 @@ use steel_utils::locks::SyncMutex;
 use tokio::sync::Notify;
 use tracing::error;
 
+type CallbackType = (Callback, Arc<AtomicBool>);
+
 #[derive(Debug)]
 enum Callback {
     Persistent(LuaFunction),
     Once(LuaFunction),
 }
 
-type CallbackType = (Callback, Arc<AtomicBool>);
+pub struct Connection {
+    connected: Arc<AtomicBool>,
+}
 
 #[derive(Debug, Clone)]
 pub struct Signal<T: Send + IntoLuaMulti + Clone + 'static> {
@@ -39,7 +43,8 @@ impl<T: Send + IntoLuaMulti + Clone> Signal<T> {
         }
     }
 
-    pub fn emit(&self, value: T) {
+    pub fn emit(&self, value: impl Into<T>) {
+        let value = value.into();
         self.callback.lock().retain(|_, (callback, alive)| {
             if !alive.load(Ordering::Acquire) {
                 return false;
@@ -85,10 +90,6 @@ impl<T: Send + IntoLuaMulti + Clone> UserData for Signal<T> {
             Ok(())
         });
     }
-}
-
-pub struct Connection {
-    connected: Arc<AtomicBool>,
 }
 
 impl UserData for Connection {

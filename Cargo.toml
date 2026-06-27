@@ -21,11 +21,11 @@ debug = true
 steel-utils = { git = "https://github.com/Alvsch/SteelMC", branch = "plugin-api" }
 
 # Runtime
-tokio = "1.49.0"
+tokio = "1.52.3"
 mlua = { version = "0.11.6", features = ["luau-jit", "async", "send"] }
 
-# Data structures
 slab = "0.4.12"
+anyhow = "1.0.103"
 
 # Logging
 tracing = "0.1.44"
