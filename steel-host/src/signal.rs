@@ -2,8 +2,8 @@ use mlua::prelude::{LuaFunction, LuaUserDataFields, LuaUserDataMethods};
 use mlua::{IntoLuaMulti, UserData};
 use slab::Slab;
 use std::marker::PhantomData;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Weak};
 use steel_utils::locks::SyncMutex;
 use tokio::sync::Notify;
 use tracing::error;
@@ -17,7 +17,7 @@ enum Callback {
 }
 
 pub struct Connection {
-    connected: Arc<AtomicBool>,
+    connected: Weak<AtomicBool>,
 }
 
 #[derive(Debug, Clone)]
@@ -76,14 +76,18 @@ impl<T: Send + IntoLuaMulti + Clone> UserData for Signal<T> {
             this.callback
                 .lock()
                 .insert((Callback::Persistent(callback), alive.clone()));
-            Ok(Connection { connected: alive })
+            Ok(Connection {
+                connected: Arc::downgrade(&alive),
+            })
         });
         methods.add_method("Once", |_, this, callback: LuaFunction| {
             let alive = Arc::new(AtomicBool::new(true));
             this.callback
                 .lock()
                 .insert((Callback::Once(callback), alive.clone()));
-            Ok(Connection { connected: alive })
+            Ok(Connection {
+                connected: Arc::downgrade(&alive),
+            })
         });
         methods.add_async_method("Wait", async |_, this, ()| {
             this.notify.notified().await;
@@ -95,12 +99,17 @@ impl<T: Send + IntoLuaMulti + Clone> UserData for Signal<T> {
 impl UserData for Connection {
     fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
         fields.add_field_method_get("Connected", |_, this| {
-            Ok(this.connected.load(Ordering::Acquire))
+            Ok(this
+                .connected
+                .upgrade()
+                .is_some_and(|x| x.load(Ordering::Acquire)))
         });
     }
     fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
         methods.add_method_mut("Disconnect", |_, this, ()| {
-            this.connected.store(false, Ordering::Release);
+            if let Some(connected) = this.connected.upgrade() {
+                connected.store(false, Ordering::Release);
+            }
             Ok(())
         });
     }
