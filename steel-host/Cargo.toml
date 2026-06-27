@@ -11,6 +11,7 @@ mlua.workspace = true
 
 slab.workspace = true
 anyhow.workspace = true
+semver.workspace = true
 
 tracing.workspace = true
 tracing-subscriber.workspace = true

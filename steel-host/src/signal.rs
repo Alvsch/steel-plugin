@@ -8,8 +8,6 @@ use steel_utils::locks::SyncMutex;
 use tokio::sync::Notify;
 use tracing::error;
 
-type CallbackType = (Callback, Arc<AtomicBool>);
-
 #[derive(Debug)]
 enum Callback {
     Persistent(LuaFunction),
@@ -22,7 +20,8 @@ pub struct Connection {
 
 #[derive(Debug, Clone)]
 pub struct Signal<T: Send + IntoLuaMulti + Clone + 'static> {
-    callback: Arc<SyncMutex<Slab<CallbackType>>>,
+    #[expect(clippy::type_complexity)]
+    callback: Arc<SyncMutex<Slab<(Callback, Arc<AtomicBool>)>>>,
     notify: Arc<Notify>,
     _marker: PhantomData<T>,
 }
