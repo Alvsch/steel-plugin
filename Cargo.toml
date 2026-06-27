@@ -1,11 +1,11 @@
-[package]
-name = "steel-plugin"
+[workspace]
+members = ["steel-host"]
+resolver = "2"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 authors = ["Alvsch"]
-
-[profile.dev.package."*"]
-opt-level = 3
 
 [profile.release]
 lto = true
@@ -16,21 +16,25 @@ panic = "abort"
 inherits = "release"
 debug = true
 
-[dependencies]
-steel-utils = { git = "https://github.com/Steel-Foundation/SteelMC" }
-mlua = { version = "0.11.6", features = ["luau-jit", "async", "send"] }
+[workspace.dependencies]
+# Steel
+steel-utils = { git = "https://github.com/Alvsch/SteelMC", branch = "plugin-api" }
+
+# Runtime
 tokio = "1.49.0"
+mlua = { version = "0.11.6", features = ["luau-jit", "async", "send"] }
+
+# Data structures
 slab = "0.4.12"
-rustc-hash = "2.1.1"
 
 # Logging
 tracing = "0.1.44"
 
-[lints.rust]
+[workspace.lints.rust]
 # TODO: change to warn
 missing_docs = "allow"
 
-[lints.clippy]
+[workspace.lints.clippy]
 single_call_fn = "allow"
 multiple_inherent_impl = "allow"
 shadow_unrelated = "allow"
@@ -44,6 +48,8 @@ cast_possible_truncation = "allow"
 cast_precision_loss = "allow"
 absolute_paths = "warn"
 missing_const_for_fn = "warn"
+# TOOD: remove
+missing_panics_doc = "allow"
 
 all = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -2 }

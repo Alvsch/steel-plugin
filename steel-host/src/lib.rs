@@ -1,13 +1,13 @@
 use std::{
-    collections::hash_map::Entry,
+    collections::{HashMap, hash_map::Entry},
     path::{Path, PathBuf},
 };
 
-pub use logger::Logger;
 use mlua::{FromLua, prelude::*};
-use rustc_hash::FxHashMap;
-pub use signal::{Connection, Signal};
 use tokio::fs::{read_dir, read_to_string};
+
+pub use logger::Logger;
+pub use signal::{Connection, Signal};
 
 mod logger;
 mod signal;
@@ -44,7 +44,7 @@ fn init_globals(lua: &Lua) -> LuaResult<()> {
 
 pub struct PluginLoader {
     lua: Lua,
-    plugins: FxHashMap<String, PluginManifest>,
+    plugins: HashMap<String, PluginManifest>,
     _data_folder_path: PathBuf,
 }
 
@@ -57,7 +57,7 @@ impl PluginLoader {
 
         Ok(Self {
             lua,
-            plugins: FxHashMap::default(),
+            plugins: HashMap::default(),
             _data_folder_path: data_folder_path,
         })
     }

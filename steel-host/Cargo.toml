@@ -1,0 +1,17 @@
+[package]
+name = "steel-host"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+steel-utils.workspace = true
+
+tokio.workspace = true
+mlua.workspace = true
+
+slab.workspace = true
+
+tracing.workspace = true
+
+[lints]
+workspace = true
