@@ -1,7 +1,10 @@
 use mlua::prelude::*;
 use steel_host::{PluginManifest, Signal, create_env, init_globals};
+use tracing::Level;
 
 fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt().with_max_level(Level::INFO).init();
+
     let plugin = include_str!("../../examples/signals.lua");
 
     let lua = Lua::new();

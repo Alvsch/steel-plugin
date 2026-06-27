@@ -1,5 +1,9 @@
 --!strict
-declare log: Log
+declare error: (message: string) -> ()
+declare warn: (message: string) -> ()
+declare info: (message: string) -> ()
+declare debug: (message: string) -> ()
+
 declare signal: Signal<string>
 
 export type Plugin = {
@@ -9,13 +13,6 @@ export type Plugin = {
 	author: string,
 	on_enable: () -> (),
 	on_disable: () -> (),
-}
-
-export type Log = {
-	Info: (message: string) -> (),
-	Warn: (message: string) -> (),
-	Error: (message: string) -> (),
-	Debug: (message: string) -> (),
 }
 
 export type Signal<T> = {

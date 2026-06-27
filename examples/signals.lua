@@ -6,7 +6,7 @@ local plugin: Plugin = {
 	author = "Alvsch",
 	on_enable = function()
 		signal:Connect(function(v: string)
-			print(v)
+			info(v)
 		end)
 	end,
 	on_disable = function() end,
