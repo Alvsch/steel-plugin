@@ -11,13 +11,12 @@ pub use signal::{Connection, Signal};
 
 use crate::api::init_logger;
 
-pub fn init_globals(lua: &Lua) -> LuaResult<()> {
-    let globals = lua.globals();
-    init_logger(lua, &globals)?;
+pub fn init_globals(lua: &Lua, globals: &LuaTable) -> LuaResult<()> {
+    init_logger(lua, globals)?;
     Ok(())
 }
 
-pub fn create_env(lua: &Lua) -> anyhow::Result<LuaTable> {
+pub fn create_env(lua: &Lua) -> LuaResult<LuaTable> {
     let env = lua.create_table()?;
     let globals = lua.globals();
 

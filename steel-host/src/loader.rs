@@ -6,18 +6,25 @@ use std::{
 use mlua::prelude::*;
 use tokio::fs::{read_dir, read_to_string};
 
-use crate::{init_globals, manifest::PluginManifest};
+use crate::{create_env, init_globals, manifest::PluginManifest};
 
 pub struct PluginLoader {
-    lua: Lua,
+    pub lua: Lua,
     plugins: HashMap<String, PluginManifest>,
     _data_folder_path: PathBuf,
 }
 
 impl PluginLoader {
-    pub fn new(data_folder_path: PathBuf) -> LuaResult<Self> {
+    pub fn new(
+        data_folder_path: impl Into<PathBuf>,
+        register_globals: impl Fn(&LuaTable) -> LuaResult<()>,
+    ) -> LuaResult<Self> {
         let lua = Lua::new();
-        init_globals(&lua)?;
+
+        let globals = lua.globals();
+        init_globals(&lua, &globals)?;
+
+        (register_globals)(&globals)?;
 
         lua.sandbox(true)?;
         lua.globals().set_readonly(true);
@@ -25,7 +32,7 @@ impl PluginLoader {
         Ok(Self {
             lua,
             plugins: HashMap::default(),
-            _data_folder_path: data_folder_path,
+            _data_folder_path: data_folder_path.into(),
         })
     }
 
@@ -50,12 +57,19 @@ impl PluginLoader {
     }
 
     async fn load_plugin(&mut self, path: impl AsRef<Path>) -> LuaResult<()> {
+        let path = path.as_ref();
         let source = read_to_string(path).await?;
-        let chunk = self.lua.load(source);
+
+        let env = create_env(&self.lua)?;
+        let chunk = self
+            .lua
+            .load(source)
+            .set_environment(env)
+            .set_name(path.display().to_string());
 
         let manifest: PluginManifest = chunk.eval()?;
         let manifest = match self.plugins.entry(manifest.name.clone()) {
-            Entry::Occupied(entry) => panic!("plugin with name {:?} already exists", entry.key()),
+            Entry::Occupied(entry) => panic!("plugin \"{:?}\" already exists", entry.key()),
             Entry::Vacant(entry) => entry.insert(manifest),
         };
 
