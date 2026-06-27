@@ -1,4 +1,7 @@
-use steel_host::{PluginLoader, Signal};
+use steel_host::{
+    PluginLoader,
+    api::{data_store::DataStore, signal::Signal},
+};
 use tracing::Level;
 
 #[tokio::main]
@@ -7,7 +10,14 @@ async fn main() -> anyhow::Result<()> {
 
     let signal: Signal<String> = Signal::new();
 
-    let mut loader = PluginLoader::new("plugins", |globals| {
+    let mut loader = PluginLoader::new("plugins", |lua| {
+        let globals = lua.globals();
+
+        let game = lua.create_table()?;
+        let store = DataStore::new();
+        game.set("Store", store)?;
+        globals.set("game", game)?;
+
         globals.set("signal", signal.clone())?;
         Ok(())
     })?;

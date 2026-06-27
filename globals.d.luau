@@ -5,6 +5,7 @@ declare info: (message: string) -> ()
 declare debug: (message: string) -> ()
 
 declare signal: Signal<string>
+declare game: Game
 
 export type Plugin = {
 	name: string,
@@ -25,4 +26,15 @@ export type Signal<T> = {
 export type Connection = {
 	Disconnect: () -> (),
 	Connected: boolean,
+}
+
+export type Game = {
+	Store: DataStore,
+}
+
+export type DataStore = {
+	SetAsync: (self: DataStore, key: any, value: any) -> (),
+	GetAsync: (self: DataStore, key: any) -> any,
+	UpdateAsync: (self: DataStore, key: any, update: (any) -> any) -> (),
+	RemoveAsync: (self: DataStore, key: any) -> any,
 }

@@ -1,18 +1,17 @@
 use mlua::prelude::*;
 
-mod api;
+pub mod api;
 mod loader;
 mod manifest;
-mod signal;
 
 pub use loader::PluginLoader;
 pub use manifest::PluginManifest;
-pub use signal::{Connection, Signal};
 
 use crate::api::init_logger;
 
-pub fn init_globals(lua: &Lua, globals: &LuaTable) -> LuaResult<()> {
-    init_logger(lua, globals)?;
+pub fn init_globals(lua: &Lua) -> LuaResult<()> {
+    let globals = lua.globals();
+    init_logger(lua, &globals)?;
     Ok(())
 }
 

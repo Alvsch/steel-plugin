@@ -17,14 +17,12 @@ pub struct PluginLoader {
 impl PluginLoader {
     pub fn new(
         data_folder_path: impl Into<PathBuf>,
-        register_globals: impl Fn(&LuaTable) -> LuaResult<()>,
+        register_globals: impl Fn(&Lua) -> LuaResult<()>,
     ) -> LuaResult<Self> {
         let lua = Lua::new();
+        init_globals(&lua)?;
 
-        let globals = lua.globals();
-        init_globals(&lua, &globals)?;
-
-        (register_globals)(&globals)?;
+        (register_globals)(&lua)?;
 
         lua.sandbox(true)?;
         lua.globals().set_readonly(true);
