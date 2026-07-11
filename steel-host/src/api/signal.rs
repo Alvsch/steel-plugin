@@ -1,115 +1,140 @@
-use mlua::prelude::{LuaFunction, LuaUserDataFields, LuaUserDataMethods};
-use mlua::{IntoLuaMulti, UserData};
-use slab::Slab;
-use std::marker::PhantomData;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Weak};
+use std::{
+    marker::PhantomData,
+    sync::{Arc, Weak},
+};
+
+use mlua::prelude::*;
+use slotmap::SlotMap;
 use steel_utils::locks::SyncMutex;
-use tokio::sync::Notify;
-use tracing::error;
+use tokio::sync::broadcast::{Sender, channel, error::RecvError};
 
-#[derive(Debug)]
-enum Callback {
-    Persistent(LuaFunction),
-    Once(LuaFunction),
+slotmap::new_key_type! {
+    struct ConnectionKey;
 }
 
-pub struct Connection {
-    connected: Weak<AtomicBool>,
+struct CallbackEntry<T> {
+    callback: LuaFunction,
+    once: bool,
+    _marker: PhantomData<fn(T)>,
 }
 
-#[derive(Debug, Clone)]
-pub struct Signal<T: Send + IntoLuaMulti + Clone + 'static> {
-    #[expect(clippy::type_complexity)]
-    callback: Arc<SyncMutex<Slab<(Callback, Arc<AtomicBool>)>>>,
-    notify: Arc<Notify>,
-    _marker: PhantomData<T>,
+#[derive(Clone)]
+pub struct Signal<T: IntoLua + Clone + 'static> {
+    callbacks: Arc<SyncMutex<SlotMap<ConnectionKey, CallbackEntry<T>>>>,
+    sender: Sender<T>,
+    _marker: PhantomData<fn(T)>,
 }
 
-impl<T: Send + IntoLuaMulti + Clone> Default for Signal<T> {
+pub struct Connection<T> {
+    key: ConnectionKey,
+    callbacks: Weak<SyncMutex<SlotMap<ConnectionKey, CallbackEntry<T>>>>,
+}
+
+impl<T: IntoLua + Clone + 'static> Default for Signal<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T: Send + IntoLuaMulti + Clone> Signal<T> {
+impl<T: IntoLua + Clone> Signal<T> {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            callback: Arc::new(SyncMutex::new(Slab::new())),
-            notify: Arc::new(Notify::new()),
+            callbacks: Arc::new(SyncMutex::new(SlotMap::with_key())),
+            sender: channel(1).0,
             _marker: PhantomData,
         }
     }
 
-    pub fn emit(&self, value: impl Into<T>) {
-        let value = value.into();
-        self.callback.lock().retain(|_, (callback, alive)| {
-            if !alive.load(Ordering::Acquire) {
-                return false;
-            }
-            match callback {
-                Callback::Persistent(func) => {
-                    if let Err(e) = func.call::<()>(value.clone()) {
-                        error!("Lua callback failed: {:?}", e);
-                    }
-                    true
-                }
-                Callback::Once(func) => {
-                    alive.store(false, Ordering::Release);
-                    if let Err(e) = func.call::<()>(value.clone()) {
-                        error!("Lua callback failed: {:?}", e);
-                    }
-                    false
-                }
-            }
+    pub fn connect(&self, callback: LuaFunction, once: bool) -> Connection<T> {
+        let key = self.callbacks.lock().insert(CallbackEntry {
+            callback,
+            once,
+            _marker: PhantomData,
         });
-        self.notify.notify_waiters();
+        Connection {
+            key,
+            callbacks: Arc::downgrade(&self.callbacks),
+        }
+    }
+
+    pub fn disconnect_all(&self) {
+        self.callbacks.lock().clear();
+    }
+
+    pub async fn wait(&self) -> Result<T, RecvError> {
+        self.sender.subscribe().recv().await
+    }
+
+    pub fn emit(&self, value: T) {
+        let to_call = {
+            let mut lock = self.callbacks.lock();
+
+            let mut to_call = Vec::with_capacity(lock.len());
+            lock.retain(|_, entry| {
+                to_call.push(entry.callback.clone());
+                !entry.once
+            });
+            to_call
+        };
+
+        for callback in to_call {
+            callback.call::<()>(value.clone()).expect("error");
+        }
+
+        self.sender.send(value).ok();
     }
 }
 
-impl<T: Send + IntoLuaMulti + Clone> UserData for Signal<T> {
+impl<T> Connection<T> {
+    pub fn disconnect(self) {
+        if let Some(callbacks) = self.callbacks.upgrade() {
+            callbacks.lock().remove(self.key);
+        }
+    }
+}
+
+impl<T> LuaUserData for Signal<T>
+where
+    T: IntoLua + Clone + Send + Sync + 'static,
+{
     fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-        methods.add_method("Connect", |_, this, callback: LuaFunction| {
-            let alive = Arc::new(AtomicBool::new(true));
-            this.callback
-                .lock()
-                .insert((Callback::Persistent(callback), alive.clone()));
-            Ok(Connection {
-                connected: Arc::downgrade(&alive),
-            })
+        methods.add_function("new", |_, ()| Ok(Signal::<T>::new()));
+        methods.add_method("Connect", |_, this, cb: LuaFunction| {
+            this.connect(cb, false);
+            Ok(())
         });
-        methods.add_method("Once", |_, this, callback: LuaFunction| {
-            let alive = Arc::new(AtomicBool::new(true));
-            this.callback
-                .lock()
-                .insert((Callback::Once(callback), alive.clone()));
-            Ok(Connection {
-                connected: Arc::downgrade(&alive),
-            })
+        methods.add_method("Once", |_, this, cb: LuaFunction| {
+            this.connect(cb, true);
+            Ok(())
+        });
+        methods.add_method("DisconnectAll", |_, this, ()| {
+            this.disconnect_all();
+            Ok(())
         });
         methods.add_async_method("Wait", async |_, this, ()| {
-            this.notify.notified().await;
+            let value = this.wait().await.expect("error");
+            Ok(value)
+        });
+    }
+}
+
+impl<T> LuaUserData for Connection<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
+        methods.add_method_once("Disconnect", |_, this, ()| {
+            this.disconnect();
             Ok(())
         });
     }
 }
 
-impl UserData for Connection {
-    fn add_fields<F: LuaUserDataFields<Self>>(fields: &mut F) {
-        fields.add_field_method_get("Connected", |_, this| {
-            Ok(this
-                .connected
-                .upgrade()
-                .is_some_and(|x| x.load(Ordering::Acquire)))
-        });
-    }
-    fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-        methods.add_method_mut("Disconnect", |_, this, ()| {
-            if let Some(connected) = this.connected.upgrade() {
-                connected.store(false, Ordering::Release);
-            }
-            Ok(())
-        });
+#[cfg(test)]
+pub mod tests {
+    #[test]
+    fn test() {
+        println!("hello");
     }
 }

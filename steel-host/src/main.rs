@@ -1,6 +1,6 @@
 use steel_host::{
     PluginLoader,
-    api::{data_store::DataStore, signal::Signal},
+    api::{DataStore, Signal},
 };
 use tracing::Level;
 
@@ -8,7 +8,7 @@ use tracing::Level;
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
-    let signal: Signal<String> = Signal::new();
+    let signal: Signal<&str> = Signal::new();
 
     let mut loader = PluginLoader::new("plugins", |lua| {
         let globals = lua.globals();
