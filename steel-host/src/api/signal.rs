@@ -99,17 +99,12 @@ where
     T: IntoLua + Clone + Send + Sync + 'static,
 {
     fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
-        methods.add_function("new", |_, ()| Ok(Signal::<T>::new()));
         methods.add_method("Connect", |_, this, cb: LuaFunction| {
             this.connect(cb, false);
             Ok(())
         });
         methods.add_method("Once", |_, this, cb: LuaFunction| {
             this.connect(cb, true);
-            Ok(())
-        });
-        methods.add_method("DisconnectAll", |_, this, ()| {
-            this.disconnect_all();
             Ok(())
         });
         methods.add_async_method("Wait", async |_, this, ()| {
@@ -128,13 +123,5 @@ where
             this.disconnect();
             Ok(())
         });
-    }
-}
-
-#[cfg(test)]
-pub mod tests {
-    #[test]
-    fn test() {
-        println!("hello");
     }
 }

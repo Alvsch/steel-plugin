@@ -10,12 +10,11 @@ async fn main() -> anyhow::Result<()> {
 
     let signal: Signal<&str> = Signal::new();
 
-    let mut loader = PluginLoader::new("plugins", |lua| {
+    let mut loader = PluginLoader::new("tests", |lua| {
         let globals = lua.globals();
 
         let game = lua.create_table()?;
-        let store = DataStore::new();
-        game.set("Store", store)?;
+        game.set("Store", DataStore::new())?;
         globals.set("game", game)?;
 
         globals.set("signal", signal.clone())?;
