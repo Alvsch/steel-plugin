@@ -5,9 +5,7 @@ local plugin: Plugin = {
 	author = "Alvsch",
 	version = "0.1.0",
 	api_version = "0.1.0",
-	on_enable = function()
-		
-	end,
+	on_enable = function() end,
 	on_disable = function() end,
 }
 
