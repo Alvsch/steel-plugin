@@ -1,6 +1,6 @@
 use steel_host::{
     PluginLoader,
-    api::{DataStore, Signal},
+    api::{MemoryStore, Signal},
 };
 use tracing::Level;
 
@@ -14,7 +14,7 @@ async fn main() -> anyhow::Result<()> {
         let globals = lua.globals();
 
         let game = lua.create_table()?;
-        game.set("Store", DataStore::new())?;
+        game.set("Store", MemoryStore::new())?;
         globals.set("game", game)?;
 
         globals.set("signal", signal.clone())?;
