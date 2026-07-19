@@ -3,6 +3,7 @@
         "globals": "types/globals.d.luau",
         "signal": "types/signal.d.luau",
         "data_store": "types/data_store.d.luau",
+        "plugin": "types/plugin.d.luau",
     },
     "luau-lsp.completion.autocompleteEnd": true,
     "luau-lsp.completion.imports.enabled": true,
