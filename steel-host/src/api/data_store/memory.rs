@@ -97,7 +97,7 @@ mod tests {
         )
         .exec_async()
         .await
-        .unwrap();
+        .expect("failed to execute Set/Get script");
 
         assert!(matches!(
             globals.get::<LuaValue>("value"),
@@ -122,7 +122,7 @@ mod tests {
         )
         .exec_async()
         .await
-        .unwrap();
+        .expect("failed to execute missing Get script");
 
         assert!(matches!(
             globals.get::<LuaValue>("missing"),
@@ -142,19 +142,19 @@ mod tests {
 
         lua.load(
             r#"
-                store:SetAsync("id", 7)
+            store:SetAsync("id", 7)
 
-                store:UpdateAsync("id", function(current)
-                    assert(current == 7)
-                    return current + 5
-                end)
+            store:UpdateAsync("id", function(current)
+                assert(current == 7)
+                return current + 5
+            end)
 
-                updated = store:GetAsync("id")
+            updated = store:GetAsync("id")
         "#,
         )
         .exec_async()
         .await
-        .unwrap();
+        .expect("failed to execute Update script");
 
         assert!(matches!(
             globals.get::<LuaValue>("updated"),
@@ -182,7 +182,7 @@ mod tests {
         )
         .exec_async()
         .await
-        .unwrap();
+        .expect("failed to execute Remove script");
 
         assert!(matches!(
             globals.get::<LuaValue>("removed"),

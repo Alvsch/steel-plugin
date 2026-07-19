@@ -50,15 +50,15 @@ mod tests {
             .expect("failed to set global");
 
         lua.load(
-            r#"
+            "
             times = 0
             connection = signal:Connect(function(v: string)
                 times += 1
             end)
-        "#,
+        ",
         )
         .exec()
-        .unwrap();
+        .expect("failed to execute Connect script");
 
         signal.emit("test".to_string());
         signal.emit("test".to_string());
@@ -66,12 +66,12 @@ mod tests {
         assert!(globals.get::<u32>("times").is_ok_and(|x| x == 2));
 
         lua.load(
-            r#"
+            r"
             connection:Disconnect()
-        "#,
+        ",
         )
         .exec()
-        .unwrap();
+        .expect("failed to disconnect connection");
 
         signal.emit("test".to_string());
 

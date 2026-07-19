@@ -110,6 +110,7 @@ mod tests {
     use std::time::Duration;
 
     use mlua::prelude::*;
+    use tokio::task::yield_now;
     use tokio::time::timeout;
 
     use crate::api::Signal;
@@ -134,7 +135,7 @@ mod tests {
         "#,
         )
         .exec()
-        .unwrap();
+        .expect("failed to register Connect callback");
 
         signal.emit("test".to_string());
         signal.emit("test".to_string());
@@ -163,7 +164,7 @@ mod tests {
         "#,
         )
         .exec()
-        .unwrap();
+        .expect("failed to register Once callback");
 
         signal.emit("test".to_string());
         signal.emit("test".to_string());
@@ -184,23 +185,23 @@ mod tests {
 
         let future = lua
             .load(
-                r#"
+                r"
             result = signal:Wait()
-        "#,
+        ",
             )
             .exec_async();
         let task = tokio::spawn(future);
 
-        tokio::task::yield_now().await;
+        yield_now().await;
 
         let value = "test";
         signal.emit(value.to_string());
 
         timeout(Duration::from_secs(1), task)
             .await
-            .unwrap()
-            .unwrap()
-            .unwrap();
+            .expect("signal:Wait task timed out")
+            .expect("signal:Wait task failed to join")
+            .expect("signal:Wait task returned an error");
 
         assert!(globals.get::<String>("result").is_ok_and(|x| x == value));
     }
@@ -217,36 +218,36 @@ mod tests {
 
         let first = lua
             .load(
-                r#"
+                r"
             first = signal:Wait()
-        "#,
+        ",
             )
             .exec_async();
         let second = lua
             .load(
-                r#"
+                r"
             second = signal:Wait()
-        "#,
+        ",
             )
             .exec_async();
 
         let first_task = tokio::spawn(first);
         let second_task = tokio::spawn(second);
 
-        tokio::task::yield_now().await;
+        yield_now().await;
 
         signal.emit("test".to_string());
 
         timeout(Duration::from_secs(1), first_task)
             .await
-            .unwrap()
-            .unwrap()
-            .unwrap();
+            .expect("first Wait task timed out")
+            .expect("first Wait task failed to join")
+            .expect("first Wait task returned an error");
         timeout(Duration::from_secs(1), second_task)
             .await
-            .unwrap()
-            .unwrap()
-            .unwrap();
+            .expect("second Wait task timed out")
+            .expect("second Wait task failed to join")
+            .expect("second Wait task returned an error");
 
         assert!(globals.get::<String>("first").is_ok_and(|x| x == "test"));
         assert!(globals.get::<String>("second").is_ok_and(|x| x == "test"));
