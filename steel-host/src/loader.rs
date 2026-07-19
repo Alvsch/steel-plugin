@@ -1,16 +1,22 @@
 use std::{
     collections::{HashMap, hash_map::Entry},
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use mlua::prelude::*;
+use steel_utils::locks::SyncRwLock;
 use tokio::fs::{read_dir, read_to_string};
 
-use crate::{create_env, init_globals, manifest::PluginManifest};
+use crate::{
+    api::create_require_function,
+    create_env, init_globals,
+    plugin::{Plugin, PluginManifest},
+};
 
 pub struct PluginLoader {
     pub lua: Lua,
-    plugins: HashMap<String, PluginManifest>,
+    plugins: Arc<SyncRwLock<HashMap<String, Plugin>>>,
     _data_folder_path: PathBuf,
 }
 
@@ -22,6 +28,12 @@ impl PluginLoader {
         let lua = Lua::new();
         init_globals(&lua)?;
 
+        let plugins = Arc::new(SyncRwLock::new(HashMap::new()));
+        lua.globals().set(
+            "require",
+            create_require_function(&lua, Arc::downgrade(&plugins))?,
+        )?;
+
         (register_globals)(&lua)?;
 
         lua.sandbox(true)?;
@@ -29,12 +41,12 @@ impl PluginLoader {
 
         Ok(Self {
             lua,
-            plugins: HashMap::default(),
+            plugins,
             _data_folder_path: data_folder_path.into(),
         })
     }
 
-    pub async fn load_all(&mut self, path: impl AsRef<Path>) -> LuaResult<()> {
+    pub async fn load_all(&self, path: impl AsRef<Path>) -> LuaResult<()> {
         if path.as_ref().is_file() {
             return self.load_plugin(path).await;
         }
@@ -54,7 +66,7 @@ impl PluginLoader {
         Ok(())
     }
 
-    async fn load_plugin(&mut self, path: impl AsRef<Path>) -> LuaResult<()> {
+    async fn load_plugin(&self, path: impl AsRef<Path>) -> LuaResult<()> {
         let path = path.as_ref();
         let source = read_to_string(path).await?;
 
@@ -62,22 +74,33 @@ impl PluginLoader {
         let chunk = self
             .lua
             .load(source)
-            .set_environment(env)
+            .set_environment(env.clone())
             .set_name(path.display().to_string());
 
         let manifest: PluginManifest = chunk.eval()?;
-        let manifest = match self.plugins.entry(manifest.name.clone()) {
-            Entry::Occupied(entry) => panic!("plugin \"{:?}\" already exists", entry.key()),
-            Entry::Vacant(entry) => entry.insert(manifest),
+        let on_enable = {
+            let mut write = self.plugins.write();
+            let plugin = match write.entry(manifest.name.clone()) {
+                Entry::Occupied(entry) => panic!("plugin \"{:?}\" already exists", entry.key()),
+                Entry::Vacant(entry) => entry.insert(Plugin { manifest, env }),
+            };
+            plugin.manifest.on_enable.clone()
         };
 
-        manifest.on_enable.call_async::<()>(()).await?;
+        on_enable.call_async::<()>(()).await?;
         Ok(())
     }
 
-    pub async fn unload_all(&mut self) -> LuaResult<()> {
-        for (_name, manifest) in self.plugins.drain() {
-            manifest.on_disable.call_async::<()>(()).await?;
+    pub async fn unload_all(&self) -> LuaResult<()> {
+        let plugins = self
+            .plugins
+            .write()
+            .drain()
+            .map(|(_, plugin)| plugin.manifest.on_disable)
+            .collect::<Vec<_>>();
+
+        for on_disable in plugins {
+            on_disable.call_async::<()>(()).await?;
         }
         Ok(())
     }

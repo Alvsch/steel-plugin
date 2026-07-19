@@ -13,5 +13,5 @@
     "luau-lsp.hover.showTableKinds": true,
     "luau-lsp.inlayHints.parameterNames": "literals",
     "luau-lsp.inlayHints.variableTypes": true,
-    "luau-lsp.platform.type": "standard"
+    "luau-lsp.platform.type": "standard",
 }

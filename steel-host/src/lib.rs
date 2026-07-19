@@ -2,10 +2,10 @@ use mlua::prelude::*;
 
 pub mod api;
 mod loader;
-mod manifest;
+mod plugin;
 
 pub use loader::PluginLoader;
-pub use manifest::PluginManifest;
+pub use plugin::PluginManifest;
 
 use crate::api::init_logger;
 

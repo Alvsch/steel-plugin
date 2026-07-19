@@ -22,6 +22,7 @@ pub(crate) struct CallbackEntry<T> {
 pub struct Signal<T: IntoLua + Clone + 'static> {
     callbacks: Arc<SyncMutex<CallbackMap<T>>>,
     sender: Sender<T>,
+    userland: bool,
     _marker: PhantomData<fn(T)>,
 }
 
@@ -37,6 +38,17 @@ impl<T: IntoLua + Clone> Signal<T> {
         Self {
             callbacks: Arc::new(SyncMutex::new(SlotMap::with_key())),
             sender: channel(16).0,
+            userland: false,
+            _marker: PhantomData,
+        }
+    }
+
+    #[must_use]
+    pub fn new_userland() -> Self {
+        Self {
+            callbacks: Arc::new(SyncMutex::new(SlotMap::with_key())),
+            sender: channel(16).0,
+            userland: true,
             _marker: PhantomData,
         }
     }
@@ -90,9 +102,10 @@ impl<T: IntoLua + Clone> Signal<T> {
 
 impl<T> LuaUserData for Signal<T>
 where
-    T: IntoLua + Clone + Send + Sync + 'static,
+    T: IntoLua + FromLuaMulti + Clone + Send + Sync + 'static,
 {
     fn add_methods<M: LuaUserDataMethods<Self>>(methods: &mut M) {
+        methods.add_function("new", |_, ()| Ok(Signal::<T>::new_userland()));
         methods.add_method("Connect", |_, this, cb: LuaFunction| {
             let connection = this.connect(cb, false);
             Ok(connection)
@@ -102,6 +115,12 @@ where
             Ok(connection)
         });
         methods.add_async_method("Wait", async |_, this, ()| this.wait().await);
+        methods.add_method("Emit", |_, this, value: T| {
+            if this.userland {
+                this.emit(value);
+            }
+            Ok(())
+        });
     }
 }
 
