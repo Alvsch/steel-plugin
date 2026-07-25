@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fs, io, path::PathBuf};
 
 use mlua::prelude::*;
+use tempfile::TempDir;
 use thiserror::Error;
 
 use crate::{config::Config, stages::resolve::ResolvedPlugin};
@@ -10,11 +11,12 @@ pub struct CompiledPlugin {
     pub config: Config,
     pub file_table: HashMap<String, PathBuf>,
     pub init_bytecode: Vec<u8>,
+    pub(crate) extracted: Option<TempDir>,
 }
 
 #[derive(Debug, Error)]
 pub enum CompileError {
-    #[error("plugin '{0}' has no init.lua/init.luau entry file")]
+    #[error("plugin '{0}' has no init.lua/init.luau/init.luac entry file")]
     MissingEntryFile(String),
 
     #[error("failed to read entry file for plugin '{plugin}': {source}")]
@@ -65,18 +67,25 @@ impl PluginCompiler {
             source,
         })?;
 
-        let init_bytecode =
+        let init_bytecode = if entry_path
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("luac"))
+        {
+            source
+        } else {
             self.compile_bytecode(&source)
                 .map_err(|source| CompileError::Compile {
                     plugin: plugin.config.name.clone(),
                     source,
-                })?;
+                })?
+        };
 
         Ok(CompiledPlugin {
             root: plugin.root,
             config: plugin.config,
             file_table: plugin.file_table,
             init_bytecode,
+            extracted: plugin.extracted,
         })
     }
 }

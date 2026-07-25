@@ -1,4 +1,5 @@
 use mlua::prelude::*;
+use tempfile::TempDir;
 use thiserror::Error;
 
 use crate::{
@@ -10,6 +11,7 @@ pub struct LoadedPlugin {
     pub name: String,
     on_enable: LuaRegistryKey,
     on_disable: LuaRegistryKey,
+    pub(crate) _extracted: Option<TempDir>,
 }
 
 impl LoadedPlugin {
@@ -132,6 +134,7 @@ pub fn execute_plugin(
         name,
         on_enable,
         on_disable,
+        _extracted: plugin.extracted,
     })
 }
 

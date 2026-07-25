@@ -4,6 +4,7 @@ use std::{
 };
 
 use semver::{Version, VersionReq};
+use tempfile::TempDir;
 use thiserror::Error;
 use walkdir::WalkDir;
 
@@ -13,6 +14,7 @@ pub struct ResolvedPlugin {
     pub root: PathBuf,
     pub config: Config,
     pub file_table: HashMap<String, PathBuf>,
+    pub(crate) extracted: Option<TempDir>,
 }
 
 #[derive(Debug, Error)]
@@ -136,6 +138,7 @@ pub fn resolve_plugins(
             root: p.root,
             config: p.config,
             file_table,
+            extracted: p.extracted,
         });
     }
 
@@ -148,9 +151,11 @@ fn build_file_table(root: impl AsRef<Path>) -> HashMap<String, PathBuf> {
         .filter_map(Result::ok)
         .filter(|e| e.file_type().is_file())
         .filter(|e| {
-            e.path()
-                .extension()
-                .is_some_and(|ext| ext == "luau" || ext == "lua")
+            e.path().extension().is_some_and(|ext| {
+                ext.eq_ignore_ascii_case("luau")
+                    || ext.eq_ignore_ascii_case("lua")
+                    || ext.eq_ignore_ascii_case("luac")
+            })
         })
         .filter_map(|e| {
             let rel = e.path().strip_prefix(root.as_ref()).ok()?;

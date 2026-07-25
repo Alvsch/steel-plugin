@@ -8,7 +8,7 @@ use tracing::Level;
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
-    let discovered_plugins = discover_plugins("examples");
+    let discovered_plugins = discover_plugins("plugins");
     let resolved_plugins = resolve_plugins(discovered_plugins)?;
 
     let mut manager = PluginManager::new(setup_lua_vm()?);

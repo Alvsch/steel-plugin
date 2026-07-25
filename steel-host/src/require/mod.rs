@@ -127,6 +127,7 @@ fn normalize(path: &str) -> String {
 
     path.strip_suffix(".luau")
         .or_else(|| path.strip_suffix(".lua"))
+        .or_else(|| path.strip_suffix(".luac"))
         .unwrap_or(path)
         .to_string()
 }
@@ -192,19 +193,32 @@ fn require_internal(
         disk_path
     };
 
-    let src = fs::read_to_string(&disk_path).map_err(|source| RequireError::Io {
-        path: disk_path.clone(),
-        source,
-    })?;
     let env = plugin_env(lua, registry, plugin_name)?;
 
     // 3. Execute. NO registry borrow held here — a nested "./" require inside
     // this chunk safely re-enters steps 1-2.
-    let exec_result = lua
-        .load(&src)
-        .set_name(format!("={plugin_name}/{norm}"))
-        .set_environment(env)
-        .eval::<LuaValue>();
+    let exec_result = if disk_path
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("luac"))
+    {
+        let src = fs::read(&disk_path).map_err(|source| RequireError::Io {
+            path: disk_path.clone(),
+            source,
+        })?;
+        lua.load(&src)
+            .set_name(format!("={plugin_name}/{norm}"))
+            .set_environment(env)
+            .eval::<LuaValue>()
+    } else {
+        let src = fs::read_to_string(&disk_path).map_err(|source| RequireError::Io {
+            path: disk_path.clone(),
+            source,
+        })?;
+        lua.load(&src)
+            .set_name(format!("={plugin_name}/{norm}"))
+            .set_environment(env)
+            .eval::<LuaValue>()
+    };
 
     // 4. Commit result, or clear the InProgress ghost on failure so a later
     // (non-circular) require of the same module isn't permanently poisoned.
@@ -261,19 +275,34 @@ fn require_external(
             })?
         };
 
-    let src = fs::read_to_string(&disk_path).map_err(|source| RequireError::Io {
-        path: disk_path,
-        source,
-    })?;
     let env = plugin_env(lua, registry, target_name)?;
     let chunk_name = format!("=@{target_name}/{export_key}");
 
-    lua.load(&src)
-        .set_name(&chunk_name)
-        .set_environment(env)
-        .eval::<LuaValue>()
-        .map_err(|source| RequireError::Lua {
-            module: format!("@{target_name}/{export_key}"),
+    let result = if disk_path
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("luac"))
+    {
+        let src = fs::read(&disk_path).map_err(|source| RequireError::Io {
+            path: disk_path.clone(),
             source,
-        })
+        })?;
+        lua.load(&src)
+            .set_name(&chunk_name)
+            .set_environment(env)
+            .eval::<LuaValue>()
+    } else {
+        let src = fs::read_to_string(&disk_path).map_err(|source| RequireError::Io {
+            path: disk_path.clone(),
+            source,
+        })?;
+        lua.load(&src)
+            .set_name(&chunk_name)
+            .set_environment(env)
+            .eval::<LuaValue>()
+    };
+
+    result.map_err(|source| RequireError::Lua {
+        module: format!("@{target_name}/{export_key}"),
+        source,
+    })
 }

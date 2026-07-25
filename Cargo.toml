@@ -35,6 +35,7 @@ slotmap = "1.1.1"
 globset = "0.4.19"
 
 # File and archive handling
+tempfile = "3.27.0"
 walkdir = "2.5.0"
 tar = "0.4.46"
 flate2 = "1.1.9"
