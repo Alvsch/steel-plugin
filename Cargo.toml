@@ -20,18 +20,26 @@ debug = true
 # Steel
 steel-utils = { git = "https://github.com/Alvsch/SteelMC", branch = "plugin-api" }
 
-# Runtime
+# Core runtime
 tokio = "1.52.3"
 mlua = { version = "0.12.0", features = ["luau-jit", "async", "send", "macros"] }
+clap = { version = "4.6.4", features = ["derive"] }
 
+# Error and config handling
 anyhow = "1.0.103"
+thiserror = "2.0.19"
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.1.3"
 semver = "1.0.28"
 slotmap = "1.1.1"
-toml = "1.1.3"
-serde = { version = "1.0.229", features = ["derive"] }
 globset = "0.4.19"
+
+# File and archive handling
 walkdir = "2.5.0"
-thiserror = "2.0.19"
+tar = "0.4.46"
+flate2 = "1.1.9"
+zstd = "0.13.3"
+zip = "8.6.0"
 
 # Logging
 tracing = "0.1.44"

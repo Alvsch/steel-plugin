@@ -6,16 +6,16 @@ authors.workspace = true
 
 [dependencies]
 mlua.workspace = true
-clap = { version = "4.6.4", features = ["derive"] }
-walkdir = "2.5.0"
+clap.workspace = true
+walkdir.workspace = true
 
-tar = "0.4.46"
-flate2 = "1.1.9"
-zstd = "0.13.3"
-zip = "8.6.0"
+tar.workspace = true
+flate2.workspace = true
+zstd.workspace = true
+zip.workspace = true
 
-thiserror = "2.0.19"
-anyhow = "1.0.104"
+thiserror.workspace = true
+anyhow.workspace = true
 
 [lints]
 workspace = true
