@@ -1,0 +1,9 @@
+[plugin]
+name = "consumer"
+description = "A consuming plugin"
+version = "0.1.0"
+api_version = "0.1.0"
+authors = []
+
+[dependencies]
+template = "0.1.0"

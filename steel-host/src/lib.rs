@@ -1,49 +1,12 @@
-use mlua::prelude::*;
+use std::sync::LazyLock;
+
+use semver::Version;
 
 pub mod api;
-mod loader;
-mod plugin;
+pub mod config;
+pub mod require;
+pub mod stages;
 
-pub use loader::PluginLoader;
-pub use plugin::PluginManifest;
-
-use crate::api::init_logger;
-
-pub fn init_globals(lua: &Lua) -> LuaResult<()> {
-    let globals = lua.globals();
-    init_logger(lua, &globals)?;
-    Ok(())
-}
-
-pub fn create_env(lua: &Lua) -> LuaResult<LuaTable> {
-    let env = lua.create_table()?;
-    let globals = lua.globals();
-
-    let env_ref = env.clone();
-
-    let mt = lua.create_table()?;
-    mt.set(
-        "__index",
-        lua.create_function(move |_, (_, key): (LuaValue, LuaValue)| {
-            if let Ok(v) = env_ref.raw_get::<LuaValue>(key.clone())
-                && !matches!(v, LuaValue::Nil)
-            {
-                return Ok(v);
-            }
-
-            globals.get(key)
-        })?,
-    )?;
-
-    let env_ref = env.clone();
-    mt.set(
-        "__newindex",
-        lua.create_function(move |_, (_, key, val): (LuaValue, LuaValue, LuaValue)| {
-            env_ref.raw_set(key, val)
-        })?,
-    )?;
-
-    env.set_metatable(Some(mt))?;
-
-    Ok(env)
-}
+pub static HOST_API_VERSION: LazyLock<Version> = LazyLock::new(|| {
+    Version::parse(env!("CARGO_PKG_VERSION")).expect("CARGO_PKG_VERSION is not valid semver")
+});

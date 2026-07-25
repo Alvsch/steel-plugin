@@ -1,0 +1,9 @@
+[plugin]
+name = "template"
+description = "A template plugin"
+version = "0.1.0"
+api_version = "0.1.0"
+authors = []
+
+[exports]
+get_money = "./get_money.lua"

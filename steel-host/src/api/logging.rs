@@ -1,7 +1,7 @@
 use mlua::prelude::*;
 use tracing::{debug, error, info, trace, warn};
 
-pub fn init_logger(lua: &Lua, globals: &LuaTable) -> LuaResult<()> {
+pub fn install_logger(lua: &Lua, globals: &LuaTable) -> LuaResult<()> {
     globals.set(
         "error",
         lua.create_function(|_, message: String| {

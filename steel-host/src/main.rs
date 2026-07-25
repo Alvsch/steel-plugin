@@ -1,7 +1,9 @@
-use mlua::prelude::*;
 use steel_host::{
-    PluginLoader,
-    api::{MemoryStore, Signal},
+    require::registry::build_plugin_registry,
+    stages::{
+        compile::PluginCompiler, discover::discover_plugins, execute::execute_plugin,
+        resolve::resolve_plugins, setup_lua_vm,
+    },
 };
 use tracing::Level;
 
@@ -9,24 +11,37 @@ use tracing::Level;
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
 
-    let signal: Signal<String> = Signal::new();
+    // discover - find plugins in a directory with a valid config.toml
+    // resolve - further validate the config.toml version requirements, topo sort and build file table
+    // compile - compile plugin into bytecode
+    // execute - evaluates the init.lua file and returns on_enable/on_disable
+    // enable - runs the on_enable function
+    // runtime
+    // disable - runs the on_disable function
+    // teardown - unload the plugin and delete it's env
 
-    let loader = PluginLoader::new("tests", |lua| {
-        let globals = lua.globals();
+    let discovered_plugins = discover_plugins("examples");
+    let resolved_plugins = resolve_plugins(discovered_plugins)?;
+    let compiler = PluginCompiler::new();
 
-        let game = lua.create_table()?;
-        game.set("Store", MemoryStore::new())?;
-        globals.set("game", game)?;
+    let mut compiled_plugins = Vec::with_capacity(resolved_plugins.len());
+    for plugin in resolved_plugins {
+        let name = plugin.config.name.clone();
+        match compiler.compile(plugin) {
+            Ok(compiled) => compiled_plugins.push(compiled),
+            Err(err) => {
+                tracing::warn!(plugin = %name, error = %err, "plugin failed to compile, skipping");
+            }
+        }
+    }
+    let lua = setup_lua_vm()?;
+    let registry = build_plugin_registry(&lua, &compiled_plugins)?;
 
-        globals.set("signal", signal.clone())?;
-        globals.set("Signal", lua.create_proxy::<Signal<LuaValue>>()?)?;
-        Ok(())
-    })?;
+    let mut loaded_plugins = Vec::with_capacity(compiled_plugins.len());
+    for plugin in compiled_plugins {
+        let loaded = execute_plugin(&lua, registry.clone(), plugin)?;
+        loaded_plugins.push(loaded);
+    }
 
-    loader.load_all("plugins").await?;
-
-    signal.emit("wow".to_string());
-
-    loader.unload_all().await?;
     Ok(())
 }
