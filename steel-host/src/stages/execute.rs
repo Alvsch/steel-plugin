@@ -24,6 +24,12 @@ impl LoadedPlugin {
         on_disable.call::<()>(())?;
         Ok(())
     }
+
+    pub fn cleanup(self, lua: &Lua) -> mlua::Result<()> {
+        lua.remove_registry_value(self.on_enable)?;
+        lua.remove_registry_value(self.on_disable)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Error)]

@@ -48,6 +48,18 @@ impl PluginRuntime {
             internal_modules: HashMap::new(),
         })
     }
+
+    pub fn cleanup(self, lua: &Lua) -> mlua::Result<()> {
+        lua.remove_registry_value(self.env)?;
+
+        for (_, state) in self.internal_modules {
+            if let ModuleState::Done(key) = state {
+                lua.remove_registry_value(key)?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Error)]

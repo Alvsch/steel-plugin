@@ -4,6 +4,7 @@ use semver::Version;
 
 pub mod api;
 pub mod config;
+pub mod manager;
 pub mod require;
 pub mod stages;
 
