@@ -14,4 +14,6 @@
     "luau-lsp.inlayHints.parameterNames": "literals",
     "luau-lsp.inlayHints.variableTypes": true,
     "luau-lsp.platform.type": "standard",
+    "luau-lsp.sourcemap.autogenerate": false,
+    "luau-lsp.sourcemap.enabled": false,
 }
