@@ -93,12 +93,15 @@ pub fn execute_plugin(
         source,
     })?;
 
+    // TODO: require (./ via file_table, @name/ via host RPC), Signal, Scheduler,
+    // UserData host bindings — all raw_set into `env`
     // bind host API + custom require directly into `env` (not globals),
     // scoping visibility to this plugin only
-    bind_host_api(lua, &env, &plugin).map_err(|source| ExecuteError::EnvInit {
-        plugin: name.clone(),
-        source,
-    })?;
+
+    // bind_host_api(lua, &env, &plugin).map_err(|source| ExecuteError::EnvInit {
+    //     plugin: name.clone(),
+    //     source,
+    // })?;
 
     let result: LuaValue = lua
         .load(&plugin.init_bytecode)
@@ -149,10 +152,4 @@ fn get_required_fn(
             plugin: plugin_name.to_string(),
             source,
         })
-}
-
-const fn bind_host_api(_lua: &Lua, _env: &LuaTable, _plugin: &CompiledPlugin) -> mlua::Result<()> {
-    // TODO: require (./ via file_table, @name/ via host RPC), Signal, Scheduler,
-    // UserData host bindings — all raw_set into `env`
-    Ok(())
 }

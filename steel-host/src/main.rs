@@ -28,7 +28,7 @@ async fn main() -> anyhow::Result<()> {
     for plugin in resolved_plugins {
         let name = plugin.config.name.clone();
         match compiler.compile(plugin) {
-            Ok(compiled) => compiled_plugins.push(compiled),
+            Ok(compiled_plugin) => compiled_plugins.push(compiled_plugin),
             Err(err) => {
                 tracing::warn!(plugin = %name, error = %err, "plugin failed to compile, skipping");
             }

@@ -84,7 +84,9 @@ pub fn resolve_plugins(
 
     for p in by_name.values() {
         for dep_name in p.config.dependencies.keys() {
-            *in_degree.get_mut(&p.config.name).unwrap() += 1;
+            *in_degree
+                .get_mut(&p.config.name)
+                .expect("plugin must exist in in_degree map") += 1;
             dependents
                 .entry(dep_name.clone())
                 .or_default()
@@ -104,7 +106,9 @@ pub fn resolve_plugins(
         order.push(name.clone());
         if let Some(deps) = dependents.get(&name) {
             for dependent in deps {
-                let deg = in_degree.get_mut(dependent).unwrap();
+                let deg = in_degree
+                    .get_mut(dependent)
+                    .expect("dependent must exist in in_degree map");
                 *deg -= 1;
                 if *deg == 0 {
                     queue.push_back(dependent.clone());
@@ -124,7 +128,9 @@ pub fn resolve_plugins(
 
     let mut resolved = Vec::with_capacity(order.len());
     for name in order {
-        let p = by_name.remove(&name).unwrap();
+        let p = by_name
+            .remove(&name)
+            .expect("plugin must exist in by_name map");
         let file_table = build_file_table(&p.root);
         resolved.push(ResolvedPlugin {
             root: p.root,

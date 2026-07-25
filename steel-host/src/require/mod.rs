@@ -104,7 +104,7 @@ fn resolve(
         let (target, key) = rest
             .split_once('/')
             .ok_or_else(|| RequireError::InvalidPath(path.to_string()))?;
-        require_external(lua, registry, plugin_name, target, key)
+        require_external(lua, registry, target, key)
     } else {
         Err(RequireError::InvalidPath(path.to_string()))
     }
@@ -227,7 +227,6 @@ fn require_internal(
 fn require_external(
     lua: &Lua,
     registry: &PluginRegistry,
-    requester_name: &str,
     target_name: &str,
     export_key: &str,
 ) -> Result<LuaValue, RequireError> {
@@ -254,7 +253,7 @@ fn require_external(
         path: disk_path,
         source,
     })?;
-    let env = plugin_env(lua, registry, requester_name)?;
+    let env = plugin_env(lua, registry, target_name)?;
     let chunk_name = format!("=@{target_name}/{export_key}");
 
     lua.load(&src)
