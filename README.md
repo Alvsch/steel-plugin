@@ -1,22 +1,17 @@
 # Steel Plugin
 
- - [ ] Scheduler - Roblox's task library + RunService
- - [ ] Trove - object tracker and cleanup
- - [x] Signal - fire and forget messages
- - [ ] Function - request and response
- - [ ] Permission table
- - [ ] DataStore - persistent database
- - [ ] Require - custom module requiring
- - [ ] Config - plugin configuration
+- [ ] Scheduler - Roblox task library + RunService integration
+- [x] Signal - fire-and-forget messages
+- [x] Function - request/response calls
+- [ ] Permission table
+- [x] DataStore - persistent storage
+- [x] Require - custom module requiring
 
+## How It Works
 
-## Permissions
- - Allow TCP
- - Allow UDP
- - fs r/w
- - Request Signal/Function from other plugin
+Steel Plugin scans a folder for plugin directories with a valid `config.toml`, checks their API and dependency versions, builds the Lua file table, compiles `init.lua`, and then calls each plugin's `on_enable` and `on_disable` hooks during startup and shutdown.
 
-## Dependencies/Soft Dependencies
- - Namespace - plugin name/function name
- - Register/Get - function namespace
+## Making A Plugin
+
+Create a new folder with a `config.toml` and an `init.lua`. The config defines the plugin name, version, API version, authors, optional exports, and optional dependencies. Your `init.lua` should return a `Plugin` table with `on_enable` and `on_disable` functions. You can add extra `.lua` or `.luau` files alongside it and require them from the plugin.
 
