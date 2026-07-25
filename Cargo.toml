@@ -1,5 +1,5 @@
 [workspace]
-members = ["steel-host"]
+members = ["steel-host", "steel-plugin-cli"]
 resolver = "2"
 
 [workspace.package]
