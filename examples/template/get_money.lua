@@ -1,9 +1,5 @@
 --!strict
-local money = {
-	doug = 432,
-	fred = 999,
-	steve = 727,
-} :: { [string]: number }
+local money = require("./money")
 
 return function(id)
 	local money = money[id]

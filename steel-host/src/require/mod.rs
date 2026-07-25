@@ -80,13 +80,6 @@ impl From<RequireError> for mlua::Error {
     }
 }
 
-/// Installs `require` into `env`, closing over `registry` and `plugin_name` so
-/// the function always knows which plugin it belongs to.
-///
-/// ```ignore
-/// let env: Table = lua.create_table()?;
-/// install_require(&lua, &env, Arc::clone(&registry), plugin.name.clone())?;
-/// ```
 pub fn install_require(
     lua: &Lua,
     env: &LuaTable,

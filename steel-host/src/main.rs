@@ -1,10 +1,10 @@
-use steel_host::{
-    require::registry::build_plugin_registry,
-    stages::{
-        compile::PluginCompiler, discover::discover_plugins, execute::execute_plugin,
-        resolve::resolve_plugins, setup_lua_vm,
-    },
+use std::{collections::HashMap, sync::Arc};
+
+use steel_host::stages::{
+    compile::PluginCompiler, discover::discover_plugins, execute::execute_plugin,
+    resolve::resolve_plugins, setup_lua_vm,
 };
+use steel_utils::locks::SyncMutex;
 use tracing::Level;
 
 #[tokio::main]
@@ -35,12 +35,16 @@ async fn main() -> anyhow::Result<()> {
         }
     }
     let lua = setup_lua_vm()?;
-    let registry = build_plugin_registry(&lua, &compiled_plugins)?;
+    let registry = Arc::new(SyncMutex::new(HashMap::new()));
 
     let mut loaded_plugins = Vec::with_capacity(compiled_plugins.len());
     for plugin in compiled_plugins {
         let loaded = execute_plugin(&lua, registry.clone(), plugin)?;
         loaded_plugins.push(loaded);
+    }
+
+    for plugin in loaded_plugins {
+        plugin.on_enable(&lua)?;
     }
 
     Ok(())

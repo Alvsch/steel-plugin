@@ -7,9 +7,23 @@ use crate::{
 };
 
 pub struct LoadedPlugin {
-    pub runtime: PluginRuntime,
-    pub on_enable: LuaRegistryKey,
-    pub on_disable: LuaRegistryKey,
+    pub name: String,
+    on_enable: LuaRegistryKey,
+    on_disable: LuaRegistryKey,
+}
+
+impl LoadedPlugin {
+    pub fn on_enable(&self, lua: &Lua) -> mlua::Result<()> {
+        let on_enable = lua.registry_value::<LuaFunction>(&self.on_enable)?;
+        on_enable.call::<()>(())?;
+        Ok(())
+    }
+
+    pub fn on_disable(&self, lua: &Lua) -> mlua::Result<()> {
+        let on_disable = lua.registry_value::<LuaFunction>(&self.on_disable)?;
+        on_disable.call::<()>(())?;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Error)]
@@ -63,13 +77,16 @@ pub fn execute_plugin(
     plugin: CompiledPlugin,
 ) -> Result<LoadedPlugin, ExecuteError> {
     let runtime = PluginRuntime::from_compiled(lua, &plugin)?;
-    let name = &runtime.name;
+    let name = runtime.name.clone();
+
     let env = lua
         .registry_value(&runtime.env)
         .map_err(|source| ExecuteError::EnvInit {
-            plugin: runtime.name.clone(),
+            plugin: name.clone(),
             source,
         })?;
+
+    registry.lock().insert(name.clone(), runtime);
 
     install_require(lua, &env, registry, name.clone()).map_err(|source| ExecuteError::EnvInit {
         plugin: name.clone(),
@@ -99,11 +116,11 @@ pub fn execute_plugin(
         });
     };
 
-    let on_enable = get_required_fn(lua, &table, "on_enable", name)?;
-    let on_disable = get_required_fn(lua, &table, "on_disable", name)?;
+    let on_enable = get_required_fn(lua, &table, "on_enable", &name)?;
+    let on_disable = get_required_fn(lua, &table, "on_disable", &name)?;
 
     Ok(LoadedPlugin {
-        runtime,
+        name,
         on_enable,
         on_disable,
     })
