@@ -1,7 +1,7 @@
 --!strict
 export type DataStore = {
-	SetAsync: (self: DataStore, key: any, value: any) -> (),
-	GetAsync: (self: DataStore, key: any) -> any,
-	UpdateAsync: (self: DataStore, key: any, update: (any) -> any) -> (),
-	RemoveAsync: (self: DataStore, key: any) -> any,
+	SetAsync: (self: DataStore, key: string, value: any) -> (),
+	GetAsync: (self: DataStore, key: string) -> any,
+	UpdateAsync: (self: DataStore, key: string, update: (old: any) -> any) -> (),
+	RemoveAsync: (self: DataStore, key: string) -> any,
 }

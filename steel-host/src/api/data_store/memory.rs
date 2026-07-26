@@ -3,11 +3,11 @@ use std::{collections::HashMap, sync::Arc};
 use mlua::prelude::*;
 use steel_utils::locks::AsyncMutex;
 
-use crate::api::data_store::{DataStore, key::LuaKey};
+use crate::api::data_store::DataStore;
 
 #[derive(Debug, Clone)]
 pub struct MemoryStore {
-    map: Arc<AsyncMutex<HashMap<LuaKey, LuaValue>>>,
+    map: Arc<AsyncMutex<HashMap<String, LuaValue>>>,
 }
 
 impl Default for MemoryStore {
@@ -26,12 +26,23 @@ impl MemoryStore {
 }
 
 impl DataStore for MemoryStore {
-    async fn set_async(&self, key: LuaKey, value: LuaValue) -> LuaResult<()> {
+    async fn set_async(&self, key: String, value: LuaValue) -> LuaResult<()> {
         self.map.lock().await.insert(key, value);
         Ok(())
     }
 
-    async fn update_async(&self, key: LuaKey, update: LuaFunction) -> LuaResult<()> {
+    async fn get_async(&self, _lua: &Lua, key: String) -> LuaResult<LuaValue> {
+        let value = self
+            .map
+            .lock()
+            .await
+            .get(&key)
+            .cloned()
+            .unwrap_or(LuaValue::Nil);
+        Ok(value)
+    }
+
+    async fn update_async(&self, _lua: &Lua, key: String, update: LuaFunction) -> LuaResult<()> {
         let mut map = self.map.lock().await;
         let current = map.get(&key).cloned();
 
@@ -54,18 +65,7 @@ impl DataStore for MemoryStore {
         Ok(())
     }
 
-    async fn get_async(&self, key: LuaKey) -> LuaResult<LuaValue> {
-        let value = self
-            .map
-            .lock()
-            .await
-            .get(&key)
-            .cloned()
-            .unwrap_or(LuaValue::Nil);
-        Ok(value)
-    }
-
-    async fn remove_async(&self, key: LuaKey) -> LuaResult<LuaValue> {
+    async fn remove_async(&self, _lua: &Lua, key: String) -> LuaResult<LuaValue> {
         let value = self.map.lock().await.remove(&key).unwrap_or(LuaValue::Nil);
         Ok(value)
     }

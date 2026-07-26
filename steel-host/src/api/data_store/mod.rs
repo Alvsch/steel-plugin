@@ -2,22 +2,28 @@ use core::future::Future;
 
 use mlua::prelude::*;
 
-use crate::api::data_store::key::LuaKey;
-
-pub use memory::MemoryStore;
-mod key;
+mod lmdb;
 mod memory;
 
+pub use lmdb::{LmdbStore, open_lmdb_env};
+pub use memory::MemoryStore;
+
 pub trait DataStore {
-    fn set_async(&self, key: LuaKey, value: LuaValue)
+    fn set_async(&self, key: String, value: LuaValue)
     -> impl Future<Output = LuaResult<()>> + Send;
+    fn get_async(&self, lua: &Lua, key: String)
+    -> impl Future<Output = LuaResult<LuaValue>> + Send;
     fn update_async(
         &self,
-        key: LuaKey,
+        lua: &Lua,
+        key: String,
         update: LuaFunction,
     ) -> impl Future<Output = LuaResult<()>> + Send;
-    fn get_async(&self, key: LuaKey) -> impl Future<Output = LuaResult<LuaValue>> + Send;
-    fn remove_async(&self, key: LuaKey) -> impl Future<Output = LuaResult<LuaValue>> + Send;
+    fn remove_async(
+        &self,
+        lua: &Lua,
+        key: String,
+    ) -> impl Future<Output = LuaResult<LuaValue>> + Send;
 }
 
 #[macro_export]
@@ -30,21 +36,21 @@ macro_rules! impl_store_userdata {
             fn add_methods<M: mlua::prelude::LuaUserDataMethods<Self>>(methods: &mut M) {
                 methods.add_async_method(
                     "SetAsync",
-                    async |_, this, (key, value): (LuaKey, LuaValue)| {
+                    async |_, this, (key, value): (String, mlua::prelude::LuaValue)| {
                         this.set_async(key, value).await
                     },
                 );
                 methods.add_async_method(
                     "UpdateAsync",
-                    async |_, this, (key, update): (LuaKey, LuaFunction)| {
-                        this.update_async(key, update).await
+                    async |lua, this, (key, update): (String, mlua::prelude::LuaFunction)| {
+                        this.update_async(&lua, key, update).await
                     },
                 );
-                methods.add_async_method("GetAsync", async |_, this, key: LuaKey| {
-                    this.get_async(key).await
+                methods.add_async_method("GetAsync", async |lua, this, key: String| {
+                    this.get_async(&lua, key).await
                 });
-                methods.add_async_method("RemoveAsync", async |_, this, key: LuaKey| {
-                    this.remove_async(key).await
+                methods.add_async_method("RemoveAsync", async |lua, this, key: String| {
+                    this.remove_async(&lua, key).await
                 });
             }
         }

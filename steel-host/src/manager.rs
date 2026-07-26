@@ -1,3 +1,4 @@
+use heed::Env;
 use mlua::prelude::*;
 
 use crate::{
@@ -25,13 +26,22 @@ impl PluginManager {
         }
     }
 
-    pub fn load(&mut self, resolved_plugins: Vec<ResolvedPlugin>) -> anyhow::Result<()> {
+    pub fn load(
+        &mut self,
+        resolved_plugins: Vec<ResolvedPlugin>,
+        database: &Env,
+    ) -> anyhow::Result<()> {
         let compiler = PluginCompiler::new();
 
         for plugin in resolved_plugins {
             match compiler.compile(plugin) {
                 Ok(compiled_plugin) => {
-                    let loaded = execute_plugin(&self.lua, self.registry.clone(), compiled_plugin)?;
+                    let loaded = execute_plugin(
+                        &self.lua,
+                        database.clone(),
+                        self.registry.clone(),
+                        compiled_plugin,
+                    )?;
 
                     self.plugins.push(loaded);
                 }
@@ -44,17 +54,17 @@ impl PluginManager {
         Ok(())
     }
 
-    pub fn enable_all(&self) -> anyhow::Result<()> {
+    pub async fn enable_all(&self) -> anyhow::Result<()> {
         for plugin in &self.plugins {
-            plugin.on_enable(&self.lua)?;
+            plugin.on_enable(&self.lua).await?;
         }
 
         Ok(())
     }
 
-    pub fn shutdown(mut self) -> anyhow::Result<()> {
+    pub async fn shutdown(mut self) -> anyhow::Result<()> {
         while let Some(plugin) = self.plugins.pop() {
-            plugin.on_disable(&self.lua)?;
+            plugin.on_disable(&self.lua).await?;
 
             if let Some(runtime) = self.registry.lock().remove(&plugin.name) {
                 runtime.cleanup(&self.lua)?;

@@ -7,6 +7,7 @@ declare game: Game
 declare require: (any) -> any
 
 declare signal: Signal<string>
+declare lmdb: DataStore
 
 declare error: (message: string) -> ()
 declare warn: (message: string) -> ()

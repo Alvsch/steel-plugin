@@ -1,3 +1,4 @@
+use heed::Env;
 use mlua::prelude::*;
 use tempfile::TempDir;
 use thiserror::Error;
@@ -16,15 +17,15 @@ pub struct LoadedPlugin {
 }
 
 impl LoadedPlugin {
-    pub fn on_enable(&self, lua: &Lua) -> mlua::Result<()> {
+    pub async fn on_enable(&self, lua: &Lua) -> mlua::Result<()> {
         let on_enable = lua.registry_value::<LuaFunction>(&self.on_enable)?;
-        on_enable.call::<()>(())?;
+        on_enable.call_async::<()>(()).await?;
         Ok(())
     }
 
-    pub fn on_disable(&self, lua: &Lua) -> mlua::Result<()> {
+    pub async fn on_disable(&self, lua: &Lua) -> mlua::Result<()> {
         let on_disable = lua.registry_value::<LuaFunction>(&self.on_disable)?;
-        on_disable.call::<()>(())?;
+        on_disable.call_async::<()>(()).await?;
         Ok(())
     }
 
@@ -82,6 +83,7 @@ pub fn create_plugin_env(lua: &Lua) -> mlua::Result<LuaTable> {
 
 pub fn execute_plugin(
     lua: &Lua,
+    database: Env,
     registry: PluginRegistry,
     plugin: CompiledPlugin,
 ) -> Result<LoadedPlugin, ExecuteError> {
@@ -97,7 +99,7 @@ pub fn execute_plugin(
 
     registry.lock().insert(plugin_name.clone(), runtime);
 
-    install_plugin_globals(lua, &env, registry, &plugin_name).map_err(|source| {
+    install_plugin_globals(lua, &env, registry, &plugin_name, database).map_err(|source| {
         ExecuteError::EnvInit {
             plugin: plugin_name.clone(),
             source,
