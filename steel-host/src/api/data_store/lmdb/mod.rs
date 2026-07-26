@@ -17,7 +17,6 @@ use crate::{
 
 mod worker;
 
-const MAX_VALUE_SIZE: usize = 1024 * 1024;
 const MAX_UPDATE_RETRIES: usize = 32;
 
 pub fn open_lmdb_env(
@@ -34,7 +33,7 @@ pub fn open_lmdb_env(
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[repr(u8)]
 pub enum LuaValueRepr {
     Null,
@@ -179,52 +178,30 @@ impl LmdbStore {
             }
         })
     }
-
-    fn encode(value: &LuaValue) -> LuaResult<Vec<u8>> {
-        let repr = Self::value_to_repr(value, &mut HashSet::new())?;
-
-        let bytes = rmp_serde::to_vec(&repr).map_err(LuaError::external)?;
-
-        if bytes.len() > MAX_VALUE_SIZE {
-            return Err(LuaError::RuntimeError(
-                "datastore value exceeds size limit".into(),
-            ));
-        }
-
-        Ok(bytes)
-    }
-
-    fn decode(lua: &Lua, bytes: &[u8]) -> LuaResult<LuaValue> {
-        let repr: LuaValueRepr = rmp_serde::from_slice(bytes).map_err(LuaError::external)?;
-
-        Self::repr_to_value(lua, &repr)
-    }
 }
 
 impl DataStore for LmdbStore {
     async fn set_async(&self, key: String, value: LuaValue) -> LuaResult<()> {
-        let value = Self::encode(&value)?;
+        let value = Self::value_to_repr(&value, &mut HashSet::new())?;
 
-        self.worker.put(key.into_bytes(), value).await
+        self.worker.put(key, value).await
     }
 
     async fn get_async(&self, lua: &Lua, key: String) -> LuaResult<LuaValue> {
-        let raw = self.worker.get(key.into_bytes()).await?;
+        let raw = self.worker.get(key).await?;
 
         match raw {
-            Some(bytes) => Self::decode(lua, &bytes),
+            Some(bytes) => Self::repr_to_value(lua, &bytes),
             None => Ok(LuaValue::Nil),
         }
     }
 
     async fn update_async(&self, lua: &Lua, key: String, update: LuaFunction) -> LuaResult<()> {
-        let key = key.into_bytes();
-
         for _ in 0..MAX_UPDATE_RETRIES {
             let old_bytes = self.worker.get(key.clone()).await?;
 
             let old_value = match &old_bytes {
-                Some(bytes) => Self::decode(lua, bytes)?,
+                Some(bytes) => Self::repr_to_value(lua, bytes)?,
                 None => LuaValue::Nil,
             };
 
@@ -232,7 +209,7 @@ impl DataStore for LmdbStore {
 
             let new_bytes = match new_value {
                 LuaValue::Nil => None,
-                value => Some(Self::encode(&value)?),
+                value => Some(Self::value_to_repr(&value, &mut HashSet::new())?),
             };
 
             if self
@@ -250,10 +227,10 @@ impl DataStore for LmdbStore {
     }
 
     async fn remove_async(&self, lua: &Lua, key: String) -> LuaResult<LuaValue> {
-        let raw = self.worker.remove(key.into_bytes()).await?;
+        let raw = self.worker.remove(key).await?;
 
         match raw {
-            Some(bytes) => Self::decode(lua, &bytes),
+            Some(bytes) => Self::repr_to_value(lua, &bytes),
             None => Ok(LuaValue::Nil),
         }
     }

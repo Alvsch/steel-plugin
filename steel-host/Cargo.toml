@@ -19,7 +19,7 @@ toml.workspace = true
 walkdir.workspace = true
 thiserror.workspace = true
 tempfile.workspace = true
-heed.workspace = true
+heed = { workspace = true, features = ["serde-rmp"] }
 
 tar.workspace = true
 flate2.workspace = true

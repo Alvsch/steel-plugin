@@ -1,30 +1,35 @@
 use std::thread;
 
-use heed::{Database, Env, types::Bytes};
+use heed::{
+    Database, Env,
+    types::{SerdeRmp, Str},
+};
 use mlua::{Error as LuaError, Result as LuaResult};
 use tokio::sync::{mpsc, oneshot};
 
+use crate::api::data_store::lmdb::LuaValueRepr;
+
 pub enum LmdbRequest {
     Get {
-        key: Vec<u8>,
-        response: oneshot::Sender<LuaResult<Option<Vec<u8>>>>,
+        key: String,
+        response: oneshot::Sender<LuaResult<Option<LuaValueRepr>>>,
     },
 
     Put {
-        key: Vec<u8>,
-        value: Vec<u8>,
+        key: String,
+        value: LuaValueRepr,
         response: oneshot::Sender<LuaResult<()>>,
     },
 
     Remove {
-        key: Vec<u8>,
-        response: oneshot::Sender<LuaResult<Option<Vec<u8>>>>,
+        key: String,
+        response: oneshot::Sender<LuaResult<Option<LuaValueRepr>>>,
     },
 
     CompareAndSwap {
-        key: Vec<u8>,
-        expected: Option<Vec<u8>>,
-        value: Option<Vec<u8>>,
+        key: String,
+        expected: Option<LuaValueRepr>,
+        value: Option<LuaValueRepr>,
         response: oneshot::Sender<LuaResult<bool>>,
     },
 }
@@ -35,7 +40,7 @@ pub struct LmdbClient {
 }
 
 impl LmdbClient {
-    pub fn new(env: Env, db: Database<Bytes, Bytes>) -> Self {
+    pub fn new(env: Env, db: Database<Str, SerdeRmp<LuaValueRepr>>) -> Self {
         let (sender, receiver) = mpsc::channel(256);
 
         thread::spawn(move || {
@@ -45,7 +50,7 @@ impl LmdbClient {
         Self { sender }
     }
 
-    pub async fn get(&self, key: Vec<u8>) -> LuaResult<Option<Vec<u8>>> {
+    pub async fn get(&self, key: String) -> LuaResult<Option<LuaValueRepr>> {
         let (tx, rx) = oneshot::channel();
 
         self.sender
@@ -56,7 +61,7 @@ impl LmdbClient {
         rx.await.map_err(LuaError::external)?
     }
 
-    pub async fn put(&self, key: Vec<u8>, value: Vec<u8>) -> LuaResult<()> {
+    pub async fn put(&self, key: String, value: LuaValueRepr) -> LuaResult<()> {
         let (tx, rx) = oneshot::channel();
 
         self.sender
@@ -71,7 +76,7 @@ impl LmdbClient {
         rx.await.map_err(LuaError::external)?
     }
 
-    pub async fn remove(&self, key: Vec<u8>) -> LuaResult<Option<Vec<u8>>> {
+    pub async fn remove(&self, key: String) -> LuaResult<Option<LuaValueRepr>> {
         let (tx, rx) = oneshot::channel();
 
         self.sender
@@ -84,9 +89,9 @@ impl LmdbClient {
 
     pub async fn compare_and_swap(
         &self,
-        key: Vec<u8>,
-        expected: Option<Vec<u8>>,
-        value: Option<Vec<u8>>,
+        key: String,
+        expected: Option<LuaValueRepr>,
+        value: Option<LuaValueRepr>,
     ) -> LuaResult<bool> {
         let (tx, rx) = oneshot::channel();
 
@@ -104,17 +109,18 @@ impl LmdbClient {
     }
 }
 
-fn worker_loop(env: Env, db: Database<Bytes, Bytes>, mut receiver: mpsc::Receiver<LmdbRequest>) {
+fn worker_loop(
+    env: Env,
+    db: Database<Str, SerdeRmp<LuaValueRepr>>,
+    mut receiver: mpsc::Receiver<LmdbRequest>,
+) {
     while let Some(request) = receiver.blocking_recv() {
         match request {
             LmdbRequest::Get { key, response } => {
                 let result = (|| {
                     let txn = env.read_txn().map_err(LuaError::external)?;
 
-                    Ok(db
-                        .get(&txn, &key)
-                        .map_err(LuaError::external)?
-                        .map(ToOwned::to_owned))
+                    db.get(&txn, &key).map_err(LuaError::external)
                 })();
 
                 let _ = response.send(result);
@@ -142,10 +148,7 @@ fn worker_loop(env: Env, db: Database<Bytes, Bytes>, mut receiver: mpsc::Receive
                 let result = (|| {
                     let mut txn = env.write_txn().map_err(LuaError::external)?;
 
-                    let old = db
-                        .get(&txn, &key)
-                        .map_err(LuaError::external)?
-                        .map(ToOwned::to_owned);
+                    let old = db.get(&txn, &key).map_err(LuaError::external)?;
 
                     db.delete(&mut txn, &key).map_err(LuaError::external)?;
 
@@ -166,10 +169,7 @@ fn worker_loop(env: Env, db: Database<Bytes, Bytes>, mut receiver: mpsc::Receive
                 let result = (|| {
                     let mut txn = env.write_txn().map_err(LuaError::external)?;
 
-                    let current = db
-                        .get(&txn, &key)
-                        .map_err(LuaError::external)?
-                        .map(ToOwned::to_owned);
+                    let current = db.get(&txn, &key).map_err(LuaError::external)?;
 
                     if current != expected {
                         return Ok(false);
