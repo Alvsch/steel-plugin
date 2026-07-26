@@ -3,7 +3,8 @@ use tempfile::TempDir;
 use thiserror::Error;
 
 use crate::{
-    require::{PluginRuntime, install_require, registry::PluginRegistry},
+    api::install_plugin_globals,
+    require::{PluginRuntime, registry::PluginRegistry},
     stages::compile::CompiledPlugin,
 };
 
@@ -85,31 +86,23 @@ pub fn execute_plugin(
     plugin: CompiledPlugin,
 ) -> Result<LoadedPlugin, ExecuteError> {
     let runtime = PluginRuntime::from_compiled(lua, &plugin)?;
-    let name = runtime.name.clone();
+    let plugin_name = runtime.name.clone();
 
     let env = lua
         .registry_value(&runtime.env)
         .map_err(|source| ExecuteError::EnvInit {
-            plugin: name.clone(),
+            plugin: plugin_name.clone(),
             source,
         })?;
 
-    registry.lock().insert(name.clone(), runtime);
+    registry.lock().insert(plugin_name.clone(), runtime);
 
-    install_require(lua, &env, registry, name.clone()).map_err(|source| ExecuteError::EnvInit {
-        plugin: name.clone(),
-        source,
+    install_plugin_globals(lua, &env, registry, &plugin_name).map_err(|source| {
+        ExecuteError::EnvInit {
+            plugin: plugin_name.clone(),
+            source,
+        }
     })?;
-
-    // TODO: require (./ via file_table, @name/ via host RPC), Signal, Scheduler,
-    // UserData host bindings — all raw_set into `env`
-    // bind host API + custom require directly into `env` (not globals),
-    // scoping visibility to this plugin only
-
-    // bind_host_api(lua, &env, &plugin).map_err(|source| ExecuteError::EnvInit {
-    //     plugin: name.clone(),
-    //     source,
-    // })?;
 
     let result: LuaValue = lua
         .load(&plugin.init_bytecode)
@@ -117,21 +110,21 @@ pub fn execute_plugin(
         .set_environment(env.clone())
         .eval()
         .map_err(|source| ExecuteError::Exec {
-            plugin: name.clone(),
+            plugin: plugin_name.clone(),
             source,
         })?;
 
     let LuaValue::Table(table) = result else {
         return Err(ExecuteError::NotATable {
-            plugin: name.clone(),
+            plugin: plugin_name.clone(),
         });
     };
 
-    let on_enable = get_required_fn(lua, &table, "on_enable", &name)?;
-    let on_disable = get_required_fn(lua, &table, "on_disable", &name)?;
+    let on_enable = get_required_fn(lua, &table, "on_enable", &plugin_name)?;
+    let on_disable = get_required_fn(lua, &table, "on_disable", &plugin_name)?;
 
     Ok(LoadedPlugin {
-        name,
+        name: plugin_name,
         on_enable,
         on_disable,
         _extracted: plugin.extracted,

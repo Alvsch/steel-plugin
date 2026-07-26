@@ -96,8 +96,9 @@ pub fn install_require(
     lua: &Lua,
     env: &LuaTable,
     registry: PluginRegistry,
-    plugin_name: String,
+    plugin_name: impl Into<String>,
 ) -> mlua::Result<()> {
+    let plugin_name = plugin_name.into();
     let f = lua.create_function(move |lua, path: String| {
         resolve(lua, &registry, &plugin_name, &path).map_err(mlua::Error::from)
     })?;

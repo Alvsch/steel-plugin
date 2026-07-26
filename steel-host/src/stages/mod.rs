@@ -6,7 +6,7 @@ pub mod resolve;
 use mlua::{Lua, LuaOptions, StdLib};
 use thiserror::Error;
 
-use crate::api::install_logger;
+use crate::api::install_base_globals;
 
 #[derive(Debug, Error)]
 pub enum VmInitError {
@@ -40,12 +40,4 @@ pub fn setup_lua_vm() -> Result<Lua, VmInitError> {
     lua.globals().set_readonly(true);
 
     Ok(lua)
-}
-
-fn install_base_globals(lua: &Lua) -> mlua::Result<()> {
-    let globals = lua.globals();
-
-    install_logger(lua, &globals)?;
-
-    Ok(())
 }
