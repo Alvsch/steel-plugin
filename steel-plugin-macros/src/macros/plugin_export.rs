@@ -9,12 +9,12 @@ use syn::{Error, Ident};
 
 use crate::PluginExportInput;
 
-fn import_plugin_api() -> TokenStream {
+fn import_plugin_export() -> TokenStream {
     match crate_name("steel-plugin-sdk").expect("steel-plugin-sdk not found in Cargo.toml") {
-        FoundCrate::Itself => quote!(crate::__export::plugin_sdk::plugin_api),
+        FoundCrate::Itself => quote!(crate::__export::c),
         FoundCrate::Name(name) => {
             let ident = Ident::new(&name, Span::call_site());
-            quote!( #ident::__export::plugin_sdk::plugin_api )
+            quote!( ::#ident::__export )
         }
     }
 }
@@ -42,47 +42,14 @@ pub fn plugin_export(PluginExportInput { plugin, meta }: PluginExportInput) -> T
     let bytes: Vec<u8> = meta.serialize();
     let len = bytes.len();
 
-    let import = import_plugin_api();
+    let export = import_plugin_export();
     quote! {
         const _: () = {
             #[unsafe(link_section = "steel-api::plugin::metadata")]
             #[used]
             static __PLUGIN_METADATA: [u8; #len] = [#(#bytes),*];
 
-            #[unsafe(export_name = "host:plugin-sdk/plugin-api@0.1.0#on-enable")]
-            unsafe extern "C" fn export_on_enable() {
-                unsafe {
-                    #import::_export_on_enable_cabi::<#plugin>()
-                }
-            }
-
-            #[unsafe(export_name = "host:plugin-sdk/plugin-api@0.1.0#on-disable")]
-            unsafe extern "C" fn export_on_disable() {
-                unsafe {
-                    #import::_export_on_disable_cabi::<#plugin>()
-                }
-            }
-
-            #[unsafe(export_name = "host:plugin-sdk/plugin-api@0.1.0#rpc")]
-            unsafe extern "C" fn export_rpc(arg0: *mut u8, arg1: usize, arg2: *mut u8, arg3: usize) -> *mut u8 {
-                unsafe {
-                    #import::_export_rpc_cabi::<#plugin>(arg0, arg1, arg2, arg3)
-                }
-            }
-
-            #[unsafe(export_name = "cabi_post_host:plugin-sdk/plugin-api@0.1.0#rpc")]
-            unsafe extern "C" fn _post_return_rpc(arg0: *mut u8) {
-                unsafe {
-                    #import::__post_return_rpc::<#plugin>(arg0)
-                }
-            }
-
-            #[unsafe(export_name = "host:plugin-sdk/plugin-api@0.1.0#event-handler")]
-            unsafe extern "C" fn export_event_handler(arg0: i32, arg1: i32, arg2: i32) {
-                unsafe {
-                    #import::_export_event_handler_cabi::<#plugin>(arg0, arg1, arg2)
-                }
-            }
+            #export::plugin_export!(#plugin);
         };
     }
 }

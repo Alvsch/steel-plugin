@@ -17,8 +17,9 @@ pub mod __export {
     pub use crate::sdk::logging::trace;
     pub use crate::sdk::logging::warn;
 
-    pub use crate::plugin::component::exports::host::plugin_sdk;
-    pub use crate::plugin::component::host::plugin_sdk::event::Event;
+    pub use crate::plugin::component::{
+        self, export as plugin_export, exports::host::plugin_sdk, host::plugin_sdk::event::Event,
+    };
 }
 
 pub(crate) use crate::plugin::component::host::plugin_sdk as sdk;

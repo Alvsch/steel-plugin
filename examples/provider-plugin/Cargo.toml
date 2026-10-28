@@ -10,3 +10,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 steel-plugin-sdk.workspace = true
+
+[lints]
+workspace = true

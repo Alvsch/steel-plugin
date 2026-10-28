@@ -8,7 +8,7 @@ use wasmtime::{
     Config, Engine,
     component::{Component, Linker},
 };
-use wasmtime_wasi::{DirPerms, FilePerms, WasiCtx, WasiCtxBuilder, p2::add_to_linker_async};
+use wasmtime_wasi::{FsPerms, WasiCtx, WasiCtxBuilder, p2::add_to_linker_async};
 
 use crate::{
     error::PluginError,
@@ -62,7 +62,7 @@ impl WasmEngine {
             .map_err(PluginError::Io)?;
 
         let wasi = WasiCtxBuilder::new()
-            .preopened_dir(&plugin_data_folder, "/", DirPerms::all(), FilePerms::all())
+            .preopened_dir(&plugin_data_folder, "/", FsPerms::ReadWrite)
             .map_err(|err| {
                 PluginError::Io(
                     err.downcast::<io::Error>()
