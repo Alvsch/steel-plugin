@@ -80,6 +80,7 @@ absolute_paths = "allow"
 missing_const_for_fn = "warn"
 # TOOD: remove
 missing_panics_doc = "allow"
+unused_async_trait_impl = "allow"
 
 all = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -2 }

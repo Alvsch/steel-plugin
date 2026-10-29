@@ -93,7 +93,7 @@ mod tests {
         let names: Vec<&str> = sorted.iter().map(String::as_str).collect();
 
         assert_eq!(names, vec!["provider", "consumer"]);
-        assert!(invalid.is_empty());
+        assert_eq!(invalid, [] as [std::string::String; 0]);
     }
 
     #[test]
@@ -129,7 +129,7 @@ mod tests {
         let mut invalid_names: Vec<&str> = invalid.iter().map(String::as_str).collect();
         invalid_names.sort_unstable();
 
-        assert!(sorted.is_empty());
+        assert_eq!(sorted, [] as [std::string::String; 0]);
         assert_eq!(invalid_names, vec!["a", "b"]);
     }
 }

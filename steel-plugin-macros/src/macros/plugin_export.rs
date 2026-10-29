@@ -28,8 +28,7 @@ pub fn plugin_export(PluginExportInput { plugin, meta }: PluginExportInput) -> T
         version: Version::parse(&env::var("CARGO_PKG_VERSION").unwrap_or_default())
             .expect("invalid version"),
         authors: env::var("CARGO_PKG_AUTHORS")
-            .map(|authors| authors.split(':').map(ToString::to_string).collect())
-            .unwrap_or_default(),
+            .map_or_default(|authors| authors.split(':').map(ToString::to_string).collect()),
         depends: meta.depends,
         api_version: steel_plugin_core::STEEL_API_VERSION,
     };

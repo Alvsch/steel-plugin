@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn parses_empty_depends_list() {
         let meta: PluginMetaInput = parse_str("depends: []").unwrap();
-        assert!(meta.depends.is_empty());
+        assert_eq!(meta.depends, [] as [std::string::String; 0]);
     }
 
     #[test]
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn parses_empty_meta_block() {
         let meta: PluginMetaInput = parse_str("").unwrap();
-        assert!(meta.depends.is_empty());
+        assert_eq!(meta.depends, [] as [std::string::String; 0]);
     }
 
     #[test]

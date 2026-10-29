@@ -63,9 +63,6 @@ impl HandlerRegistry {
 
     #[must_use]
     fn get_handlers(&self, topic_id: TopicId) -> &[HandlerEntry] {
-        self.handlers
-            .get(&topic_id)
-            .map(Vec::as_slice)
-            .unwrap_or_default()
+        self.handlers.get(&topic_id).map_or_default(Vec::as_slice)
     }
 }
