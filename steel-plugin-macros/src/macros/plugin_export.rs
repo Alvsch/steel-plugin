@@ -11,7 +11,7 @@ use crate::PluginExportInput;
 
 fn import_plugin_export() -> TokenStream {
     match crate_name("steel-plugin-sdk").expect("steel-plugin-sdk not found in Cargo.toml") {
-        FoundCrate::Itself => quote!(crate::__export::c),
+        FoundCrate::Itself => quote!(crate::__export),
         FoundCrate::Name(name) => {
             let ident = Ident::new(&name, Span::call_site());
             quote!( ::#ident::__export )
@@ -48,7 +48,7 @@ pub fn plugin_export(PluginExportInput { plugin, meta }: PluginExportInput) -> T
             #[used]
             static __PLUGIN_METADATA: [u8; #len] = [#(#bytes),*];
 
-            #export::plugin_export!(#plugin);
+            #export::export!(#plugin);
         };
     }
 }

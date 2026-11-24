@@ -47,9 +47,9 @@ pub(crate) fn event_handler(item: ItemFn, priority: i8) -> TokenStream {
     let topic_id = fnv1a_32(elem.to_token_stream().to_string().as_bytes());
     quote! {
         #event_module::submit! {
-            ::steel_plugin_sdk::event::EventHandler {
+            #event_module::EventHandler {
                 id: 0,
-                topic_id: ::steel_plugin_sdk::TopicId(#topic_id),
+                topic_id: #event_module::TopicId(#topic_id),
                 priority: #priority,
                 function: |event: &mut #event_module::Event| {
                     #[inline(always)]

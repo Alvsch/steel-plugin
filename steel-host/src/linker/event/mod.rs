@@ -7,8 +7,7 @@ use crate::{
 use steel_core::PluginApi;
 
 pub use handler::{HandlerFn, HandlerRegistry};
-use steel_plugin_core::fnv1a_32;
-use steel_plugin_sdk::TopicId;
+use steel_plugin_core::{TopicId, fnv1a_32};
 mod handler;
 
 impl event::Host for PluginState {

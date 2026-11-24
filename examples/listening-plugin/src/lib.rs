@@ -1,4 +1,4 @@
-use steel_plugin_sdk::{Plugin, event::PlayerJoinEvent, event_handler, info};
+use steel_plugin_sdk::{Plugin, event_handler, info, sdk::event::PlayerJoinEvent};
 
 #[event_handler]
 fn event_handler(event: &mut PlayerJoinEvent) {

@@ -1,28 +1,16 @@
 use crate::{
     event::EventHandler,
-    plugin::component::exports::host::plugin_sdk::plugin_api::Guest,
     rpc::export::RpcMethod,
     sdk::{self, event::Event},
-    warn,
+    warn, wit,
 };
-
-#[doc(hidden)]
-#[allow(clippy::all, clippy::pedantic)]
-pub mod component {
-    wit_bindgen::generate!({
-        path: "../wit",
-        world: "plugin-world",
-        pub_export_macro: true,
-        default_bindings_module: "steel_plugin_sdk::__export::component",
-    });
-}
 
 pub trait Plugin {
     fn on_enable();
     fn on_disable();
 }
 
-impl<T: Plugin> Guest for T {
+impl<T: Plugin> wit::Guest for T {
     fn on_enable() {
         for handler in inventory::iter::<EventHandler> {
             sdk::event::register_event(handler.id, handler.topic_id.0, i32::from(handler.priority));
