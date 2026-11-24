@@ -33,9 +33,9 @@ steel-utils = { git = "https://github.com/Alvsch/SteelMC", branch = "plugin-api"
 
 tokio = { version = "1.54.1", features = ["macros", "rt", "rt-multi-thread", "fs"] }
 
-wasmtime = { version = "50.0.0", default-features = false }
-wasmtime-wasi = { version = "50.0.0", default-features = false }
-wasmparser = { version ="0.262.0", default-features = false, features = ["component-model"] }
+wasmtime = { version = "51.0.0", default-features = false }
+wasmtime-wasi = { version = "51.0.0", default-features = false }
+wasmparser = { version ="0.263.0", default-features = false, features = ["component-model"] }
 wit-bindgen = "0.63.0"
 
 serde = { version = "1.0.229", features = ["derive"] }
@@ -47,9 +47,9 @@ thiserror = "2.0"
 anyhow = "1.0"
 
 # proc macro
-syn = "3.0.9"
-quote = "1.0.47"
-proc-macro2 = "1.0.107"
+syn = "3.0"
+quote = "1.0"
+proc-macro2 = "1.0"
 proc-macro-crate = "3.5.0"
 inventory = "0.3.25"
 
