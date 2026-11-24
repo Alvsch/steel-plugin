@@ -2691,7 +2691,6 @@ dependencies = [
  "wasmparser 0.263.0",
  "wasmtime",
  "wasmtime-wasi",
- "wit-bindgen",
 ]
 
 [[package]]
