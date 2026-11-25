@@ -8,7 +8,7 @@ use wasmtime::{
     Config, Engine,
     component::{Component, Linker},
 };
-use wasmtime_wasi::{FsPerms, WasiCtx, WasiCtxBuilder, p2::add_to_linker_async};
+use wasmtime_wasi::{FsPerms, WasiCtx, WasiCtxBuilder, p2};
 
 use crate::{
     error::PluginError,
@@ -25,7 +25,7 @@ impl WasmEngine {
     pub fn new(config: Config, data_folder: PathBuf) -> wasmtime::Result<Self> {
         let engine = Engine::new(&config)?;
         let mut linker = Linker::new(&engine);
-        add_to_linker_async(&mut linker)?;
+        p2::add_to_linker_async(&mut linker)?;
         linker::add_to_linker(&mut linker)?;
         Ok(Self {
             engine,
