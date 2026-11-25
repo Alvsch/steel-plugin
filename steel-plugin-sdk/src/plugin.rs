@@ -1,10 +1,10 @@
 use crate::{
-    event::EventHandler,
-    rpc::export::RpcMethod,
-    sdk::{self, event::Event},
-    warn, wit,
+    event::Event,
+    registration::{EventHandler, RpcMethod},
+    sdk, warn, wit,
 };
 
+/// Lifecycle hooks implemented by a plugin type.
 pub trait Plugin {
     fn on_enable();
     fn on_disable();

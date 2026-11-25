@@ -7,10 +7,10 @@ use crate::utils::rules::{FnRules, validate};
 
 fn import_rpc_export() -> TokenStream {
     match crate_name("steel-plugin-sdk").expect("steel-plugin-sdk not found in Cargo.toml") {
-        FoundCrate::Itself => quote!(crate::rpc::export),
+        FoundCrate::Itself => quote!(crate::__export),
         FoundCrate::Name(name) => {
             let ident = Ident::new(&name, Span::call_site());
-            quote!( #ident::rpc::export )
+            quote!( #ident::__export )
         }
     }
 }
