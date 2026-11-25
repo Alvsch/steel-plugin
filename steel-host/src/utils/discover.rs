@@ -93,7 +93,7 @@ pub fn is_compatible_api_version(version: &Version) -> bool {
 #[cfg(test)]
 mod tests {
     use semver::Version;
-    use steel_plugin_sdk::STEEL_API_VERSION;
+    use steel_plugin_core::STEEL_API_VERSION;
 
     use super::is_compatible_api_version;
 
