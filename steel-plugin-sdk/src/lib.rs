@@ -12,6 +12,8 @@ pub mod rpc {
     //! Host RPC resolution and plugin-side RPC export support.
     //!
     //! A plugin can resolve methods only from plugins named in its `depends` metadata.
+    //! RPC exports may return `()` for no response or `Option<Vec<u8>>` for an
+    //! optional byte response.
     pub use crate::sdk::rpc::{Method, resolve_method};
 }
 mod logging;

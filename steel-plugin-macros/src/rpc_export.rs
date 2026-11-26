@@ -5,7 +5,13 @@ use syn::{Error, FnArg, ItemFn, ReturnType};
 
 use crate::sdk_path::sdk_export_path;
 
-fn validate(item: &ItemFn) -> Result<(), Error> {
+#[derive(Debug, PartialEq, Eq)]
+enum RpcReturn {
+    Unit,
+    OptionalBytes,
+}
+
+fn validate(item: &ItemFn) -> Result<RpcReturn, Error> {
     if let Some(asyncness) = item.sig.asyncness.as_ref() {
         return Err(Error::new(asyncness.span(), "function must not be async"));
     }
@@ -38,29 +44,25 @@ fn validate(item: &ItemFn) -> Result<(), Error> {
     }
 
     match &item.sig.output {
-        ReturnType::Default => Err(Error::new(
-            item.sig.span(),
-            "function must return 'Option < Vec < u8 > >'",
-        )),
-        ReturnType::Type(_, ty) if quote!(#ty).to_string() != "Option < Vec < u8 > >" => {
-            Err(Error::new(
+        ReturnType::Default => Ok(RpcReturn::Unit),
+        ReturnType::Type(_, ty) => match quote!(#ty).to_string().as_str() {
+            "()" => Ok(RpcReturn::Unit),
+            "Option < Vec < u8 > >" => Ok(RpcReturn::OptionalBytes),
+            found => Err(Error::new(
                 ty.span(),
-                format!(
-                    "expected return type 'Option < Vec < u8 > >', found '{}'",
-                    quote!(#ty)
-                ),
-            ))
-        }
-        ReturnType::Type(_, _) => Ok(()),
+                format!("expected return type '()' or 'Option<Vec<u8>>', found '{found}'"),
+            )),
+        },
     }
 }
 
 pub(crate) fn expand(item: ItemFn) -> TokenStream {
-    if let Err(error) = validate(&item) {
-        return error.to_compile_error();
-    }
+    let output = match validate(&item) {
+        Ok(output) => output,
+        Err(error) => return error.to_compile_error(),
+    };
 
-    let fn_name = item.sig.ident;
+    let fn_name = &item.sig.ident;
     let arg = match item
         .sig
         .inputs
@@ -73,14 +75,84 @@ pub(crate) fn expand(item: ItemFn) -> TokenStream {
     let stmts = &item.block.stmts;
 
     let export = sdk_export_path();
-    quote! {
-        #export::submit! {
-            #export::RpcMethod {
-                name: stringify!(#fn_name),
-                function: |#arg| {
-                    #(#stmts)*
-                },
+    match output {
+        RpcReturn::Unit => {
+            let data = syn::Ident::new("__steel_rpc_data", proc_macro2::Span::mixed_site());
+            quote! {
+                #export::submit! {
+                    #export::RpcMethod {
+                        name: stringify!(#fn_name),
+                        function: |#data| {
+                            fn __steel_rpc_export(#arg: &[u8]) {
+                                #(#stmts)*
+                            }
+                            __steel_rpc_export(#data);
+                            None
+                        }
+                    }
+                }
             }
         }
+        RpcReturn::OptionalBytes => quote! {
+            #export::submit! {
+                #export::RpcMethod {
+                    name: stringify!(#fn_name),
+                    function: |#arg| {
+                        #(#stmts)*
+                    },
+                }
+            }
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{RpcReturn, validate};
+    use syn::{ItemFn, parse_quote};
+
+    #[test]
+    fn accepts_implicit_unit_return() {
+        let item: ItemFn = parse_quote! {
+            fn notify(data: &[u8]) {
+                let _ = data;
+            }
+        };
+
+        assert!(matches!(validate(&item), Ok(RpcReturn::Unit)));
+    }
+
+    #[test]
+    fn accepts_explicit_unit_return() {
+        let item: ItemFn = parse_quote! {
+            fn notify(data: &[u8]) -> () {
+                let _ = data;
+            }
+        };
+
+        assert!(matches!(validate(&item), Ok(RpcReturn::Unit)));
+    }
+
+    #[test]
+    fn accepts_optional_byte_response() {
+        let item: ItemFn = parse_quote! {
+            fn echo(data: &[u8]) -> Option<Vec<u8>> {
+                Some(data.to_vec())
+            }
+        };
+
+        assert!(matches!(validate(&item), Ok(RpcReturn::OptionalBytes)));
+    }
+
+    #[test]
+    fn rejects_other_return_types() {
+        let item: ItemFn = parse_quote! {
+            fn invalid(data: &[u8]) -> bool {
+                !data.is_empty()
+            }
+        };
+
+        let error = validate(&item).expect_err("bool response should be rejected");
+        assert!(error.to_string().contains("Option<Vec<u8>>"));
     }
 }

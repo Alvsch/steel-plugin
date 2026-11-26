@@ -13,9 +13,8 @@ impl Plugin for ProviderPlugin {
 }
 
 #[rpc_export]
-fn greet(data: &[u8]) -> Option<Vec<u8>> {
+fn greet(data: &[u8]) {
     info!("hello {}", String::from_utf8_lossy(data));
-    None
 }
 
 steel_plugin_sdk::plugin_export!(ProviderPlugin);

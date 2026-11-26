@@ -14,6 +14,8 @@ pub fn plugin_export(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     plugin_export::expand(input).into()
 }
 
+/// Register an RPC function taking `&[u8]` and returning either `()` or
+/// `Option<Vec<u8>>`. Unit-returning functions are exposed as no-response RPCs.
 #[proc_macro_attribute]
 pub fn rpc_export(_args: TokenStream, input: TokenStream) -> TokenStream {
     let item = parse_macro_input!(input as ItemFn);

@@ -48,6 +48,8 @@ For the contributor workflow for extending the host/plugin contract, see
 For the host crate's public API and internal ownership model, see
 [`steel-host/README.md`](steel-host/README.md).
 
+For longer-term project direction, see [`ROADMAP.md`](ROADMAP.md).
+
 ### Common commands
 
 - `just test` runs fast unit-oriented suites.
