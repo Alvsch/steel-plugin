@@ -3,6 +3,7 @@ members = [
     "steel-host",
     "steel-plugin-macros",
     "steel-plugin-sdk",
+    "steel-plugin-core",
     "examples/consumer-plugin",
     "examples/provider-plugin",
     "examples/listening-plugin",
