@@ -23,6 +23,12 @@ panic = "abort"
 inherits = "release"
 debug = true
 
+[profile.wasm-release]
+inherits = "release"
+opt-level = "z"
+strip = "symbols"
+trim-paths = "all"
+
 [workspace.dependencies]
 steel-plugin-sdk = { path = "steel-plugin-sdk" }
 steel-plugin-macros = { path = "steel-plugin-macros" }
