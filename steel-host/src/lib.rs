@@ -30,18 +30,26 @@ pub struct PluginHost {
 }
 
 impl PluginHost {
-    /// Create a host using Wasmtime's default configuration and the given data directory.
+    /// Create a host with Wasmtime's default settings and persistent compilation caching.
     pub fn new(data_folder: impl Into<PathBuf>) -> Result<Self, PluginError> {
-        Self::with_config(WasmtimeConfig::new(), data_folder)
+        let data_folder = data_folder.into();
+        Ok(Self {
+            engine: WasmEngine::new(data_folder).map_err(PluginError::Engine)?,
+            state: Arc::new(HostState::new()),
+        })
     }
 
     /// Create a host with a custom Wasmtime configuration.
+    ///
+    /// The compilation cache follows the setting on `config`; use
+    /// [`PluginHost::new`] to enable the default persistent cache.
     pub fn with_config(
         config: WasmtimeConfig,
         data_folder: impl Into<PathBuf>,
     ) -> Result<Self, PluginError> {
         Ok(Self {
-            engine: WasmEngine::new(config, data_folder.into()).map_err(PluginError::Engine)?,
+            engine: WasmEngine::with_config(config, data_folder.into())
+                .map_err(PluginError::Engine)?,
             state: Arc::new(HostState::new()),
         })
     }
