@@ -54,10 +54,10 @@ pub fn call(
 
 /// Resolve a method, serialize a request with named `MessagePack` fields, and
 /// deserialize its response.
-pub fn request<Request: Serialize, Response: DeserializeOwned>(
+pub fn request<Response: DeserializeOwned>(
     plugin_name: &str,
     method_name: &str,
-    request: &Request,
+    request: &impl Serialize,
 ) -> Result<Response, CallError> {
     let method = resolve_method(plugin_name, method_name).ok_or(CallError::MethodUnavailable)?;
     method.request(request)
@@ -65,10 +65,10 @@ pub fn request<Request: Serialize, Response: DeserializeOwned>(
 
 /// Resolve a method and send a serialized request that is expected to have no
 /// response.
-pub fn notify<Request: Serialize>(
+pub fn notify(
     plugin_name: &str,
     method_name: &str,
-    request: &Request,
+    request: &impl Serialize,
 ) -> Result<(), CallError> {
     let method = resolve_method(plugin_name, method_name).ok_or(CallError::MethodUnavailable)?;
     method.notify(request)
@@ -82,9 +82,9 @@ impl Method {
 
     /// Serialize a request with named `MessagePack` fields and deserialize the
     /// required response.
-    pub fn request<Request: Serialize, Response: DeserializeOwned>(
+    pub fn request<Response: DeserializeOwned>(
         &self,
-        request: &Request,
+        request: &impl Serialize,
     ) -> Result<Response, CallError> {
         let data = encode_request(request)?;
         let response = self
@@ -96,7 +96,7 @@ impl Method {
 
     /// Serialize a request with named `MessagePack` fields and require no
     /// response from the method.
-    pub fn notify<Request: Serialize>(&self, request: &Request) -> Result<(), CallError> {
+    pub fn notify(&self, request: &impl Serialize) -> Result<(), CallError> {
         let data = encode_request(request)?;
         let response = self.dispatch(&data).map_err(map_rpc_error)?;
         if response.is_some() {

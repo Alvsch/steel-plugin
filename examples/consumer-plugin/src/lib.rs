@@ -23,7 +23,7 @@ struct NotifyRequest {
 impl Plugin for ConsumerPlugin {
     fn on_enable() {
         info!("hello from the consumer!");
-        let response = rpc::request::<_, GreetResponse>(
+        let response: GreetResponse = rpc::request(
             "provider-plugin",
             "greet",
             &GreetRequest {
