@@ -8,17 +8,10 @@ pub mod event {
     //! Typed event payloads exposed to plugin event handlers.
     pub use crate::sdk::event::{Event, PlayerJoinEvent, PlayerLeaveEvent};
 }
-pub mod rpc {
-    //! Host RPC resolution and plugin-side RPC export support.
-    //!
-    //! A plugin can resolve methods only from plugins named in its `depends` metadata.
-    //! RPC exports may return `()` for no response or `Option<Vec<u8>>` for an
-    //! optional byte response.
-    pub use crate::sdk::rpc::{Method, resolve_method};
-}
 mod logging;
 mod plugin;
 mod registration;
+pub mod rpc;
 
 #[allow(clippy::all, clippy::pedantic)]
 mod bindings;

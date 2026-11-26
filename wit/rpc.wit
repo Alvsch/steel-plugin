@@ -1,8 +1,12 @@
-package host:plugin-sdk@0.1.0;
+package host:plugin-sdk@0.2.0;
 
 interface rpc {
+    enum rpc-error {
+        unknown-method,
+    }
+
     resource method {
-        dispatch: func(data: list<u8>) -> option<list<u8>>;
+        dispatch: func(data: list<u8>) -> result<option<list<u8>>, rpc-error>;
     }
 
     resolve-method: func(plugin-name: string, method-name: string) -> option<method>;

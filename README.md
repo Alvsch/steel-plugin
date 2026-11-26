@@ -34,7 +34,8 @@ Discovery returns plugins in dependency order. The host owns plugin state and ex
 ## Plugin Meta
 - define dependencies
 - restrict RPC method resolution to declared dependencies
-- `resolve_method` returns `None` when a target is unavailable or not a declared dependency
+- `rpc::call` returns `MethodUnavailable` when a target is unavailable or not a declared dependency
+- unknown methods return `UnknownMethod`; successful no-response calls return `Ok(None)`
 
 ## Testing
 

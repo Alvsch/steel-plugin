@@ -1,4 +1,4 @@
-package host:plugin-sdk@0.1.0;
+package host:plugin-sdk@0.2.0;
 
 interface logging {
   error: func(message: string);

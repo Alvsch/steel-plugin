@@ -2736,6 +2736,7 @@ dependencies = [
  "inventory",
  "steel-plugin-core",
  "steel-plugin-macros",
+ "thiserror",
  "wit-bindgen",
 ]
 

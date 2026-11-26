@@ -75,7 +75,7 @@ impl HostMethod for PluginState {
         &mut self,
         resource: Resource<rpc::Method>,
         data: Vec<u8>,
-    ) -> Option<Vec<u8>> {
+    ) -> Result<Option<Vec<u8>>, rpc::RpcError> {
         let method = self
             .resources
             .get_method(resource)

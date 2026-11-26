@@ -35,13 +35,13 @@ impl<T: Plugin> wit::Guest for T {
         T::on_disable();
     }
 
-    fn rpc(method_name: String, data: Vec<u8>) -> Option<Vec<u8>> {
+    fn rpc(method_name: String, data: Vec<u8>) -> Result<Option<Vec<u8>>, sdk::rpc::RpcError> {
         for method in inventory::iter::<RpcMethod> {
             if method.name == method_name {
-                return (method.function)(&data);
+                return Ok((method.function)(&data));
             }
         }
-        None
+        Err(sdk::rpc::RpcError::UnknownMethod)
     }
 
     fn event_handler(handler_id: u32, mut event: Event) {

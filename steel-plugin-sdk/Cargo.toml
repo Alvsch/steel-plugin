@@ -10,6 +10,7 @@ steel-plugin-core.workspace = true
 
 inventory.workspace = true
 wit-bindgen.workspace = true
+thiserror.workspace = true
 
 [lints]
 workspace = true
