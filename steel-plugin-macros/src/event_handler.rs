@@ -71,7 +71,6 @@ pub(crate) fn expand(item: ItemFn, priority: i8) -> TokenStream {
     quote! {
         #export::submit! {
             #export::EventHandler {
-                id: 0,
                 topic_id: #export::TopicId(#topic_id),
                 priority: #priority,
                 function: |event: &mut #export::Event| {

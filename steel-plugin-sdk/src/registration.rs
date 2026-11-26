@@ -4,7 +4,6 @@ use crate::event::Event;
 
 #[doc(hidden)]
 pub struct EventHandler {
-    pub id: u32,
     pub topic_id: TopicId,
     pub priority: i8,
     pub function: fn(&mut Event),
