@@ -33,8 +33,8 @@ Discovery returns plugins in dependency order. The host owns plugin state and ex
 
 ## Plugin Meta
 - define dependencies
-- restrict rpc resolve_plugin access to those dependencies
-- soft dependencies resolve_plugin return Option<u32>
+- restrict RPC method resolution to declared dependencies
+- `resolve_method` returns `None` when a target is unavailable or not a declared dependency
 
 ## Testing
 

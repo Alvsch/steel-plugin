@@ -50,7 +50,6 @@ impl HostState {
         let store = &runtime.store;
         let data = store.data();
 
-        // TODO: load information such as exposed rpc methods etc.
         self.plugins
             .write()
             .insert(data.meta.name.clone(), Arc::downgrade(plugin));

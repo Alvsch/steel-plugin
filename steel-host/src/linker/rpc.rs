@@ -52,6 +52,16 @@ impl rpc::Host for PluginState {
         plugin_name: String,
         method_name: String,
     ) -> Option<Resource<rpc::Method>> {
+        if !self.declares_dependency(&plugin_name) {
+            tracing::warn!(
+                caller = %self.meta.name,
+                dependency = %plugin_name,
+                method = %method_name,
+                "denied RPC resolution for undeclared plugin dependency"
+            );
+            return None;
+        }
+
         let plugin = self.host.resolve_plugin(&plugin_name)?;
         let method = self
             .resources

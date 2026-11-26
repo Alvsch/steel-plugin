@@ -10,6 +10,8 @@ pub mod event {
 }
 pub mod rpc {
     //! Host RPC resolution and plugin-side RPC export support.
+    //!
+    //! A plugin can resolve methods only from plugins named in its `depends` metadata.
     pub use crate::sdk::rpc::{Method, resolve_method};
 }
 mod logging;

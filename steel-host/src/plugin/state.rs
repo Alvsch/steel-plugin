@@ -32,6 +32,13 @@ impl PluginState {
             status: PluginStatus::Disabled,
         }
     }
+
+    pub(crate) fn declares_dependency(&self, plugin_name: &str) -> bool {
+        self.meta
+            .depends
+            .iter()
+            .any(|dependency| dependency == plugin_name)
+    }
 }
 
 impl WasiView for PluginState {
@@ -40,5 +47,38 @@ impl WasiView for PluginState {
             ctx: &mut self.wasi,
             table: &mut self.resources.table,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use semver::Version;
+    use steel_plugin_core::{PluginMeta, STEEL_API_VERSION};
+    use wasmtime_wasi::WasiCtxBuilder;
+
+    use crate::state::HostState;
+
+    use super::PluginState;
+
+    #[test]
+    fn rpc_access_requires_a_direct_dependency() {
+        let state = PluginState::new(
+            Arc::new(HostState::new()),
+            WasiCtxBuilder::new().build(),
+            PluginMeta {
+                api_version: STEEL_API_VERSION.clone(),
+                name: "consumer".to_owned(),
+                description: String::new(),
+                version: Version::new(0, 1, 0),
+                authors: Vec::new(),
+                depends: vec!["provider".to_owned()],
+            },
+        );
+
+        assert!(state.declares_dependency("provider"));
+        assert!(!state.declares_dependency("transitive-provider"));
+        assert!(!state.declares_dependency("unlisted"));
     }
 }
