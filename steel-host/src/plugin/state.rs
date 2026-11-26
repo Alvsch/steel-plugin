@@ -1,49 +1,36 @@
-use std::{
-    cell::OnceCell,
-    sync::{Arc, Weak},
-};
+use std::sync::Arc;
 
 use steel_plugin_core::PluginMeta;
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
-use crate::{
-    plugin::{Plugin, PluginInstance, resource::PluginResources},
-    state::HostState,
-};
+use crate::{plugin::resource::PluginResources, state::HostState};
 
+/// Lifecycle state of a loaded plugin.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PluginStatus {
+    /// The plugin's enable hook has completed.
     Enabled,
+    /// The plugin is loaded but not enabled, or has been disabled.
     Disabled,
 }
 
-pub struct PluginState {
-    pub wasi: WasiCtx,
-    pub resources: PluginResources,
-    pub host: Arc<HostState>,
-    pub meta: PluginMeta,
-    pub status: PluginStatus,
-    pub plugin: OnceCell<Weak<Plugin>>,
+pub(crate) struct PluginState {
+    pub(crate) wasi: WasiCtx,
+    pub(crate) resources: PluginResources,
+    pub(crate) host: Arc<HostState>,
+    pub(crate) meta: PluginMeta,
+    pub(crate) status: PluginStatus,
 }
 
 impl PluginState {
-    pub fn new(host: Arc<HostState>, wasi: WasiCtx, meta: PluginMeta) -> Self {
+    pub(crate) fn new(host: Arc<HostState>, wasi: WasiCtx, meta: PluginMeta) -> Self {
         Self {
             wasi,
             resources: PluginResources::new(),
             host,
             meta,
             status: PluginStatus::Disabled,
-            plugin: OnceCell::new(),
         }
-    }
-
-    pub fn plugin(&self) -> PluginInstance {
-        self.plugin
-            .get()
-            .expect("plugin not initialized")
-            .upgrade()
-            .expect("plugin no longer initialized")
     }
 }
 

@@ -14,7 +14,7 @@ struct PlayerResource {
 }
 
 impl PluginResources {
-    pub fn push_player(
+    pub(crate) fn push_player(
         &mut self,
         provider: Arc<Player>,
     ) -> Result<Resource<player::Player>, ResourceTableError> {
@@ -22,17 +22,7 @@ impl PluginResources {
         Ok(Resource::new_own(resource.rep()))
     }
 
-    pub fn get_player(
-        &mut self,
-        key: Resource<player::Player>,
-    ) -> Result<&Arc<Player>, ResourceTableError> {
-        let resource = self
-            .table
-            .get::<PlayerResource>(&Resource::new_borrow(key.rep()))?;
-        Ok(&resource.provider)
-    }
-
-    pub fn delete_player(
+    fn delete_player(
         &mut self,
         resource: Resource<player::Player>,
     ) -> Result<Arc<Player>, ResourceTableError> {

@@ -64,7 +64,7 @@ mod tests {
     use steel_plugin_core::STEEL_API_VERSION;
 
     use super::sort_plugins;
-    use crate::PluginMeta;
+    use steel_plugin_core::PluginMeta;
 
     fn make_plugin(name: &str, depends: &[&str]) -> PluginMeta {
         PluginMeta {

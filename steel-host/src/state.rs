@@ -1,15 +1,16 @@
-use crate::error::PluginContractError;
 use crate::linker::event::HandlerRegistry;
-use crate::plugin::PluginInstance;
-use std::collections::HashMap;
-use std::sync::atomic::{AtomicU32, Ordering};
+use crate::plugin::PluginHandle;
+use crate::{error::PluginContractError, plugin::Plugin};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Weak},
+};
 use steel_utils::locks::{AsyncRwLock, SyncRwLock};
 use tracing::warn;
 
-pub struct HostState {
-    pub handler_registry: AsyncRwLock<HandlerRegistry>,
-    plugin_name: SyncRwLock<HashMap<String, PluginInstance>>,
-    next_id: AtomicU32,
+pub(crate) struct HostState {
+    pub(crate) handler_registry: AsyncRwLock<HandlerRegistry>,
+    plugins: SyncRwLock<HashMap<String, Weak<Plugin>>>,
 }
 
 impl Default for HostState {
@@ -20,38 +21,39 @@ impl Default for HostState {
 
 impl HostState {
     #[must_use]
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             handler_registry: AsyncRwLock::new(HandlerRegistry::new()),
-            plugin_name: SyncRwLock::new(HashMap::new()),
-            next_id: AtomicU32::new(1),
+            plugins: SyncRwLock::new(HashMap::new()),
         }
     }
 
-    pub fn next_id(&self) -> u32 {
-        self.next_id.fetch_add(1, Ordering::Relaxed)
-    }
-
     #[must_use]
-    pub fn resolve_plugin(&self, plugin_name: &str) -> Option<PluginInstance> {
-        self.plugin_name.read().get(plugin_name).cloned()
+    pub(crate) fn resolve_plugin(&self, plugin_name: &str) -> Option<PluginHandle> {
+        self.plugins.read().get(plugin_name).and_then(Weak::upgrade)
     }
 
-    pub fn unregister_plugin(&self, plugin_name: &str) {
-        let Some(_) = self.plugin_name.write().remove(plugin_name) else {
+    pub(crate) async fn unregister_plugin(&self, plugin_name: &str) {
+        if self.plugins.write().remove(plugin_name).is_none() {
             warn!("attempted to unregister plugin '{plugin_name}' but it was not registered");
             return;
-        };
+        }
+
+        self.handler_registry
+            .write()
+            .await
+            .unsubscribe_plugin(plugin_name);
     }
 
-    pub async fn register(&self, plugin: &PluginInstance) -> Result<(), PluginContractError> {
-        let store = plugin.store.lock().await;
+    pub(crate) async fn register(&self, plugin: &PluginHandle) -> Result<(), PluginContractError> {
+        let runtime = plugin.runtime.lock().await;
+        let store = &runtime.store;
         let data = store.data();
 
         // TODO: load information such as exposed rpc methods etc.
-        self.plugin_name
+        self.plugins
             .write()
-            .insert(data.meta.name.clone(), plugin.clone());
+            .insert(data.meta.name.clone(), Arc::downgrade(plugin));
 
         Ok(())
     }

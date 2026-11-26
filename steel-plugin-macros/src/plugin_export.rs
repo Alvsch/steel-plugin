@@ -143,7 +143,7 @@ mod tests {
     #[test]
     fn parses_empty_meta_block() {
         let meta: PluginMetaInput = parse_str("").unwrap();
-        assert!(meta.depends.is_empty());
+        assert_eq!(meta.depends, [] as [String; 0]);
     }
 
     #[test]

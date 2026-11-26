@@ -3,18 +3,18 @@ use wasmtime_wasi::ResourceTableError;
 
 use crate::{
     linker::host::plugin_sdk::rpc::{self, HostMethod},
-    plugin::{PluginInstance, PluginResources, PluginState},
+    plugin::{PluginHandle, PluginResources, PluginRuntime, PluginState},
 };
 
 struct MethodResource {
-    plugin: PluginInstance,
+    plugin: PluginHandle,
     name: String,
 }
 
 impl PluginResources {
     fn push_method(
         &mut self,
-        plugin: PluginInstance,
+        plugin: PluginHandle,
         method_name: String,
     ) -> Result<Resource<rpc::Method>, ResourceTableError> {
         let resource = self.table.push(MethodResource {
@@ -71,14 +71,11 @@ impl HostMethod for PluginState {
             .get_method(resource)
             .expect("unknown resource");
 
-        let mut store = method.plugin.store.lock().await;
-        method
-            .plugin
-            .bindings
-            .lock()
-            .await
+        let mut runtime = method.plugin.runtime.lock().await;
+        let PluginRuntime { store, bindings } = &mut *runtime;
+        bindings
             .host_plugin_sdk_plugin_api()
-            .call_rpc(&mut *store, &method.name, &data)
+            .call_rpc(store, &method.name, &data)
             .await
             .expect("failed to run rpc")
     }

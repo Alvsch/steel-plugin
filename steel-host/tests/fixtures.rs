@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use anyhow::{Context, bail};
 use tempfile::TempDir;
 use tokio::fs::{copy, create_dir_all};
-use wasmtime::{Config, OptLevel};
 
 const FIXTURE_WASM_FILES: [&str; 3] = [
     "provider_plugin.wasm",
@@ -65,12 +64,4 @@ pub async fn setup_layout() -> anyhow::Result<FixtureLayout> {
         plugin: plugin_dir,
         data: data_dir,
     })
-}
-
-#[must_use]
-pub fn host_config() -> Config {
-    let mut config = Config::new();
-    config.cranelift_opt_level(OptLevel::Speed);
-    config.wasm_multi_memory(false);
-    config
 }

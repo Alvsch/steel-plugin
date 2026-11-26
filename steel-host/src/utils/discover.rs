@@ -1,4 +1,3 @@
-use crate::PluginMeta;
 use crate::utils::read_custom_section;
 use crate::utils::sorting::sort_plugins;
 use anyhow::{Context, bail};
@@ -7,12 +6,22 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
 };
+use steel_plugin_core::PluginMeta;
 use steel_plugin_core::STEEL_API_VERSION;
 use tokio::fs::{read, read_dir};
 use tracing::warn;
 
-/// Discover plugins in the specified directory and return their `PluginMeta` in topological order.
-pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<(PluginMeta, PathBuf)>> {
+/// A plugin's metadata and the path to its WebAssembly component.
+#[derive(Debug)]
+pub struct DiscoveredPlugin {
+    /// Metadata read from the plugin component.
+    pub meta: PluginMeta,
+    /// Canonical path to the component file.
+    pub path: PathBuf,
+}
+
+/// Discover plugins in a directory, ordered so dependencies precede dependents.
+pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<DiscoveredPlugin>> {
     let mut plugins = Vec::new();
 
     let mut dir = read_dir(plugin_dir)
@@ -31,7 +40,10 @@ pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<(PluginMe
                 continue;
             }
             match discover(&file_path).await {
-                Ok(plugin_meta) => plugins.push((plugin_meta, file_path.canonicalize()?)),
+                Ok(plugin_meta) => plugins.push(DiscoveredPlugin {
+                    meta: plugin_meta,
+                    path: file_path.canonicalize()?,
+                }),
                 Err(err) => {
                     warn!("{err}");
                 }
@@ -41,13 +53,13 @@ pub async fn discover_plugins(plugin_dir: &Path) -> anyhow::Result<Vec<(PluginMe
 
     let mut plugins = plugins
         .into_iter()
-        .map(|(meta, path)| (meta.name.clone(), (meta, path)))
-        .collect::<HashMap<String, (PluginMeta, PathBuf)>>();
+        .map(|plugin| (plugin.meta.name.clone(), plugin))
+        .collect::<HashMap<String, DiscoveredPlugin>>();
 
     let (topology, invalid) = sort_plugins(
         plugins
             .iter()
-            .map(|(name, (meta, _))| (name.clone(), meta.depends.clone()))
+            .map(|(name, plugin)| (name.clone(), plugin.meta.depends.clone()))
             .collect(),
     );
     if !invalid.is_empty() {

@@ -1,11 +1,11 @@
-use wasmtime::component::{HasSelf, Linker};
-
-use crate::{linker::host::plugin_sdk, plugin::PluginState};
-
 pub mod event;
 pub mod logging;
 pub mod player;
 pub mod rpc;
+
+use wasmtime::component::{HasSelf, Linker};
+
+use crate::{linker::host::plugin_sdk, plugin::PluginState};
 
 pub type HostLinker = Linker<PluginState>;
 

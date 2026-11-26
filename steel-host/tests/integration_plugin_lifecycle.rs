@@ -1,5 +1,5 @@
 use anyhow::Context;
-use steel_host::{PluginHost, discover_plugins};
+use steel_host::{PluginHost, PluginStatus, discover_plugins};
 
 mod fixtures;
 
@@ -8,7 +8,10 @@ async fn discover_orders_provider_before_consumer() -> anyhow::Result<()> {
     let fixture = fixtures::setup_layout().await?;
 
     let discovered = discover_plugins(&fixture.plugin).await?;
-    let names: Vec<String> = discovered.into_iter().map(|(meta, _)| meta.name).collect();
+    let names: Vec<String> = discovered
+        .into_iter()
+        .map(|plugin| plugin.meta.name)
+        .collect();
 
     let provider_index = names
         .iter()
@@ -43,27 +46,29 @@ async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
         "expected at least one plugin fixture to be discovered",
     );
 
-    let host = PluginHost::new(fixtures::host_config(), fixture.data.clone())
+    let host = PluginHost::new(fixture.data.clone())
         .map_err(|err| anyhow::anyhow!("failed to construct PluginHost: {err}"))?;
 
     let plugin_names: Vec<String> = discovered
         .iter()
-        .map(|(meta, _)| meta.name.clone())
+        .map(|plugin| plugin.meta.name.clone())
         .collect();
 
     let mut enabled_plugins = Vec::new();
-    for (plugin_meta, file_path) in discovered {
+    for discovered_plugin in discovered {
         let plugin = host
-            .load_plugin(plugin_meta, &file_path)
+            .load_plugin(discovered_plugin)
             .await
             .expect("failed to load plugin");
+        assert_eq!(plugin.status().await, PluginStatus::Disabled);
         plugin.enable().await.expect("failed to enable plugin");
+        assert_eq!(plugin.status().await, PluginStatus::Enabled);
         enabled_plugins.push(plugin);
     }
 
     for plugin_name in &plugin_names {
         assert!(
-            host.state.resolve_plugin(plugin_name).is_some(),
+            host.plugin(plugin_name).is_some(),
             "plugin '{plugin_name}' should be registered after load/enable"
         );
     }
@@ -78,11 +83,12 @@ async fn lifecycle_load_enable_disable_all_fixtures() -> anyhow::Result<()> {
 
     while let Some(plugin) = enabled_plugins.pop() {
         plugin.disable().await.expect("failed to disable plugin");
+        assert_eq!(plugin.status().await, PluginStatus::Disabled);
     }
 
     for plugin_name in &plugin_names {
         assert!(
-            host.state.resolve_plugin(plugin_name).is_none(),
+            host.plugin(plugin_name).is_none(),
             "plugin '{plugin_name}' should be unregistered after disable"
         );
     }

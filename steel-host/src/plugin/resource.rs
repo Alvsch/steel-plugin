@@ -1,7 +1,7 @@
 use wasmtime_wasi::ResourceTable;
 
-pub struct PluginResources {
-    pub table: ResourceTable,
+pub(crate) struct PluginResources {
+    pub(crate) table: ResourceTable,
 }
 
 impl Default for PluginResources {
@@ -12,7 +12,7 @@ impl Default for PluginResources {
 
 impl PluginResources {
     #[must_use]
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             table: ResourceTable::new(),
         }

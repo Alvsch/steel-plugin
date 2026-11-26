@@ -33,6 +33,9 @@ impl From<wasmtime::Error> for PluginContractError {
 
 #[derive(Debug, Error)]
 pub enum PluginError {
+    #[error("failed to initialize plugin host: {0}")]
+    Engine(wasmtime::Error),
+
     #[error("plugin not found: {file_path}")]
     NotFound { file_path: PathBuf },
 

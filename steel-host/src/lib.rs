@@ -1,71 +1,89 @@
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-
-use steel_plugin_core::PluginMeta;
-use steel_utils::locks::AsyncMutex;
-use wasmtime::Config;
-
-use crate::engine::WasmEngine;
-use crate::error::PluginError;
-use crate::linker::PluginWorld;
-use crate::plugin::{Plugin, PluginInstance, PluginState, PluginStore};
-use crate::state::HostState;
-
-pub use utils::discover::discover_plugins;
-pub use wasmtime;
-
 mod engine;
-pub mod error;
-pub mod linker;
-pub mod plugin;
+mod error;
+mod linker;
+mod plugin;
 mod state;
 mod utils;
 
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use crate::engine::WasmEngine;
+use crate::linker::PluginWorld;
+use crate::plugin::{Plugin, PluginRuntime, PluginState};
+use crate::state::HostState;
+
+pub use crate::error::{PluginContractError, PluginError};
+pub use crate::plugin::{PluginHandle, PluginStatus};
+pub use crate::utils::discover::{DiscoveredPlugin, discover_plugins};
+pub use steel_core::PluginApi;
+use steel_utils::locks::AsyncMutex;
+pub use wasmtime::Config as WasmtimeConfig;
+
+/// Owns the Wasmtime engine, loaded plugins, and host-side plugin services.
 pub struct PluginHost {
     engine: WasmEngine,
-    pub state: Arc<HostState>,
+    state: Arc<HostState>,
 }
 
 impl PluginHost {
-    pub fn new(config: Config, data_folder: PathBuf) -> Result<Self, wasmtime::Error> {
+    /// Create a host using Wasmtime's default configuration and the given data directory.
+    pub fn new(data_folder: impl Into<PathBuf>) -> Result<Self, PluginError> {
+        Self::with_config(WasmtimeConfig::new(), data_folder)
+    }
+
+    /// Create a host with a custom Wasmtime configuration.
+    pub fn with_config(
+        config: WasmtimeConfig,
+        data_folder: impl Into<PathBuf>,
+    ) -> Result<Self, PluginError> {
         Ok(Self {
-            engine: WasmEngine::new(config, data_folder)?,
+            engine: WasmEngine::new(config, data_folder.into()).map_err(PluginError::Engine)?,
             state: Arc::new(HostState::new()),
         })
     }
 
+    /// Compile and instantiate a discovered plugin.
     pub async fn load_plugin(
         &self,
-        plugin_meta: PluginMeta,
-        file_path: &Path,
-    ) -> Result<PluginInstance, PluginError> {
-        // compile
-        let plugin = self.engine.compile_plugin(file_path).await?;
+        discovered: DiscoveredPlugin,
+    ) -> Result<PluginHandle, PluginError> {
+        let plugin = self.engine.compile_plugin(&discovered.path).await?;
 
-        // instantiate
-        let wasi = self.engine.prepare_wasi(&plugin_meta.name).await?;
-        let mut store = PluginStore::new(
+        let wasi = self.engine.prepare_wasi(&discovered.meta.name).await?;
+        let mut store = wasmtime::Store::new(
             &self.engine.engine,
-            PluginState::new(self.state.clone(), wasi, plugin_meta),
+            PluginState::new(self.state.clone(), wasi, discovered.meta),
         );
         let bindings = PluginWorld::instantiate_async(&mut store, &plugin, &self.engine.linker)
             .await
             .map_err(PluginError::InvalidModule)?;
 
-        let instance = Arc::new_cyclic(|weak| {
-            store
-                .data()
-                .plugin
-                .set(weak.clone())
-                .expect("plugin already initialized");
-            Plugin {
-                store: AsyncMutex::new(store),
-                bindings: AsyncMutex::new(bindings),
-            }
+        let name = store.data().meta.name.clone();
+        let instance = Arc::new(Plugin {
+            name,
+            runtime: AsyncMutex::new(PluginRuntime { store, bindings }),
         });
 
         self.state.register(&instance).await?;
 
         Ok(instance)
+    }
+
+    /// Look up a loaded plugin by its declared name.
+    #[must_use]
+    pub fn plugin(&self, name: &str) -> Option<PluginHandle> {
+        self.state.resolve_plugin(name)
+    }
+
+    /// Dispatch a Steel event to the plugins that registered for its topic.
+    pub async fn dispatch_event(&self, event: PluginApi) -> Result<(), PluginContractError> {
+        self.state
+            .handler_registry
+            .read()
+            .await
+            .dispatch_topic(event, &self.state)
+            .await
+            .map_err(PluginContractError::from)
     }
 }

@@ -82,37 +82,5 @@ pub(crate) fn expand(item: ItemFn) -> TokenStream {
                 },
             }
         }
-
-        #[cfg(test)]
-        mod tests {
-            use syn::{ItemFn, parse_quote};
-
-            use super::validate;
-
-            #[test]
-            fn accepts_rpc_signature() {
-                let item: ItemFn = parse_quote! {
-                    fn rpc_handler(data: &[u8]) -> Option<Vec<u8>> {
-                        let _ = data;
-                        None
-                    }
-                };
-
-                assert!(validate(&item).is_ok());
-            }
-
-            #[test]
-            fn rejects_wrong_rpc_parameter_type() {
-                let item: ItemFn = parse_quote! {
-                    fn rpc_handler(data: &str) -> Option<Vec<u8>> {
-                        let _ = data;
-                        None
-                    }
-                };
-
-                let error = validate(&item).expect_err("wrong parameter type should fail");
-                assert!(error.to_string().contains("expected parameter type"));
-            }
-        }
     }
 }

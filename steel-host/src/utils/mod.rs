@@ -1,7 +1,7 @@
-use wasmparser::{Parser, Payload};
-
 pub mod discover;
 pub mod sorting;
+
+use wasmparser::{Parser, Payload};
 
 pub fn read_custom_section<'a>(
     bytes: &'a [u8],
