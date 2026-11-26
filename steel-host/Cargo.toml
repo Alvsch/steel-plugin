@@ -21,6 +21,7 @@ wasmtime = { workspace = true, features = [
     "async",
     "pooling-allocator",
     "parallel-compilation",
+    "cache",
     "runtime",
     "std",
 ] }

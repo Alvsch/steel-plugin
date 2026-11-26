@@ -44,13 +44,7 @@ impl WasmEngine {
                 _ => PluginError::Io(err),
             })?;
 
-        let precompiled = self
-            .engine
-            .precompile_component(&bytes)
-            .map_err(PluginError::InvalidModule)?;
-
-        let component = unsafe { Component::deserialize(&self.engine, precompiled) }
-            .map_err(PluginError::InvalidModule)?;
+        let component = Component::new(&self.engine, &bytes).map_err(PluginError::InvalidModule)?;
 
         Ok(component)
     }
@@ -72,5 +66,61 @@ impl WasmEngine {
             .build();
 
         Ok(wasi)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use tempfile::tempdir;
+    use wasmtime::{Cache, CacheConfig, Config, component::Component};
+
+    use super::WasmEngine;
+
+    const EMPTY_COMPONENT: &[u8] = b"\0asm\r\0\x01\0";
+
+    fn config_with_cache(data_folder: &Path) -> wasmtime::Result<(Config, Cache)> {
+        let mut cache_config = CacheConfig::new();
+        let cache_dir = std::path::absolute(data_folder.join(".wasmtime-cache"))?;
+        cache_config.with_directory(cache_dir);
+
+        let cache = Cache::new(cache_config)?;
+        let mut config = Config::new();
+        config.cache(Some(cache.clone()));
+        Ok((config, cache))
+    }
+
+    #[test]
+    fn component_compilation_is_cached_across_engines() -> wasmtime::Result<()> {
+        let data_folder = tempdir().map_err(|error| wasmtime::Error::msg(error.to_string()))?;
+
+        {
+            let (config, cache) = config_with_cache(data_folder.path())?;
+            let wasm_engine = WasmEngine::new(config, data_folder.path().to_path_buf())?;
+            Component::new(&wasm_engine.engine, EMPTY_COMPONENT)?;
+            assert_eq!(cache.cache_misses(), 1);
+            assert_eq!(cache.cache_hits(), 0);
+        }
+
+        {
+            let (config, cache) = config_with_cache(data_folder.path())?;
+            let wasm_engine = WasmEngine::new(config, data_folder.path().to_path_buf())?;
+            Component::new(&wasm_engine.engine, EMPTY_COMPONENT)?;
+            assert_eq!(cache.cache_misses(), 0);
+            assert_eq!(cache.cache_hits(), 1);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn component_compilation_does_not_create_cache_by_default() -> wasmtime::Result<()> {
+        let data_folder = tempdir().map_err(|error| wasmtime::Error::msg(error.to_string()))?;
+        let wasm_engine = WasmEngine::new(Config::new(), data_folder.path().to_path_buf())?;
+        Component::new(&wasm_engine.engine, EMPTY_COMPONENT)?;
+
+        assert!(!data_folder.path().join(".wasmtime-cache").exists());
+        Ok(())
     }
 }

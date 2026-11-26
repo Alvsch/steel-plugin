@@ -19,7 +19,9 @@ pub use crate::error::{PluginContractError, PluginError};
 pub use crate::plugin::{Plugin, PluginHandle, PluginStatus};
 pub use crate::utils::discover::{DiscoveredPlugin, discover_plugins};
 pub use steel_core::PluginApi;
-pub use wasmtime::Config as WasmtimeConfig;
+pub use wasmtime::{
+    Cache as WasmtimeCache, CacheConfig as WasmtimeCacheConfig, Config as WasmtimeConfig,
+};
 
 /// Owns the Wasmtime engine, loaded plugins, and host-side plugin services.
 pub struct PluginHost {
