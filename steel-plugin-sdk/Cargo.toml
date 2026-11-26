@@ -11,6 +11,8 @@ steel-plugin-core.workspace = true
 inventory.workspace = true
 wit-bindgen.workspace = true
 thiserror.workspace = true
+serde.workspace = true
+rmp-serde.workspace = true
 
 [lints]
 workspace = true

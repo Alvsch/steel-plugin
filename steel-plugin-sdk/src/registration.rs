@@ -11,10 +11,12 @@ pub struct EventHandler {
 
 inventory::collect!(EventHandler);
 
+pub type RpcFunction = fn(&[u8]) -> Result<Option<Vec<u8>>, crate::sdk::rpc::RpcError>;
+
 #[doc(hidden)]
 pub struct RpcMethod {
     pub name: &'static str,
-    pub function: fn(&[u8]) -> Option<Vec<u8>>,
+    pub function: RpcFunction,
 }
 
 inventory::collect!(RpcMethod);

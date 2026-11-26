@@ -1,4 +1,4 @@
-package host:plugin-sdk@0.2.0;
+package host:plugin-sdk@0.3.0;
 
 interface event {
     use player.{player};

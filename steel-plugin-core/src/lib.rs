@@ -1,7 +1,7 @@
 use semver::Version;
 use serde::{Deserialize, Serialize};
 
-pub const STEEL_API_VERSION: Version = Version::new(0, 2, 0);
+pub const STEEL_API_VERSION: Version = Version::new(0, 3, 0);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PluginMeta {

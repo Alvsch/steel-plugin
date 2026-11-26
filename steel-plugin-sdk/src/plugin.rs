@@ -38,7 +38,7 @@ impl<T: Plugin> wit::Guest for T {
     fn rpc(method_name: String, data: Vec<u8>) -> Result<Option<Vec<u8>>, sdk::rpc::RpcError> {
         for method in inventory::iter::<RpcMethod> {
             if method.name == method_name {
-                return Ok((method.function)(&data));
+                return (method.function)(&data);
             }
         }
         Err(sdk::rpc::RpcError::UnknownMethod)

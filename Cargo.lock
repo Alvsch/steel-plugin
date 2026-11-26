@@ -302,6 +302,7 @@ checksum = "be95d4a884358a21a199689323c29e9256b4a1b315e22f183d155422041d3a9a"
 name = "consumer-plugin"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "steel-plugin-sdk",
 ]
 
@@ -1838,6 +1839,7 @@ dependencies = [
 name = "provider-plugin"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "steel-plugin-sdk",
 ]
 
@@ -2734,6 +2736,8 @@ name = "steel-plugin-sdk"
 version = "0.1.0"
 dependencies = [
  "inventory",
+ "rmp-serde",
+ "serde",
  "steel-plugin-core",
  "steel-plugin-macros",
  "thiserror",

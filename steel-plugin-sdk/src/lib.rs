@@ -3,6 +3,8 @@
 //! The root exports and the [`event`] and [`rpc`] modules form the plugin-facing
 //! API. [`sdk`] exposes the generated WIT bindings for callers that need direct
 //! access to the component interface; prefer the SDK modules where possible.
+//!
+//! [`serde`] is re-exported for declaring typed RPC request and response values.
 
 pub mod event {
     //! Typed event payloads exposed to plugin event handlers.
@@ -12,6 +14,7 @@ mod logging;
 mod plugin;
 mod registration;
 pub mod rpc;
+pub use serde;
 
 #[allow(clippy::all, clippy::pedantic)]
 mod bindings;
@@ -32,6 +35,7 @@ pub mod __export {
 
     // Used by #[rpc_export].
     pub use crate::registration::RpcMethod;
+    pub use crate::rpc::{decode_rpc_request, encode_rpc_response};
 
     // Used by error!, warn!, info!, debug!, and trace!.
     pub use crate::sdk::logging::{debug, error, info, trace, warn};

@@ -1,17 +1,59 @@
-use steel_plugin_sdk::{Plugin, info, rpc};
+use steel_plugin_sdk::{
+    Plugin, info, rpc,
+    serde::{Deserialize, Serialize},
+};
 
 pub struct ConsumerPlugin;
+
+#[derive(Serialize)]
+struct GreetRequest {
+    name: String,
+}
+
+#[derive(Deserialize)]
+struct GreetResponse {
+    message: String,
+}
+
+#[derive(Serialize)]
+struct NotifyRequest {
+    message: String,
+}
 
 impl Plugin for ConsumerPlugin {
     fn on_enable() {
         info!("hello from the consumer!");
-        let response = rpc::call("provider-plugin", "greet", b"Steve")
-            .expect("provider greet call should succeed");
-        assert!(response.is_none(), "greet is a no-response RPC");
+        let response = rpc::request::<_, GreetResponse>(
+            "provider-plugin",
+            "greet",
+            &GreetRequest {
+                name: "Steve".to_owned(),
+            },
+        )
+        .expect("provider greet call should succeed");
+        assert_eq!(response.message, "hello Steve");
+
+        rpc::notify(
+            "provider-plugin",
+            "notify",
+            &NotifyRequest {
+                message: "one-way call".to_owned(),
+            },
+        )
+        .expect("provider notify call should succeed");
+
+        let error = rpc::call("provider-plugin", "greet", b"\xc1")
+            .expect_err("invalid MessagePack request should be rejected");
+        assert!(matches!(error, rpc::CallError::InvalidRequest));
 
         let error = rpc::call("provider-plugin", "missing", b"")
             .expect_err("unknown provider method should return an error");
-        assert_eq!(error, rpc::CallError::UnknownMethod);
+        assert!(matches!(error, rpc::CallError::UnknownMethod));
+
+        let raw_response = rpc::call("provider-plugin", "echo", b"raw bytes")
+            .expect("raw RPC should succeed")
+            .expect("echo returns bytes");
+        assert_eq!(raw_response, b"raw bytes");
     }
 
     fn on_disable() {
