@@ -10,14 +10,15 @@ use std::sync::Arc;
 
 use crate::engine::WasmEngine;
 use crate::linker::PluginWorld;
-use crate::plugin::{Plugin, PluginRuntime, PluginState};
+use crate::plugin::{PluginRuntime, PluginState};
 use crate::state::HostState;
 
+use steel_utils::locks::AsyncMutex;
+
 pub use crate::error::{PluginContractError, PluginError};
-pub use crate::plugin::{PluginHandle, PluginStatus};
+pub use crate::plugin::{Plugin, PluginHandle, PluginStatus};
 pub use crate::utils::discover::{DiscoveredPlugin, discover_plugins};
 pub use steel_core::PluginApi;
-use steel_utils::locks::AsyncMutex;
 pub use wasmtime::Config as WasmtimeConfig;
 
 /// Owns the Wasmtime engine, loaded plugins, and host-side plugin services.
